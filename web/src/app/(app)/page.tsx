@@ -1,56 +1,52 @@
 // Landing surface — the bubble field is THE work surface (per /docs/06-design-language.md §1.1).
-// This is a Sprint 2 deliverable; for now it's a placeholder that confirms the AppShell
-// layout, header, role-aware session, and notification bell all work end-to-end.
 
 import { auth } from '../../../auth';
-import { prisma } from '@vrs/db';
 import { redirect } from 'next/navigation';
+import { getBubbleData } from '@/lib/bubble-data';
+import { WorkSurface } from '@/components/bubble-field/WorkSurface';
 
 export default async function BubbleFieldLanding() {
   const session = await auth();
   if (!session?.user) redirect('/login');
 
-  const counts = {
-    vendors: await prisma.vendor.count(),
-    rebatePrograms: await prisma.rebateProgram.count(),
-    pendingApAgreements: await prisma.agreement.count({ where: { status: 'PENDING_AP_APPROVAL' } }),
-    notifications: await prisma.notification.count({
-      where: { userId: session.user.id, readAt: null },
-    }),
+  const bubbles = await getBubbleData();
+
+  const totalEarnings = bubbles.reduce((s, b) => s + b.metrics.annualEarnings, 0);
+  const queuePending = bubbles.filter((b) => b.queuePending).length;
+  const healthCounts = {
+    red: bubbles.filter((b) => b.health === 'RED').length,
+    amber: bubbles.filter((b) => b.health === 'AMBER').length,
+    green: bubbles.filter((b) => b.health === 'GREEN').length,
   };
 
   return (
     <div className="h-full flex flex-col">
-      {/* KPI strip placeholder — Sprint 2 will wire this to filtered set */}
+      {/* KPI strip — derived from the bubble data */}
       <div className="border-b border-gray-200 px-6 py-4 bg-white">
-        <div className="grid grid-cols-4 gap-6 max-w-5xl">
-          <KpiCard label="Vendors in scope" value={counts.vendors} />
-          <KpiCard label="Active programs" value={counts.rebatePrograms} />
-          <KpiCard label="Awaiting AP approval" value={counts.pendingApAgreements} accent="amber" />
-          <KpiCard label="Unread notifications" value={counts.notifications} accent="blue" />
+        <div className="grid grid-cols-5 gap-6 max-w-6xl">
+          <KpiCard label="Vendors in scope" value={bubbles.length.toLocaleString()} />
+          <KpiCard label="Total earnings YTD" value={formatMoney(totalEarnings)} />
+          <KpiCard
+            label="Awaiting AP approval"
+            value={queuePending.toLocaleString()}
+            accent="amber"
+          />
+          <KpiCard
+            label="Critical attention"
+            value={healthCounts.red.toLocaleString()}
+            accent="red"
+          />
+          <KpiCard
+            label="Healthy"
+            value={healthCounts.green.toLocaleString()}
+            accent="green"
+          />
         </div>
       </div>
 
-      {/* Bubble field viewport — placeholder until Sprint 2 */}
-      <div className="flex-1 flex items-center justify-center bg-gray-50/50 relative">
-        <div className="text-center max-w-md">
-          <div className="text-6xl mb-4">●</div>
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Vendor Bubble Field</h2>
-          <p className="text-gray-600 text-sm leading-relaxed">
-            Sprint 2 lights this up — D3 force simulation, lasso select, role-lens filtering, and
-            the right-slider vendor record. For now: shell, auth, header, and bell are wired.
-          </p>
-          <div className="mt-6 text-xs text-gray-500">
-            Signed in as <span className="font-medium text-gray-700">{session.user.name}</span>
-            {' · '}
-            <span>{session.user.role.replaceAll('_', ' ')}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Floating toolbar placeholder */}
-      <div className="absolute bottom-4 left-4 right-4 z-20 p-3 bg-white/60 backdrop-blur-sm border border-gray-300 rounded-lg shadow-md flex items-center gap-2">
-        <span className="text-xs text-gray-500 px-2">Toolbar (Filters · Layer · Mode · Vera) — Sprint 2</span>
+      {/* Bubble field viewport — quadrant layout, axis-selectable via toolbar */}
+      <div className="flex-1 relative bg-gradient-to-br from-gray-50/80 via-white to-gray-50/60">
+        <WorkSurface vendors={bubbles} />
       </div>
     </div>
   );
@@ -62,7 +58,7 @@ function KpiCard({
   accent = 'gray',
 }: {
   label: string;
-  value: number;
+  value: string;
   accent?: 'gray' | 'blue' | 'amber' | 'red' | 'green';
 }) {
   const accentClass = {
@@ -74,8 +70,19 @@ function KpiCard({
   }[accent];
   return (
     <div>
-      <div className="text-xs uppercase tracking-wider text-gray-500 font-medium">{label}</div>
-      <div className={`mt-1 text-3xl font-bold ${accentClass}`}>{value.toLocaleString()}</div>
+      <div className="text-xs uppercase tracking-wider text-gray-500 font-medium">
+        {label}
+      </div>
+      <div className={`mt-1 text-3xl font-bold ${accentClass}`}>{value}</div>
     </div>
   );
+}
+
+function formatMoney(n: number): string {
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
+  if (abs >= 1e9) return `${sign}$${(abs / 1e9).toFixed(2)}B`;
+  if (abs >= 1e6) return `${sign}$${(abs / 1e6).toFixed(1)}M`;
+  if (abs >= 1e3) return `${sign}$${(abs / 1e3).toFixed(1)}K`;
+  return `${sign}$${abs.toFixed(0)}`;
 }

@@ -6,7 +6,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -40,13 +39,13 @@ export function UserMenu({ name, role, analystCode }: UserMenuProps) {
         <ChevronDown className="w-4 h-4 text-gray-400" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>
-          <div className="font-semibold">{name}</div>
-          <div className="text-xs font-normal text-gray-500 mt-0.5">
+        <div className="px-2 py-1.5">
+          <div className="text-sm font-semibold text-gray-900">{name}</div>
+          <div className="text-xs text-gray-500 mt-0.5">
             {ROLE_LABEL[role] ?? role}
             {analystCode && ` · ${analystCode}`}
           </div>
-        </DropdownMenuLabel>
+        </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={() => signOut({ redirectTo: '/login' })}
