@@ -1,0 +1,638 @@
+// VRS Prototype — Prisma schema
+// Source of truth: /docs/02-schema-reference.md, /docs/03-schema-clarifications.md, /docs/04-schema-addendum.md
+// Models ordered top-to-bottom by dependency (addendum §9, with the Batch/AcctControl reorder fix).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ───────────────────────────────────────────────────────────────────
+
+enum Source {
+  R // Receipts (Domestic)
+  S // Sales
+  D // Drop Ships
+  B // Receipts (Import / Broker)
+  F // Freight
+  C // Discount / BOGO
+  N // No Source (fixed amount)
+  E // EDI
+  Q // Quotes
+  T // Transfer
+}
+
+// MerchType — values match the real DG VRS extract (RebateProgramExtact.csv).
+// 36 distinct codes seen in production data.
+enum MerchType {
+  ADVCOOP
+  BOPIS
+  CLPSTP
+  COMMISSN
+  COMMTG
+  COTRKT
+  CPRPR
+  CSTINCAF
+  DGMEDIAN
+  DGRACING
+  DMGDC
+  ENDCAP
+  EXCLUSIV
+  FIXTURES
+  FREIGHT
+  FRONTEND
+  LABRFUND
+  MILKICE
+  MKTSTORE
+  MRKDWNC
+  MRKDWNNC
+  NEWITEM
+  NSA
+  OTHER
+  PLCALLOW
+  POSTAUDT
+  PREPAID
+  PRIVBRND
+  RECALL
+  S5S5
+  SCAN
+  SCNBK
+  SIDEWING
+  SUPCHAIN
+  TPR
+  VOLCOKE
+  VOLGRWTH
+  VOLPEPSI
+  VOLUME
+}
+
+enum AgreementStatus {
+  SUBMITTED_BY_VENDOR
+  PRE_NEGOTIATION
+  PENDING_DMM_APPROVAL
+  PENDING_GMM_APPROVAL
+  PENDING_AP_APPROVAL
+  ASSIGNED
+  EXPIRED
+  REJECTED
+  CANCELLED
+}
+
+enum CalculateResultStatus {
+  OPEN
+  PENDING_REVIEW
+  REVIEWED
+  APPROVED
+  FINALIZED
+  // ADJUSTED removed — post-finalization changes use CalculateResultAdjustment table
+}
+
+enum UserRole {
+  AP_ANALYST
+  AP_MANAGER
+  BUYER
+  BUYER_DELEGATE
+  DMM
+  GMM
+  READ_ONLY
+  // VENDOR_PORTAL removed — portal users live in VendorPortalUser table
+}
+
+enum ReportJobStatus {
+  QUEUED
+  RUNNING
+  COMPLETE
+  FAILED
+  CANCELLED
+}
+
+enum ReportJobType {
+  REBATE_PROGRAM_EXTRACT
+  UNAPPROVED_EXTRACT
+  HISTORY_EXTRACT
+  EARNINGS_SUMMARY_BY_MERCH_TYPE
+  BATCH_DETAIL_REPORT
+}
+
+enum FunctionType {
+  ACCRUAL
+  RECLASS
+  PREPAID
+  DEDUCTION
+}
+
+enum TargetSystem {
+  RSL
+  AP
+  GL
+}
+
+enum NotificationType {
+  REPORT_COMPLETE
+  REPORT_FAILED
+  QUEUE_PENDING
+  AGREEMENT_APPROVED
+  AGREEMENT_REJECTED
+  PERIOD_CLOSED
+  TIER_ALERT
+  ANOMALY_FLAG
+}
+
+// ─── 1. FISCAL PERIOD ────────────────────────────────────────────────────────
+// 4-4-5 calendar — 13 periods/year, periods do not align with calendar months.
+
+model FiscalPeriod {
+  id           String    @id @default(uuid())
+  fiscalPeriod Int
+  fiscalYear   Int
+  periodStart  DateTime  @db.Date
+  periodEnd    DateTime  @db.Date
+  isClosed     Boolean   @default(false)
+  closedAt     DateTime?
+  closedBy     String?
+
+  @@unique([fiscalPeriod, fiscalYear])
+}
+
+// ─── 2. PROGRAM TYPE ─────────────────────────────────────────────────────────
+// Renamed from RebateCategory after Ken's data revealed Category is a granular
+// program-type tag (Advertising Coop, Volume Growth, Damages, etc.) — not a
+// dept-level grouping. Values populated from ActVrs_Plan.csv (38 program types).
+
+model ProgramType {
+  id             String          @id @default(uuid())
+  code           String          @unique
+  name           String
+  active         Boolean         @default(true)
+  rebatePrograms RebateProgram[]
+  agreements     Agreement[]
+}
+
+// ─── 3. REBATE TYPE ──────────────────────────────────────────────────────────
+// Compound code — e.g. R-COTRKT, S-NSA. The FK target for AcctControlMaster.
+
+model RebateType {
+  code           String              @id
+  source         Source
+  merchType      MerchType
+  description    String
+  usedByMdse     Boolean             @default(true)
+  active         Boolean             @default(true)
+  rebatePrograms RebateProgram[]
+  acctControls   AcctControlMaster[]
+}
+
+// ─── 4. VENDOR ───────────────────────────────────────────────────────────────
+// vendorNumber is the AP # — plain integer in source data (e.g. 262529, 1179).
+
+model Vendor {
+  id                 String             @id @default(uuid())
+  vendorNumber       Int                @unique
+  name               String
+  active             Boolean            @default(true)
+  rebateVendors      RebateVendor[]
+  agreements         Agreement[]
+  analyticsSummaries AnalyticsSummary[]
+  portalUsers        VendorPortalUser[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+}
+
+// ─── 5. USER ─────────────────────────────────────────────────────────────────
+
+model User {
+  id               String          @id @default(uuid())
+  email            String          @unique
+  name             String
+  analystCode      String?         @unique
+  role             UserRole
+  active           Boolean         @default(true)
+  lastLoginAt      DateTime?
+  assignedPrograms RebateProgram[] @relation("ProgramAnalyst")
+  buyerAgreements  Agreement[]     @relation("AgreementBuyer")
+  reportJobs       ReportJob[]
+  notifications    Notification[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+}
+
+// ─── 6. VENDOR PORTAL USER ──────────────────────────────────────────────────
+// Stub only in prototype — no seed data, no UI surface.
+
+model VendorPortalUser {
+  id          String    @id @default(uuid())
+  vendorId    String
+  vendor      Vendor    @relation(fields: [vendorId], references: [id])
+  email       String    @unique
+  name        String
+  active      Boolean   @default(true)
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// ─── 7. AGREEMENT ────────────────────────────────────────────────────────────
+
+model Agreement {
+  id                 String          @id @default(uuid())
+  // Display Agmt ID — plain integer in source data (e.g. 78903, 312)
+  agmtId             Int             @unique @default(autoincrement())
+  vendorId           String
+  vendor             Vendor          @relation(fields: [vendorId], references: [id])
+  merchType          MerchType
+  source             Source
+  description        String
+  buyerId            String
+  buyer              User            @relation("AgreementBuyer", fields: [buyerId], references: [id])
+  delegateId         String?
+  programTypeId      String
+  programType        ProgramType     @relation(fields: [programTypeId], references: [id])
+  estimatedValue     Decimal         @db.Decimal(15, 2)
+  startDate          DateTime        @db.Date
+  endDate            DateTime        @db.Date
+  status             AgreementStatus @default(PRE_NEGOTIATION)
+  submittedViaPortal Boolean         @default(false)
+  notes              String?
+
+  // Approval chain audit (String FKs to User.id; no back-relations)
+  dmmApprovedBy   String?
+  dmmApprovedAt   DateTime?
+  gmmApprovedBy   String?
+  gmmApprovedAt   DateTime?
+  apApprovedBy    String?
+  apApprovedAt    DateTime?
+  rejectedBy      String?
+  rejectedAt      DateTime?
+  rejectionReason String?
+
+  rebatePrograms RebateProgram[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── 8. REBATE PROGRAM ───────────────────────────────────────────────────────
+
+model RebateProgram {
+  id             String         @id @default(uuid())
+  // Display Rebate ID — plain integer in source data (e.g. 71922, 6064, 57098)
+  programNumber  Int            @unique
+  description    String
+  rebateTypeCode String
+  rebateType     RebateType     @relation(fields: [rebateTypeCode], references: [code])
+  programTypeId  String
+  programType    ProgramType    @relation(fields: [programTypeId], references: [id])
+  // Denormalized from RebateType.source for query convenience.
+  // Service layer (createRebateProgram) always derives this from rebateType.source.
+  source         Source
+  analystId      String
+  analyst        User           @relation("ProgramAnalyst", fields: [analystId], references: [id])
+  agreementId    String?
+  agreement      Agreement?     @relation(fields: [agreementId], references: [id])
+  startDate      DateTime       @db.Date
+  endDate        DateTime       @db.Date
+  active         Boolean        @default(true)
+  notes          String?
+
+  // Fields aligning with the Rebate Program Extract output (Ken's sample, Sprint 3).
+  // Single-letter codes — meanings TBD with Ken (see /docs/05-info-needed-from-ken.md).
+  payType       String? // C | D | G | M | T | W
+  frequency     String? // P (period)
+  altApNumber   Int?
+  payApNumber   Int?
+  earnType      String? // M
+  sbtType       String? // N
+  pctOfCost     Decimal? @db.Decimal(8, 4) // e.g. 0.0050 = 0.5000%
+  pctLevel      String? // "Dept" or null
+  closedAt      DateTime?
+
+  rebateVendors RebateVendor[]
+  rebateTiers   RebateTier[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── 9. REBATE TIER ──────────────────────────────────────────────────────────
+// 1–N tiers per program. E&C engine evaluates in order.
+// TODO(production): convert tierType to enum (INCREMENTAL | FLAT)
+
+model RebateTier {
+  id              String        @id @default(uuid())
+  rebateProgramId String
+  rebateProgram   RebateProgram @relation(fields: [rebateProgramId], references: [id])
+  tierLevel       Int
+  fromAmount      Decimal       @db.Decimal(15, 2)
+  toAmount        Decimal?      @db.Decimal(15, 2) // null = unlimited
+  rate            Decimal       @db.Decimal(8, 6)
+  tierType        String        @default("INCREMENTAL")
+
+  @@unique([rebateProgramId, tierLevel])
+}
+
+// ─── 10. REBATE VENDOR ───────────────────────────────────────────────────────
+
+model RebateVendor {
+  id              String        @id @default(uuid())
+  rebateProgramId String
+  rebateProgram   RebateProgram @relation(fields: [rebateProgramId], references: [id])
+  vendorId        String
+  vendor          Vendor        @relation(fields: [vendorId], references: [id])
+  active          Boolean       @default(true)
+
+  rebateVendorDepts RebateVendorDept[]
+  checks            Check[]
+  deductions        Deduction[]
+  invoices          Invoice[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([rebateProgramId, vendorId])
+}
+
+// ─── 11. REBATE VENDOR DEPT ──────────────────────────────────────────────────
+
+model RebateVendorDept {
+  id             String       @id @default(uuid())
+  rebateVendorId String
+  rebateVendor   RebateVendor @relation(fields: [rebateVendorId], references: [id])
+  departmentCode String
+  departmentName String
+  classCode      String       @default("-1")
+  active         Boolean      @default(true)
+
+  calculateResults CalculateResult[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([rebateVendorId, departmentCode])
+}
+
+// ─── 12. CALCULATE RESULT ────────────────────────────────────────────────────
+// One row per (rebateVendorDept, fiscalPeriod, fiscalYear).
+// The unique constraint enforces the "one calculation per period" business rule.
+
+model CalculateResult {
+  id                 String           @id @default(uuid())
+  rebateVendorDeptId String
+  rebateVendorDept   RebateVendorDept @relation(fields: [rebateVendorDeptId], references: [id])
+
+  fiscalPeriod Int
+  fiscalYear   Int
+
+  // Input volumes — sourced from 1010 for R/S/D/B; manual for N type
+  receiptAmount  Decimal? @db.Decimal(15, 2)
+  salesAmount    Decimal? @db.Decimal(15, 2)
+  dropshipAmount Decimal? @db.Decimal(15, 2)
+  fixedAmount    Decimal? @db.Decimal(15, 2)
+
+  // Rate application
+  tierLevel   Int?
+  rateApplied Decimal? @db.Decimal(8, 6)
+
+  // Earnings components (shown on Vendors & Depts tab)
+  pmuEarnings       Decimal @default(0) @db.Decimal(15, 2)
+  marginEarnings    Decimal @default(0) @db.Decimal(15, 2)
+  advcoopEarnings   Decimal @default(0) @db.Decimal(15, 2)
+  otherCoopEarnings Decimal @default(0) @db.Decimal(15, 2)
+  totalEarnings     Decimal @default(0) @db.Decimal(15, 2) // sum of four above
+  // TODO(production): make totalEarnings a generated column
+
+  // Pre-finalization adjustments (analyst-applied before APPROVED).
+  // Post-finalization adjustments live in CalculateResultAdjustment.
+  adjustmentAmount Decimal @default(0) @db.Decimal(15, 2)
+  adjustmentReason String?
+
+  finalEarnings Decimal @default(0) @db.Decimal(15, 2) // totalEarnings + adjustmentAmount
+
+  status CalculateResultStatus @default(OPEN)
+
+  // Audit
+  runAt        DateTime?
+  reviewedAt   DateTime?
+  reviewedBy   String?
+  approvedAt   DateTime?
+  approvedBy   String?
+  finalizedAt  DateTime?
+
+  batchItems  BatchItem[]
+  adjustments CalculateResultAdjustment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([rebateVendorDeptId, fiscalPeriod, fiscalYear])
+}
+
+// ─── 13. BATCH ───────────────────────────────────────────────────────────────
+// One batch per (period, year, targetSystem, functionType) per period-close run.
+
+model Batch {
+  id           String       @id @default(uuid())
+  batchNumber  String       @unique
+  targetSystem TargetSystem
+  functionType FunctionType
+  fiscalPeriod Int
+  fiscalYear   Int
+  totalAmount  Decimal      @db.Decimal(15, 2)
+  recordCount  Int          @default(0)
+
+  // Lifecycle (createdBy/exportedBy/finalizedBy are String FKs to User.id; no back-relations)
+  createdAt   DateTime  @default(now())
+  createdBy   String
+  exportedAt  DateTime?
+  exportedBy  String?
+  finalizedAt DateTime?
+  finalizedBy String?
+
+  batchItems  BatchItem[]
+  adjustments CalculateResultAdjustment[]
+
+  @@unique([fiscalPeriod, fiscalYear, targetSystem, functionType])
+}
+
+// ─── 14. ACCT CONTROL MASTER ─────────────────────────────────────────────────
+// Routing config: (rebateTypeCode, functionType, targetSystem) → (account, cost center, txn type).
+
+model AcctControlMaster {
+  id                  String       @id @default(uuid())
+  rebateTypeCode      String
+  rebateType          RebateType   @relation(fields: [rebateTypeCode], references: [code])
+  functionType        FunctionType
+  targetSystem        TargetSystem
+  accountCode         String
+  costCenter          String
+  transactionTypeCode String
+  description         String?
+  active              Boolean      @default(true)
+
+  batchItems BatchItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([rebateTypeCode, functionType, targetSystem])
+}
+
+// ─── 15. BATCH ITEM ──────────────────────────────────────────────────────────
+// Snapshots amount and routing at batch creation — never mutated post-batch.
+
+model BatchItem {
+  id                String            @id @default(uuid())
+  batchId           String
+  batch             Batch             @relation(fields: [batchId], references: [id])
+  calculateResultId String
+  calculateResult   CalculateResult   @relation(fields: [calculateResultId], references: [id])
+  // Snapshot of finalEarnings at batch creation — locked for audit
+  amount            Decimal           @db.Decimal(15, 2)
+  acctControlId     String
+  acctControl       AcctControlMaster @relation(fields: [acctControlId], references: [id])
+
+  @@unique([batchId, calculateResultId])
+}
+
+// ─── 16. CALCULATE RESULT ADJUSTMENT ─────────────────────────────────────────
+// Post-finalization audit table — never mutate FINALIZED CalculateResult rows.
+
+model CalculateResultAdjustment {
+  id                String          @id @default(uuid())
+  calculateResultId String
+  calculateResult   CalculateResult @relation(fields: [calculateResultId], references: [id])
+  adjustmentAmount  Decimal         @db.Decimal(15, 2)
+  adjustmentReason  String
+  appliedBy         String
+  appliedAt         DateTime        @default(now())
+  batchId           String?
+  batch             Batch?          @relation(fields: [batchId], references: [id])
+}
+
+// ─── 17. CHECK ───────────────────────────────────────────────────────────────
+// TODO(production): convert status to enum (PENDING | CLEARED | RETURNED | VOIDED)
+
+model Check {
+  id              String       @id @default(uuid())
+  rebateVendorId  String
+  rebateVendor    RebateVendor @relation(fields: [rebateVendorId], references: [id])
+  checkNumber     String
+  checkDate       DateTime     @db.Date
+  amount          Decimal      @db.Decimal(15, 2)
+  appliedToPeriod Int?
+  appliedToYear   Int?
+  status          String       @default("PENDING")
+  clearedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── 18. DEDUCTION ───────────────────────────────────────────────────────────
+// TODO(production): convert reasonCode to enum (RETURN_CREDIT | PRICE_ADJUSTMENT | DATA_CORRECTION | OTHER)
+
+model Deduction {
+  id              String       @id @default(uuid())
+  rebateVendorId  String
+  rebateVendor    RebateVendor @relation(fields: [rebateVendorId], references: [id])
+  deductionNumber String
+  deductionDate   DateTime     @db.Date
+  amount          Decimal      @db.Decimal(15, 2)
+  reasonCode      String
+  notes           String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── 19. INVOICE ─────────────────────────────────────────────────────────────
+// TODO(production): convert invoiceType, status, deliveryStatus to enums
+
+model Invoice {
+  id             String       @id @default(uuid())
+  invoiceNumber  String       @unique
+  rebateVendorId String
+  rebateVendor   RebateVendor @relation(fields: [rebateVendorId], references: [id])
+  invoiceType    String // ACCRUAL | DEDUCTION | PREPAID
+  fiscalPeriod   Int
+  fiscalYear     Int
+  amount         Decimal      @db.Decimal(15, 2)
+  sentAt         DateTime?
+  dueDate        DateTime     @db.Date
+  paidAt         DateTime?
+  status         String       @default("PENDING") // PENDING | SENT | PAID | OVERDUE | DISPUTED
+  // SendGrid (production) delivery tracking
+  deliveryStatus String? // QUEUED | SENT | DELIVERED | OPENED | BOUNCED | FAILED
+  deliveredAt    DateTime?
+  openedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── 20. REPORT JOB ──────────────────────────────────────────────────────────
+
+model ReportJob {
+  id            String          @id @default(uuid())
+  type          ReportJobType
+  params        Json
+  status        ReportJobStatus @default(QUEUED)
+  requestedById String
+  requestedBy   User            @relation(fields: [requestedById], references: [id])
+  queuedAt      DateTime        @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+  outputUrl     String?
+  errorMessage  String?
+  expiresAt     DateTime? // 7 days from completedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── 21. NOTIFICATION ────────────────────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  type      NotificationType
+  payload   Json
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt])
+}
+
+// ─── 22. ANALYTICS SUMMARY ───────────────────────────────────────────────────
+// Pre-aggregated 1010 fact table. Rebuilt nightly (truncate + insert) in production;
+// seeded with synthesized values in the prototype.
+
+model AnalyticsSummary {
+  id             String  @id @default(uuid())
+  vendorId       String
+  vendor         Vendor  @relation(fields: [vendorId], references: [id])
+  departmentCode String
+  source         Source
+  fiscalPeriod   Int
+  fiscalYear     Int
+
+  transactionVolume   Decimal @db.Decimal(15, 2)
+  transactionVolumePy Decimal @db.Decimal(15, 2) // synthesized at seed time
+  yoyVariancePct      Decimal @db.Decimal(8, 4)
+
+  currentTier       Int?
+  tierThresholdNext Decimal? @db.Decimal(15, 2)
+  paceToTargetPct   Decimal? @db.Decimal(8, 4)
+  tierAlert         Boolean  @default(false)
+
+  anomalyFlag   Boolean @default(false)
+  anomalyReason String?
+
+  computedAt DateTime @default(now())
+
+  @@unique([vendorId, departmentCode, source, fiscalPeriod, fiscalYear])
+}
