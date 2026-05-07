@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VRS · Current Architecture</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    color: #1f2937;
+    max-width: 980px;
+    margin: 24px auto;
+    padding: 0 24px;
+    line-height: 1.6;
+    font-size: 14px;
+  }
+  h1 { font-size: 24pt; font-weight: 600; margin: 8px 0 4px 0; letter-spacing: -0.01em; }
+  h2 { font-size: 16pt; font-weight: 600; margin: 36px 0 10px 0; padding-bottom: 6px; border-bottom: 2px solid #e5e7eb; color: #0f2340; }
+  h3 { font-size: 12pt; font-weight: 600; margin: 22px 0 8px 0; color: #1f2937; }
+  p { margin: 8px 0; }
+  ul, ol { padding-left: 24px; margin: 8px 0; }
+  li { margin: 4px 0; }
+  code { background: #f3f4f6; padding: 1px 5px; border-radius: 3px; font-family: Consolas, 'Courier New', monospace; font-size: 90%; }
+  pre { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px 16px; overflow-x: auto; font-size: 12.5px; line-height: 1.5; margin: 10px 0; }
+  pre code { background: none; padding: 0; }
+  .meta { color: #6b7280; font-size: 12px; margin-bottom: 24px; }
+  .lead { font-size: 15px; line-height: 1.6; color: #374151; margin: 16px 0 24px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+  th { background: #f9fafb; font-weight: 600; border-bottom: 2px solid #d1d5db; }
+  tr:last-child td { border-bottom: none; }
+  .callout { background: #f9fafb; border-left: 3px solid #b8922a; padding: 10px 14px; margin: 14px 0; border-radius: 0 4px 4px 0; }
+  .callout-title { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #b8922a; margin-bottom: 4px; }
+  .callout-blue { border-left-color: #1d5fa8; }
+  .callout-blue .callout-title { color: #1d5fa8; }
+  .callout-amber { border-left-color: #b45309; }
+  .callout-amber .callout-title { color: #b45309; }
+  .pill { display: inline-block; padding: 1px 7px; border-radius: 3px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; vertical-align: middle; }
+  .pill-done { background: #dcfce7; color: #166534; }
+  .pill-active { background: #dbeafe; color: #1e3a8a; }
+  .pill-pending { background: #fef3c7; color: #854d0e; }
+  .pill-open { background: #fee2e2; color: #991b1b; }
+  .toc { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 14px 18px; margin: 16px 0 32px 0; font-size: 13px; }
+  .toc ol { padding-left: 22px; margin: 6px 0; }
+  .toc li { margin: 3px 0; }
+  .toc a { color: #1d5fa8; text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .small { font-size: 12px; color: #6b7280; }
+  .source-note { font-size: 11.5px; color: #6b7280; font-style: italic; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div style="border-bottom: 3px solid #0f2340; padding-bottom: 12px; margin-bottom: 8px;">
+  <div style="font-size: 10pt; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #b8922a; margin-bottom: 4px;">Dollar General · Vendor Rebate System</div>
+  <h1>Current Architecture &mdash; v1</h1>
+  <div class="meta">2026-05-06 &middot; TPG Partners &middot; Replaces the older workflow diagram and supersedes scattered architectural notes</div>
+</div>
+
+<p class="lead">
+  This document is the consolidated source-of-truth for the new VRS as it stands today. Where prior docs (Role-Lens, Build Plan, Vera Architecture, Workflow Diagram) overlap or disagree, this version reconciles. Audience: TPG team, Ken as validator, DG stakeholders during the demo phase.
+</p>
+
+<div class="toc">
+  <strong style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280;">Contents</strong>
+  <ol>
+    <li><a href="#vision">Vision &amp; the timing argument</a></li>
+    <li><a href="#stack">Architecture &amp; stack</a></li>
+    <li><a href="#data">Data architecture</a></li>
+    <li><a href="#ia">Information architecture</a></li>
+    <li><a href="#domain">Domain model</a></li>
+    <li><a href="#vera">Vera architecture</a></li>
+    <li><a href="#build">Build status &amp; roadmap</a></li>
+    <li><a href="#open">Open decisions &amp; questions</a></li>
+  </ol>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="vision">1. Vision &amp; the timing argument</h2>
+
+<p>
+  The new VRS is a single-canvas, role-aware, AI-augmented platform that replaces an Oracle Forms application built ~30 years ago. It preserves Ken Banks' logical data model intact while completely reimagining the surface &mdash; entry through a vendor bubble field, role-lens views over a unified record, and an agentic AI advisor (Vera) that synthesizes earnings, calculations, and 1010 transaction history to surface revenue intelligence the legacy system has no way to produce.
+</p>
+
+<h3>Five governing principles</h3>
+<ol>
+  <li><strong>Role determines lens, not navigation.</strong> AP analysts, buyers, DMMs, and managers all enter the same canvas; their role calibrates what they see and which actions are available. The MDSE/AP split disappears as a UI concept and becomes a role-filtered view of unified data.</li>
+  <li><strong>The bubble field is the entry point, not a menu.</strong> 600&ndash;900 vendor bubbles, where size = annual rebate earnings, color = health, pulsing ring = approval queue state. Period and merch-type filters reconfigure the same canvas for different users and questions.</li>
+  <li><strong>Vera is a first-class layer, not a feature.</strong> Persistent role-aware chat overlay on every screen, with both reactive Q&amp;A and proactive nightly digests. Architected on the proven "Ask Frosti" two-phase pattern from GMCC.</li>
+  <li><strong>1010 transaction data is a primary citizen.</strong> Nightly materialized summaries of DG's billions of receipt / sales / drop-ship records power pace-to-target, tier-proximity, YoY variance, and uncaptured-opportunity insights &mdash; capabilities the current system has no way to surface.</li>
+  <li><strong>Ken's data model survives. The engine doesn't.</strong> Logical schema (program &rarr; vendor &rarr; dept &rarr; calculation), source codes, tier types, four earnings components, calculation state machine &mdash; all preserved. Oracle / PL/SQL / Forms &mdash; replaced.</li>
+</ol>
+
+<div class="callout callout-amber">
+  <div class="callout-title">The window</div>
+  Three conditions converge in 2026 that do not converge again. Ken Banks &mdash; original VRS author, 30+ years on the system &mdash; <strong>retires January 2027</strong>. Oracle Forms is end-of-life and shrinking the talent pool by the year. TPG Partners has institutional VRS expertise ready to direct at a greenfield build. The knowledge-transfer window closes when Ken does. The 8-week prototype timeline is calibrated against this.
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="stack">2. Architecture &amp; stack</h2>
+
+<p>Every layer below applies to the prototype <em>and</em> the production system. There is no "prototype stack" and "real stack" &mdash; the prototype is built on the production stack with mock data substituted for real data. The transition path is provider/connection-string changes, not rewrites.</p>
+
+<table>
+  <thead>
+    <tr><th style="width:18%;">Layer</th><th style="width:38%;">Prototype</th><th style="width:44%;">Production</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Framework</strong></td><td>Next.js (App Router) + React + TypeScript</td><td>Same</td></tr>
+    <tr><td><strong>UI</strong></td><td>Tailwind + shadcn/ui</td><td>Same</td></tr>
+    <tr><td><strong>Visualization</strong></td><td>D3 force simulation (bubble field)</td><td>Same</td></tr>
+    <tr><td><strong>Database</strong></td><td>PostgreSQL 16 (Docker locally, port 5435)</td><td>Azure Database for PostgreSQL or RDS</td></tr>
+    <tr><td><strong>ORM</strong></td><td>Prisma (schema-first, type-safe client)</td><td>Same &mdash; connection-string change only</td></tr>
+    <tr><td><strong>Auth</strong></td><td>NextAuth credentials provider (role-sim login)</td><td>NextAuth + Azure AD SAML (provider swap)</td></tr>
+    <tr><td><strong>Vera provider</strong></td><td>Anthropic Claude API (fast to wire, no infra)</td><td>Azure AI Foundry GPT-4o (Microsoft alignment) &mdash; provider-agnostic interface, swap is one line</td></tr>
+    <tr><td><strong>Job scheduling</strong></td><td>Node-cron (E&amp;C simulation, 1010 summaries)</td><td>Temporal.io</td></tr>
+    <tr><td><strong>Worker queue</strong></td><td>BullMQ + Redis 7 (calculation jobs)</td><td>Same or Temporal-native</td></tr>
+    <tr><td><strong>Deployment</strong></td><td>Vercel (zero-config Next.js)</td><td>Azure App Service or AWS ECS Fargate</td></tr>
+    <tr><td><strong>1010 access</strong></td><td>Mock summaries seeded into Postgres</td><td>Nightly Oracle &rarr; Postgres ETL into materialized summary tables</td></tr>
+    <tr><td><strong>Version control</strong></td><td>Git / GitHub, conventional commits</td><td>Same repo &mdash; no fork, no rewrite</td></tr>
+  </tbody>
+</table>
+
+<h3>External integrations preserved</h3>
+<ul>
+  <li><strong>RSL</strong> (Retail Stock Ledger) &mdash; receives accruals and reclassifications</li>
+  <li><strong>AP</strong> (Accounts Payable) &mdash; receives systematic and on-demand deductions</li>
+  <li><strong>GL</strong> (General Ledger) &mdash; receives Coop expense postings</li>
+  <li><strong>Vendor Portal</strong> &mdash; existing Java/Tomcat application; remains separate; vendors submit agreements which feed the same approval queue</li>
+  <li><strong>Opcon scheduler</strong> &mdash; continues to invoke 1010 / Linux scripts at the data layer</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="data">3. Data architecture</h2>
+
+<h3>What we keep from Ken's model</h3>
+<ul>
+  <li>The three-level hierarchy: <code>RebateProgram &rarr; RebateVendor &rarr; RebateVendorDept &rarr; CalculateResult</code>. One calculation per <code>(program, vendor, dept, period)</code>.</li>
+  <li>Source-driven AP architecture: 11 source codes (R, S, D, B, F, C, P, N, E, Q, T) plus X (Store Allocations, added 2018). Sourced rebates pull external data via Extract; No-Source rebates use direct entry or formulas. Source is locked at program creation.</li>
+  <li>Four earnings components: <strong>PMU</strong> (Purchase Mark Up), <strong>Margin</strong> (prior-year recorded current-year), <strong>Adv Coop</strong>, <strong>Other Coop</strong>. The component determines RSL/GL routing.</li>
+  <li>Four tier types: E (Excess), P (Pre-defined Ranges), L (Predefined Levels), G (Growth).</li>
+  <li>Calculation state machine: <code>Calculated &rarr; Reviewed &rarr; Approved &rarr; Batched &rarr; Distributed</code>; revertable up through Batched.</li>
+  <li>Period model: <code>YEAR=0 / PERIOD=0</code> for the open period; real values written at Finalize.</li>
+  <li>Rebate Type as the Source &times; Merch Type intermediary.</li>
+  <li>Accounting Control Master &mdash; RSL/AP/GL routing rules, transaction types, cost centers.</li>
+</ul>
+
+<h3>What we change &mdash; the Oracle Forms denormalization, dropped</h3>
+<p>The legacy CALCULATE_RESULT and REBATE_VENDOR_DEPT carry ~190 and ~130 columns respectively, with most of that count being denormalization artifacts. We collapse those in the new schema:</p>
+<ul>
+  <li><strong>SBT / NSBT triplication.</strong> Every earnings field exists in three forms: base, <code>SBT_</code>, and <code>NSBT_</code> &mdash; with the invariant <code>SBT_x + NSBT_x = x</code>. Ken's own doc flags this as a maintenance nightmare. We model the SBT classification once (a flag or dimension) rather than tripling every column. The base value is derived; SBT and NSBT views are computed when needed.</li>
+  <li><strong>Time-horizon rollups</strong> (<code>cur_</code>, <code>ytd_</code>, <code>ely_</code>, <code>ltd_</code>). These are aggregate views of the same underlying period-grain data. Compute on read, don't store on write.</li>
+  <li><strong>Review-screen rollups</strong> (<code>PM_*</code> = PMU+Margin only; <code>AO_*</code> = Adv Coop+Other Coop only). Same &mdash; derive, don't store.</li>
+  <li><strong>Vestigial AADJ accrual adjustments.</strong> Per Ken: only ONE has ever been created in the entire life of VRS. Drop the columns; if AADJ ever needs to come back, add it then.</li>
+  <li><strong>REBATE_VENDOR_DEPT as a calc cache.</strong> The legacy table mirrors the most-recent CalculateResult to power the Vend/Dept tab. We don't need this in Postgres &mdash; query the source of truth and cache at the application layer if needed.</li>
+</ul>
+
+<h3>Sign convention &mdash; handled at ingest</h3>
+<p>Earnings are <em>natural negative</em> in DG's data (negative = vendor owes DG). The new system normalizes on ingest: store as positive scalars with explicit type (<code>earnings_owed</code> vs <code>earnings_paid</code>), and let the UI render the semantic. The current bubble-field metric for "annual rebate earnings" sums <code>finalEarnings</code>; with real data we'll either negate on read or store the absolute value &mdash; decision pending the migration ETL design.</p>
+
+<h3>1010 access pattern</h3>
+<p>The 1010 Oracle database holds billions of receipt, sales, and drop-ship records. It stays where it is &mdash; it is not migrated. The new VRS builds a <strong>read path</strong>: a nightly job executes summarization queries against 1010 and writes the results into materialized summary tables in the VRS Postgres database. Granularity: <code>vendor &times; dept &times; source &times; fiscal_period</code>. The application never queries 1010 directly.</p>
+<p>This makes the analytical layer fast (Postgres-native, indexed), independent of 1010's availability or schema, and trivially testable with mock data in the prototype.</p>
+
+<h3>Tables planned for the prototype</h3>
+<p>15 core tables in Sprint 1 schema:</p>
+<pre><code>vendors                  rebate_types             rebate_categories
+agreements               rebate_programs          rebate_vendors
+rebate_vendor_depts      calculate_results        checks
+deductions               invoices                 acct_control_master
+users                    vendor_portal_users      analytics_summaries</code></pre>
+<p class="source-note">Detailed schema: see <code>web/prisma/schema.prisma</code>. The Build Plan doc has the per-table mapping back to the legacy Oracle tables.</p>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="ia">4. Information architecture</h2>
+
+<h3>The bubble field (entry point)</h3>
+<p>Landing page after login. A D3 force-simulated field of vendor bubbles &mdash; one per active vendor, ~600&ndash;900 in production scale. Visual encodings:</p>
+<ul>
+  <li><strong>Size</strong> &rarr; annual rebate earnings. Power-law distribution produces a clean, readable canvas.</li>
+  <li><strong>Color</strong> &rarr; health. Green = clean. Amber = needs attention (pending approval, calc nearing review deadline, 1010 anomaly flag). Red = overdue calc, unresolved invoice, data-quality flag.</li>
+  <li><strong>Pulsing ring</strong> &rarr; approval-queue state. A vendor with an agreement at <code>Pending AP Approval</code> gets a pulsing outer ring &mdash; the queue becomes a notification, not a destination.</li>
+</ul>
+<p>Filters: Merch Type, Source, Category, Analyst, Period, Status, Queue-pending, "My Programs." Period time-slider lets users scrub fiscal history and watch the field evolve.</p>
+
+<h3>The vendor record (role-lens view)</h3>
+<p>Click a bubble &rarr; unified vendor record. <strong>Six tabs</strong>; role determines which is active by default and which actions are available in the context menu.</p>
+
+<table>
+  <thead><tr><th>Tab</th><th>What it shows</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Program header &amp; tiers</strong></td><td>Rebate ID, source, type, category, analyst, dates, tier rate table, linked Agreement</td></tr>
+    <tr><td><strong>Vendors &amp; departments</strong></td><td>Three-level hierarchy with PMU / Margin / Adv Coop / Other Coop earnings per dept</td></tr>
+    <tr><td><strong>Calculations (E&amp;C)</strong></td><td>One row per period &times; vendor &times; dept; run E&amp;C, review, approve, adjust</td></tr>
+    <tr><td><strong>Checks &amp; deductions</strong></td><td>Vendor checks applied to period earnings, deduction entries (systematic and on-demand)</td></tr>
+    <tr><td><strong>Invoices</strong></td><td>Generated from approved calcs; type, period, status, due date</td></tr>
+    <tr><td><strong>1010 Intelligence</strong></td><td>Pace-to-target, YoY sparkline, tier proximity callouts &mdash; the highest-value differentiator</td></tr>
+  </tbody>
+</table>
+
+<h3>Role-lens behavior</h3>
+<table>
+  <thead><tr><th style="width:18%;">Role</th><th>Default tab &amp; lens</th></tr></thead>
+  <tbody>
+    <tr><td><strong>AP Analyst</strong></td><td>Calculations tab active. Bubble color = calc health. Context menu: run E&amp;C, review, approve, create rebate, add deduction, generate invoice.</td></tr>
+    <tr><td><strong>Buyer / Delegate</strong></td><td>Program header / Agreement view. Bubble color = agreement-pipeline health. Context menu: create agreement, edit, Move Forward.</td></tr>
+    <tr><td><strong>DMM / GMM</strong></td><td>Approval-queue view. Bubble color = queue depth for this vendor. Context menu: approve, reject, delegate.</td></tr>
+    <tr><td><strong>AP Manager</strong></td><td>Full portfolio. Reassign programs. Period close authority. Analyst-workload overlay.</td></tr>
+    <tr><td><strong>Vendor (Portal)</strong></td><td>Separate surface (existing Java/Tomcat app). Vendor sees own programs, current-period earnings, invoice history, 1010-derived pace-to-target.</td></tr>
+    <tr><td><strong>Read-Only</strong></td><td>Full canvas, no context menus. Used by finance, audit, executive stakeholders.</td></tr>
+  </tbody>
+</table>
+
+<h3>Workflow surfaces</h3>
+<ul>
+  <li><strong>Period close checklist</strong> &mdash; guided 6-step workflow: E&amp;C status &rarr; Reviewed &rarr; Approved &rarr; Batched &rarr; Distributed &rarr; Finalized. Live completion percentages, blockers surfaced inline. Replaces the legacy 5-form sequence.</li>
+  <li><strong>Approval queue</strong> &mdash; surfaced as the pulsing-ring on the vendor bubble. Click &rarr; inline review. Approve creates the Rebate Program in the same operation; Reject sends back to MDSE with reason code. No separate destination.</li>
+  <li><strong>Maintenance</strong> &mdash; merch types, rebate types, categories, vendor master, Accounting Control Master, parameter table, security &amp; roles. Less-frequent admin destination.</li>
+  <li><strong>Reports</strong> &mdash; legacy reports preserved during transition: VRS Export, History Extract, Earnings Summary by Merch Type, Batch Detail.</li>
+  <li><strong>Ask Vera</strong> &mdash; persistent overlay drawer, accessible from every surface, role-aware, conversation memory ~5 turns.</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="domain">5. Domain model</h2>
+
+<h3>Core entities &amp; their lineage</h3>
+<table>
+  <thead><tr><th style="width:24%;">Entity</th><th style="width:32%;">Legacy table</th><th>Role</th></tr></thead>
+  <tbody>
+    <tr><td><code>Vendor</code></td><td>derived from REBATE_VENDOR + AP master</td><td>The vendor relationship. <code>vendor_num</code> is the AP key; <code>ip_vendor_num</code> is the Island Pacific (merch-side) key.</td></tr>
+    <tr><td><code>Agreement</code> (MDSE)</td><td>MDSE_AGMT_*</td><td>Contractual document between DG and a vendor. Owned by Buyer.</td></tr>
+    <tr><td><code>RebateProgram</code> (AP)</td><td>REBATE_PROGRAM</td><td>The earnings-calculation container. Source locked at creation. May or may not link to an Agreement.</td></tr>
+    <tr><td><code>RebateVendor</code></td><td>REBATE_VENDOR</td><td>Program &rarr; Vendor link. Carries <code>agreement_id</code> when present.</td></tr>
+    <tr><td><code>RebateVendorDept</code></td><td>REBATE_VENDOR_DEPT</td><td>Program &rarr; Vendor &rarr; Dept setup. (Class always -1 &mdash; class-level was never implemented.)</td></tr>
+    <tr><td><code>CalculateResult</code></td><td>CALCULATE_RESULT</td><td>One row per (program, vendor, dept, period). The output of E&amp;C.</td></tr>
+    <tr><td><code>Invoice</code></td><td>REBATE_INV_*</td><td>Generated from approved calculations during Distribute.</td></tr>
+    <tr><td><code>Deduction</code></td><td>REBATE_DEDUCTION</td><td>Systematic (auto, from Distribute) or on-demand (manual).</td></tr>
+    <tr><td><code>AnalyticsSummary</code></td><td>(new &mdash; from 1010)</td><td>Materialized vendor &times; dept &times; source &times; period summaries from the 1010 ETL.</td></tr>
+  </tbody>
+</table>
+
+<h3>Two state machines</h3>
+
+<p><strong>Agreement (MDSE side):</strong></p>
+<pre><code>Created internally:    Pre-Negotiation
+                            │
+                            ▼ (Move Forward)
+                      Pending DMM Approval ─┐
+                            │               │ (optional, by merch type / value threshold)
+                            ▼               │
+                      Pending GMM Approval ─┘
+                            │
+                            ▼
+                      Pending AP Approval  ──────►  visible to Approval Queue
+                            │
+                            ▼ (Queue creates Rebate Program)
+                      Assigned to AP Rebate Program
+
+Created via Vendor Portal:    Submitted by Vendor
+                                    │
+                                    ▼ (Buyer accepts)
+                              joins the chain at Pre-Negotiation</code></pre>
+
+<p><strong>Calculation (AP side):</strong></p>
+<pre><code>Calculated  ─►  Reviewed  ─►  Approved  ─►  Batched  ─►  Distributed
+   ◄────────── revertable ──────────────►            (locked)
+
+Finalize: closes the period; assigns real Year/Period values; moves to history.</code></pre>
+
+<h3>Earnings semantics</h3>
+<p>Earnings are negative-natural (negative = vendor owes DG). The full earnings figure for a period sums:</p>
+<pre><code>CURR_PMU + CURR_MAR + CURR_ADV + CURR_OTH
+         + CURR_PMU_EADJ + CURR_MAR_EADJ + CURR_ADV_EADJ + CURR_OTH_EADJ</code></pre>
+<p>(The <code>EADJ</code> terms are earnings adjustments &mdash; manual interventions on the Adj tab. <code>AADJ</code> accrual adjustments exist as columns in the legacy schema but are vestigial &mdash; only one has ever been created.)</p>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="vera">6. Vera architecture</h2>
+
+<p><strong>VERA = Vendor Earnings &amp; Rebate Advisor.</strong> A persistent role-aware AI advisor accessible from every screen. Modeled on the proven "Ask Frosti" pattern from TPG's GMCC product, adapted to the VRS domain where the financial stakes are an order of magnitude higher.</p>
+
+<h3>What Vera knows</h3>
+<ul>
+  <li>The full rebate-program database &mdash; agreements, tier structures, calculation history</li>
+  <li>1010 transaction data via materialized summaries (longitudinal vendor performance)</li>
+  <li>Accounting Control Master &mdash; routing rules, transaction types, cost centers</li>
+  <li>Invoice aging</li>
+  <li>Calculation history &mdash; which programs calculate cleanly, which have recurring adjustments</li>
+  <li>The relationships between all of these, simultaneously</li>
+</ul>
+
+<h3>Capabilities</h3>
+<table>
+  <thead><tr><th style="width:30%;">Capability</th><th>Example</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Operational Q&amp;A</strong></td><td>"What's open on P&amp;G for P05? Which of my programs haven't had an E&amp;C run this period?"</td></tr>
+    <tr><td><strong>Tier pace &amp; what-if</strong></td><td>"Show me every vendor approaching a tier threshold this period. What would our earnings look like if we restructured HBA from flat 2% to a 2/3/4% tier?"</td></tr>
+    <tr><td><strong>Uncaptured-opportunity detection</strong> <span class="pill pill-active">highest-value</span></td><td>"Three vendors in HBA participated in ad co-op last year but have no ADVCOOP agreement this year &mdash; that's roughly $280K in potential earnings not under agreement."</td></tr>
+    <tr><td><strong>Anomaly explanation</strong></td><td>"Energizer receipt volume in Dept 018 dropped 31% YoY in P04 &mdash; possible causes: distribution shift, planogram change, data-quality issue."</td></tr>
+    <tr><td><strong>Negotiation rationale drafting</strong></td><td>"Prepare a briefing on P&amp;G before our renewal meeting next week."</td></tr>
+    <tr><td><strong>Renewal calendar</strong></td><td>"Seven agreements representing $4.2M in annual earnings expire within 90 days &mdash; three have no renewal discussion on record."</td></tr>
+  </tbody>
+</table>
+
+<h3>Two-phase pattern</h3>
+<ol>
+  <li><strong>Intent routing</strong> &mdash; Vera identifies what data is needed and which stored procedures or 1010 query materializations to invoke. The ~200 VRS stored procedures become the query layer; the 1010 materialized summaries add analytical depth.</li>
+  <li><strong>Synthesis</strong> &mdash; Vera executes the selected queries, injects the results as context, and formulates a natural-language answer, recommendation, or what-if analysis.</li>
+</ol>
+<p>Role context, assigned programs, and analyst code are injected automatically into every Vera session. A buyer asking about P&amp;G gets a negotiation-oriented answer; an AP analyst asking the same question gets a calculation/invoice-oriented answer. Conversation memory: last ~5 question-answer pairs.</p>
+
+<h3>Proactive surfacing</h3>
+<p>Beyond reactive Q&amp;A, Vera runs a nightly analysis pass per analyst and surfaces flagged items &mdash; tier-proximity alerts, anomalies, expiring agreements, uncaptured opportunities &mdash; as a digest available on the bubble-field landing page.</p>
+
+<h3>Provider abstraction</h3>
+<p><code>VeraService</code> exposes a stable interface over a swappable provider. Prototype: <code>AnthropicProvider</code> (Claude). Production: <code>AzureFoundryProvider</code> (GPT-4o). The chat UI, session management, role injection, and tool-call orchestration are identical in both modes.</p>
+
+<div class="callout callout-blue">
+  <div class="callout-title">The demo killer-question</div>
+  Log in as a Buyer, open P&amp;G, and ask Vera: <em>"How is P&amp;G tracking against their HBA tier this period, and what would our earnings look like if they hit Tier 3?"</em> Then log in as an AP Analyst and ask the same question. <strong>Same vendor, same underlying data, calibrated answers.</strong> That demonstration sells the platform.
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="build">7. Build status &amp; roadmap</h2>
+
+<table>
+  <thead><tr><th style="width:14%;">Sprint</th><th style="width:14%;">Weeks</th><th style="width:14%;">Status</th><th>Deliverables</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>1. Foundation</strong></td>
+      <td>1&ndash;2</td>
+      <td><span class="pill pill-done">DONE</span></td>
+      <td>Next.js scaffold, Postgres + Prisma schema, role-sim NextAuth login, mock-data seed (50 vendors, 150 programs, 400 calcs across 6 periods, 80 agreements, 5 users), Vercel deployment, Docker-compose for local Postgres+Redis</td>
+    </tr>
+    <tr>
+      <td><strong>2. Bubble field</strong></td>
+      <td>3&ndash;4</td>
+      <td><span class="pill pill-active">IN PROGRESS</span></td>
+      <td>D3 force-simulation bubble field with rank-percentile axes, quadrant watermarks, staged entrance animation. <em>Remaining:</em> filter controls, role-lens vendor record shell, 1010 Intelligence tab (mock data)</td>
+    </tr>
+    <tr>
+      <td><strong>3. Workflows</strong></td>
+      <td>5&ndash;6</td>
+      <td><span class="pill pill-pending">PENDING</span></td>
+      <td>Agreement wizard, status timeline, Move Forward state machine, Approval Queue inline (pulsing ring &rarr; click-to-approve), period-close checklist with live completion percentages</td>
+    </tr>
+    <tr>
+      <td><strong>4. Vera</strong></td>
+      <td>7&ndash;8</td>
+      <td><span class="pill pill-pending">PENDING</span></td>
+      <td>Persistent chat drawer, Claude API integration, role-aware system prompt with portfolio context, nightly proactive digest, demo-polish + role-switching showcase</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>The non-throwaway test</h3>
+<p>Every component, hook, and schema is built to survive intact into the production codebase with real data substituted for mock. The auth provider swaps, the Vera provider swaps, the 1010 mock summaries are replaced by the nightly ETL output &mdash; everything else is unchanged. <strong>The prototype is not a proof of concept; it is Sprint 1 of the production platform.</strong></p>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<h2 id="open">8. Open decisions &amp; questions</h2>
+
+<h3>Awaiting Ken (see <code>docs/08-questions-for-ken.html</code>)</h3>
+<ul>
+  <li><span class="pill pill-open">OPEN</span> Full ERD extraction from production Oracle</li>
+  <li><span class="pill pill-open">OPEN</span> What does <strong>SBT</strong> stand for &mdash; the acronym is referenced 20+ times in Ken's own AP Side Overview but never expanded</li>
+  <li><span class="pill pill-open">OPEN</span> <code>DEDUCT_FREQ</code> value <code>W</code> &mdash; data has it; doc enumerates only P/Q/E</li>
+  <li><span class="pill pill-open">OPEN</span> <code>PAYMENT_TYPE</code> code list (M/D/C/P seen in data, no documented enumeration)</li>
+  <li><span class="pill pill-open">OPEN</span> Where contract documents (PDFs / scanned agreements) live &mdash; needed for Vera contract analysis</li>
+  <li><span class="pill pill-open">OPEN</span> 1010 access plan: schema reference, key tables/views, expected nightly job runtime, ownership</li>
+  <li><span class="pill pill-open">OPEN</span> DMM/GMM approval routing rules (when triggered vs going straight to AP)</li>
+  <li><span class="pill pill-open">OPEN</span> Demo-shape questions: vendors with great stories, recognizable names, what users complain about, what signals indicate a vendor is "off"</li>
+</ul>
+
+<h3>Schema decisions still in motion</h3>
+<ul>
+  <li><span class="pill pill-active">DEFERRED</span> SBT/NSBT modeling &mdash; collapse into a flag/dimension vs preserve the triplication. <em>Recommendation: collapse, with derived views; revisit if downstream consumers (RSL/AP/GL exports) require the original column shape.</em></li>
+  <li><span class="pill pill-active">DEFERRED</span> Sign convention on ingest &mdash; negate to positive vs preserve the natural negative. <em>Recommendation: store positive, type as <code>earnings_owed</code>; render with semantic context.</em></li>
+  <li><span class="pill pill-active">DEFERRED</span> Real-data ETL strategy &mdash; Oracle &rarr; Postgres migration approach, ongoing sync vs one-shot at cutover.</li>
+  <li><span class="pill pill-active">DEFERRED</span> Detail Calculate tables (<code>CALCULATE_SKU_*</code>) &mdash; in scope for the new system or stay archive-only on the Oracle side post-cutover?</li>
+</ul>
+
+<h3>Reference</h3>
+<p class="small">
+  Source documents (full library): <code>P:\TPG\Dollar General\VRS</code>. The most foundational are
+  <code>VRS_Introduction.docx</code> (overview, glossary),
+  <code>VRS_AP_Side_Overview.docx</code> (Ken's authoritative field-by-field reference, CALCULATE_RESULT defs start p.129),
+  <code>AP_Calc_Overview.docx</code> (calculation engine, source codes, allocation tables),
+  <code>VRS_Role_Lens_Vera (1).docx</code> (role-lens UX vision and Vera architecture),
+  <code>VRS_Prototype_Build_Plan_2.docx</code> (the 8-week sprint plan).
+  Local extracted-text copies for grep are in <code>docs/ken/</code>.
+</p>
+
+<hr style="margin: 40px 0 16px 0; border: none; border-top: 1px solid #e5e7eb;">
+<p class="small" style="text-align: center;">VRS Current Architecture v1 &middot; TPG Partners &middot; 2026-05-06</p>
+
+</body>
+</html>

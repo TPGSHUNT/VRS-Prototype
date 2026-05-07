@@ -44,3 +44,6 @@ coverage/
 
 # Claude Code local project settings
 .claude/
+
+# Local data extracts (ERD images, sampled CSVs from the data drop)
+data/

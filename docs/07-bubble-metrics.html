@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bubble field metrics</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color: #1f2937; max-width: 980px; margin: 24px;">
+
+<h2 style="margin: 0 0 6px 0; font-weight: 600;">Bubble field — metric definitions</h2>
+<p style="margin: 0 0 18px 0; color: #6b7280; font-size: 13px;">
+  Five metrics drive the work-surface bubble field. Any of them can be assigned to X, Y, or bubble size.
+</p>
+
+<table cellspacing="0" cellpadding="0" style="border-collapse: collapse; width: 100%; font-size: 14px; border: 1px solid #d1d5db;">
+  <thead>
+    <tr style="background-color: #f3f4f6;">
+      <th style="text-align: left; padding: 10px 14px; border-bottom: 2px solid #d1d5db; font-weight: 600;">Metric</th>
+      <th style="text-align: left; padding: 10px 14px; border-bottom: 2px solid #d1d5db; font-weight: 600;">Label (UI)</th>
+      <th style="text-align: left; padding: 10px 14px; border-bottom: 2px solid #d1d5db; font-weight: 600;">Type</th>
+      <th style="text-align: left; padding: 10px 14px; border-bottom: 2px solid #d1d5db; font-weight: 600;">Calculation</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="padding: 10px 14px; border-bottom: 1px solid #e5e7eb; font-family: Consolas, 'Courier New', monospace; white-space: nowrap;">contractValue</td>
+      <td style="padding: 10px 14px; border-bottom: 1px solid #e5e7eb;">Contract value</td>
+      <td style="padding: 10px 14px; border-bottom: 1px solid #e5e7eb;">$</td>
+      <td style="padding: 10px 14px; border-bottom: 1px solid #e5e7eb;">Sum of <code style="background:#f3f4f6; padding:1px 4px; border-radius:3px;">Agreement.estimatedValue</code> across the vendor&rsquo;s in-flight agreements.<sup>1</sup></td>
+    </tr>
+    <tr style="background-color: #fafafa;">
+      <td style="padding: 10px 14px; border-bottom: 1px solid #e5e7eb; font-family: Consolas, 'Courier New', monospace; white-space: nowrap;">grossVolume</td>
+      <td style="padding: 10px 14px; border-bottom: 1px solid #e5e7eb;">Gross commercial volume</td>
+      <td style="padding: 10px 14px; border-bottom: 1px solid #e5e7eb;">$</td>
+      <td style="padding: 10px 14px; border-bottom: 1px solid #e5e7eb;">Sum of <code style="background:#f3f4f6; padding:1px 4px; border-radius:3px;">AnalyticsSummary.transactionVolume</code> across all the vendor&rsquo;s summaries.</td>
+    </tr>
+    <tr>
+      <td style="padding: 10px 14px; border-bottom: 1px solid #e5e7eb; font-family: Consolas, 'Courier New', monospace; white-space: nowrap;">annualEarnings</td>
+      <td style="padding: 10px 14px; border-bottom: 1px solid #e5e7eb;">Annual rebate earnings</td>
+      <td style="padding: 10px 14px; border-bottom: 1px solid #e5e7eb;">$</td>
+      <td style="padding: 10px 14px; border-bottom: 1px solid #e5e7eb;">Sum of <code style="background:#f3f4f6; padding:1px 4px; border-radius:3px;">CalculateResult.finalEarnings</code> across all the vendor&rsquo;s calculate results.</td>
+    </tr>
+    <tr style="background-color: #fafafa;">
+      <td style="padding: 10px 14px; border-bottom: 1px solid #e5e7eb; font-family: Consolas, 'Courier New', monospace; white-space: nowrap;">activeAgreements</td>
+      <td style="padding: 10px 14px; border-bottom: 1px solid #e5e7eb;">Active agreements</td>
+      <td style="padding: 10px 14px; border-bottom: 1px solid #e5e7eb;">count</td>
+      <td style="padding: 10px 14px; border-bottom: 1px solid #e5e7eb;">Count of the vendor&rsquo;s agreements with an in-flight status.<sup>1</sup></td>
+    </tr>
+    <tr>
+      <td style="padding: 10px 14px; font-family: Consolas, 'Courier New', monospace; white-space: nowrap;">activePrograms</td>
+      <td style="padding: 10px 14px;">Active programs</td>
+      <td style="padding: 10px 14px;">count</td>
+      <td style="padding: 10px 14px;">Count of <code style="background:#f3f4f6; padding:1px 4px; border-radius:3px;">RebateVendor</code> rows whose linked <code style="background:#f3f4f6; padding:1px 4px; border-radius:3px;">RebateProgram.active = true</code>.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p style="margin: 14px 0 0 0; font-size: 12px; color: #4b5563;">
+  <sup>1</sup> <strong>In-flight agreement statuses:</strong> <code style="background:#f3f4f6; padding:1px 4px; border-radius:3px;">SUBMITTED_BY_VENDOR</code>, <code style="background:#f3f4f6; padding:1px 4px; border-radius:3px;">PRE_NEGOTIATION</code>, <code style="background:#f3f4f6; padding:1px 4px; border-radius:3px;">PENDING_DMM_APPROVAL</code>, <code style="background:#f3f4f6; padding:1px 4px; border-radius:3px;">PENDING_GMM_APPROVAL</code>, <code style="background:#f3f4f6; padding:1px 4px; border-radius:3px;">PENDING_AP_APPROVAL</code>, <code style="background:#f3f4f6; padding:1px 4px; border-radius:3px;">ASSIGNED</code>. Finalized, closed, rejected, and expired agreements are excluded.
+</p>
+
+<h3 style="margin: 24px 0 6px 0; font-weight: 600; font-size: 15px;">Open questions for Ken</h3>
+<ul style="margin: 0; padding-left: 22px; font-size: 13px; line-height: 1.55;">
+  <li><strong>Time scope of <code style="background:#f3f4f6; padding:1px 4px; border-radius:3px;">annualEarnings</code> and <code style="background:#f3f4f6; padding:1px 4px; border-radius:3px;">grossVolume</code>.</strong> Both currently sum across every fiscal period in the data, but the labels read as current-year. Relabel as &ldquo;lifetime&rdquo; or filter to the current/last fiscal year?</li>
+  <li><strong>What does <code style="background:#f3f4f6; padding:1px 4px; border-radius:3px;">Agreement.estimatedValue</code> represent?</strong> The schema defines it only as <code style="background:#f3f4f6; padding:1px 4px; border-radius:3px;">Decimal(15,2)</code>. Projected purchase spend? Projected rebate dollars? Whatever the answer, it determines what &ldquo;Contract value&rdquo; means on the chart.</li>
+</ul>
+
+</body>
+</html>

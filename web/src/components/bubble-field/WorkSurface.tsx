@@ -10,7 +10,7 @@ import { METRIC_KEYS, METRIC_LABELS, type BubbleVendor, type MetricKey } from '@
 export function WorkSurface({ vendors }: { vendors: BubbleVendor[] }) {
   const [xMetric, setXMetric] = useState<MetricKey>('contractValue');
   const [yMetric, setYMetric] = useState<MetricKey>('annualEarnings');
-  const [sizeMetric, setSizeMetric] = useState<MetricKey>('annualEarnings');
+  const [sizeMetric, setSizeMetric] = useState<MetricKey>('grossVolume');
 
   return (
     <>

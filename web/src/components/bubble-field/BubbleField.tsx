@@ -44,7 +44,9 @@ const HALO_STROKE = 'rgb(59, 130, 246)';
 
 const MIN_RADIUS = 22;
 const MAX_RADIUS = 60;
-const PADDING = { left: 70, right: 30, top: 30, bottom: 70 };
+// Padding reserves space for axis labels (left/bottom), the floating toolbar
+// (bottom — ~60px), and the health legend (top-right — ~150x90px).
+const PADDING = { left: 70, right: 170, top: 110, bottom: 110 };
 
 interface BubbleFieldProps {
   vendors: BubbleVendor[];
@@ -60,6 +62,15 @@ export function BubbleField({ vendors, xMetric, yMetric, sizeMetric }: BubbleFie
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const simRef = useRef<Simulation<BubbleNode, undefined> | null>(null);
 
+  // Staged entrance: watermarks read bright on first paint, then bubbles fade
+  // in over them while the watermarks dim to their resting opacity. Triggers
+  // once on mount — axis changes don't re-run it.
+  const [entered, setEntered] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setEntered(true), 550);
+    return () => clearTimeout(t);
+  }, []);
+
   // Track container size
   useEffect(() => {
     const el = containerRef.current;
@@ -73,51 +84,56 @@ export function BubbleField({ vendors, xMetric, yMetric, sizeMetric }: BubbleFie
     return () => ro.disconnect();
   }, []);
 
-  // Compute log-scaled axis ranges + median cross-hair positions
-  const { xMedian, yMedian, scaleX, scaleY, scaleR } = useMemo(() => {
+  // Position by rank/percentile (0..1) so the median lands at the chart's
+  // visual center regardless of how skewed the underlying values are. This
+  // also keeps bubbles spread across the whole viewport instead of bunched
+  // along the diagonal when X and Y metrics correlate.
+  // Size uses sqrt(value / max) so bubble *area* is proportional to vendor value.
+  const { xCenter, yCenter, posX, posY, sizeFor } = useMemo(() => {
     if (!size.width || !size.height || vendors.length === 0) {
-      return { xMedian: 0, yMedian: 0, scaleX: () => 0, scaleY: () => 0, scaleR: () => MIN_RADIUS };
+      return {
+        xCenter: 0,
+        yCenter: 0,
+        posX: () => 0,
+        posY: () => 0,
+        sizeFor: () => MIN_RADIUS,
+      };
     }
 
     const innerWidth = size.width - PADDING.left - PADDING.right;
     const innerHeight = size.height - PADDING.top - PADDING.bottom;
+    const xCenter = PADDING.left + innerWidth / 2;
+    const yCenter = PADDING.top + innerHeight / 2;
 
-    // Helpers to compute log domain (clamping zeros to 1 so log is defined)
-    const buildLogScale = (key: MetricKey) => {
-      const vals = vendors.map((v) => Math.max(Math.abs(v.metrics[key]), 1));
-      const logMin = Math.log10(Math.min(...vals));
-      const logMax = Math.log10(Math.max(...vals));
-      const range = Math.max(logMax - logMin, 0.001);
-      return { logMin, logMax, range, sortedVals: [...vals].sort((a, b) => a - b) };
+    const buildRanks = (key: MetricKey) => {
+      const sorted = [...vendors].sort((a, b) => a.metrics[key] - b.metrics[key]);
+      const ranks = new Map<string, number>();
+      sorted.forEach((v, i) => {
+        ranks.set(v.id, (i + 0.5) / sorted.length);
+      });
+      return ranks;
     };
 
-    const x = buildLogScale(xMetric);
-    const y = buildLogScale(yMetric);
-    const r = buildLogScale(sizeMetric);
+    const xRanks = buildRanks(xMetric);
+    const yRanks = buildRanks(yMetric);
 
-    const scaleX = (val: number) => {
-      const v = Math.log10(Math.max(Math.abs(val), 1));
-      const t = (v - x.logMin) / x.range;
-      return PADDING.left + t * innerWidth;
-    };
-    const scaleY = (val: number) => {
-      const v = Math.log10(Math.max(Math.abs(val), 1));
-      const t = (v - y.logMin) / y.range;
-      // Inverted — top is bigger
-      return PADDING.top + (1 - t) * innerHeight;
-    };
-    const scaleR = (val: number) => {
-      const v = Math.log10(Math.max(Math.abs(val), 1));
-      const t = (v - r.logMin) / r.range;
+    const posX = (v: BubbleVendor) =>
+      PADDING.left + (xRanks.get(v.id) ?? 0.5) * innerWidth;
+    // Y-axis is inverted: rank 1 (largest) at top.
+    const posY = (v: BubbleVendor) =>
+      PADDING.top + (1 - (yRanks.get(v.id) ?? 0.5)) * innerHeight;
+
+    const sizeMax = Math.max(
+      ...vendors.map((v) => Math.max(v.metrics[sizeMetric], 0)),
+      1,
+    );
+    const sizeFor = (v: BubbleVendor) => {
+      const val = Math.max(v.metrics[sizeMetric], 0);
+      const t = Math.sqrt(val / sizeMax);
       return MIN_RADIUS + t * (MAX_RADIUS - MIN_RADIUS);
     };
 
-    // Median values (50th percentile)
-    const median = (arr: number[]) => arr[Math.floor(arr.length / 2)] ?? 0;
-    const xMedian = scaleX(median(x.sortedVals));
-    const yMedian = scaleY(median(y.sortedVals));
-
-    return { xMedian, yMedian, scaleX, scaleY, scaleR };
+    return { xCenter, yCenter, posX, posY, sizeFor };
   }, [vendors, xMetric, yMetric, sizeMetric, size.width, size.height]);
 
   // Build / rebuild simulation when vendors, size, or metrics change
@@ -126,11 +142,11 @@ export function BubbleField({ vendors, xMetric, yMetric, sizeMetric }: BubbleFie
 
     const initial: BubbleNode[] = vendors.map((v) => ({
       ...v,
-      radius: scaleR(v.metrics[sizeMetric]),
-      targetX: scaleX(v.metrics[xMetric]),
-      targetY: scaleY(v.metrics[yMetric]),
-      x: scaleX(v.metrics[xMetric]) + (Math.random() - 0.5) * 10,
-      y: scaleY(v.metrics[yMetric]) + (Math.random() - 0.5) * 10,
+      radius: sizeFor(v),
+      targetX: posX(v),
+      targetY: posY(v),
+      x: posX(v) + (Math.random() - 0.5) * 10,
+      y: posY(v) + (Math.random() - 0.5) * 10,
     }));
 
     const sim = forceSimulation<BubbleNode>(initial)
@@ -149,7 +165,16 @@ export function BubbleField({ vendors, xMetric, yMetric, sizeMetric }: BubbleFie
       .alphaDecay(0.025)
       .velocityDecay(0.45);
 
+    const minX = PADDING.left;
+    const maxX = size.width - PADDING.right;
+    const minY = PADDING.top;
+    const maxY = size.height - PADDING.bottom;
+
     sim.on('tick', () => {
+      for (const n of sim.nodes()) {
+        if (n.x !== undefined) n.x = Math.max(minX + n.radius, Math.min(maxX - n.radius, n.x));
+        if (n.y !== undefined) n.y = Math.max(minY + n.radius, Math.min(maxY - n.radius, n.y));
+      }
       setNodes(sim.nodes().slice());
     });
 
@@ -158,7 +183,7 @@ export function BubbleField({ vendors, xMetric, yMetric, sizeMetric }: BubbleFie
       sim.stop();
       simRef.current = null;
     };
-  }, [vendors, size.width, size.height, xMetric, yMetric, sizeMetric, scaleX, scaleY, scaleR]);
+  }, [vendors, size.width, size.height, xMetric, yMetric, sizeMetric, posX, posY, sizeFor]);
 
   return (
     <div ref={containerRef} className="absolute inset-0 overflow-hidden">
@@ -175,26 +200,88 @@ export function BubbleField({ vendors, xMetric, yMetric, sizeMetric }: BubbleFie
           }
         `}</style>
 
-        {/* Quadrant cross-hairs at median */}
+        {/* Quadrant watermarks — large faded labels behind bubbles. */}
+        {size.width > 0 && (() => {
+          const xLabel = METRIC_LABELS[xMetric];
+          const yLabel = METRIC_LABELS[yMetric];
+          const innerLeft = PADDING.left;
+          const innerRight = size.width - PADDING.right;
+          const innerTop = PADDING.top;
+          const innerBottom = size.height - PADDING.bottom;
+          const tlX = (innerLeft + xCenter) / 2;
+          const trX = (xCenter + innerRight) / 2;
+          const topY = (innerTop + yCenter) / 2;
+          const botY = (yCenter + innerBottom) / 2;
+
+          const titleStyle: React.CSSProperties = {
+            fontSize: 13,
+            fontWeight: 700,
+            letterSpacing: '0.18em',
+            textTransform: 'uppercase',
+          };
+          const subStyle: React.CSSProperties = {
+            fontSize: 10,
+            fontWeight: 500,
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+          };
+
+          const Watermark = ({
+            x,
+            y,
+            yWord,
+            xWord,
+          }: {
+            x: number;
+            y: number;
+            yWord: 'High' | 'Low';
+            xWord: 'High' | 'Low';
+          }) => (
+            <g transform={`translate(${x},${y})`} pointerEvents="none">
+              <text textAnchor="middle" className="fill-gray-300" style={titleStyle}>
+                {yWord} {yLabel}
+              </text>
+              <text textAnchor="middle" y={18} className="fill-gray-300" style={subStyle}>
+                {xWord} {xLabel}
+              </text>
+            </g>
+          );
+
+          return (
+            <g
+              style={{
+                opacity: entered ? 0.45 : 1,
+                transition: 'opacity 700ms ease',
+              }}
+            >
+              <Watermark x={tlX} y={topY} yWord="High" xWord="Low" />
+              <Watermark x={trX} y={topY} yWord="High" xWord="High" />
+              <Watermark x={tlX} y={botY} yWord="Low" xWord="Low" />
+              <Watermark x={trX} y={botY} yWord="Low" xWord="High" />
+            </g>
+          );
+        })()}
+
+        {/* Quadrant cross-hairs at chart center (median lands at center under rank scaling) */}
         {size.width > 0 && (
           <>
             <line
-              x1={xMedian}
+              x1={xCenter}
               y1={PADDING.top}
-              x2={xMedian}
+              x2={xCenter}
               y2={size.height - PADDING.bottom}
-              stroke="rgb(229, 231, 235)"
-              strokeWidth={1}
-              strokeDasharray="4 4"
+              stroke="rgb(156, 163, 175)"
+              strokeWidth={1.25}
+              strokeDasharray="5 5"
             />
             <line
               x1={PADDING.left}
-              y1={yMedian}
+              y1={yCenter}
               x2={size.width - PADDING.right}
-              y2={yMedian}
-              stroke="rgb(229, 231, 235)"
-              strokeWidth={1}
-              strokeDasharray="4 4"
+              y2={yCenter}
+              stroke="rgb(156, 163, 175)"
+              strokeWidth={1.25}
+              strokeDasharray="5 5"
             />
           </>
         )}
@@ -222,7 +309,17 @@ export function BubbleField({ vendors, xMetric, yMetric, sizeMetric }: BubbleFie
           </>
         )}
 
-        {/* Bubbles */}
+        {/* Bubbles — wrapped in a group that fades + scales in once `entered`
+            flips, so the user reads the empty quadrant frame first. */}
+        <g
+          style={{
+            opacity: entered ? 1 : 0,
+            transform: entered ? 'scale(1)' : 'scale(0.94)',
+            transformOrigin: 'center',
+            transformBox: 'fill-box',
+            transition: 'opacity 650ms ease, transform 650ms ease',
+          }}
+        >
         {nodes.map((node) => {
           const isHovered = hoveredId === node.id;
           const fill = HEALTH_FILL[node.health];
@@ -292,6 +389,8 @@ export function BubbleField({ vendors, xMetric, yMetric, sizeMetric }: BubbleFie
             </g>
           );
         })}
+        </g>
+
       </svg>
 
       {/* Health legend */}

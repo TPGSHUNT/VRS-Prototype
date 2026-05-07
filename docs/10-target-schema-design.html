@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VRS · Target Schema Design (draft)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color: #1f2937; max-width: 1080px; margin: 24px auto; padding: 0 24px; line-height: 1.55; font-size: 14px; }
+  h1 { font-size: 24pt; font-weight: 600; margin: 8px 0 4px 0; letter-spacing: -0.01em; }
+  h2 { font-size: 16pt; font-weight: 600; margin: 36px 0 10px 0; padding-bottom: 6px; border-bottom: 2px solid #e5e7eb; color: #0f2340; }
+  h3 { font-size: 12pt; font-weight: 600; margin: 22px 0 6px 0; color: #1f2937; }
+  h4 { font-size: 11pt; font-weight: 600; margin: 14px 0 4px 0; color: #374151; }
+  p { margin: 8px 0; }
+  ul, ol { padding-left: 24px; margin: 8px 0; }
+  li { margin: 3px 0; }
+  code { background: #f3f4f6; padding: 1px 5px; border-radius: 3px; font-family: Consolas, 'Courier New', monospace; font-size: 90%; }
+  pre { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px 16px; overflow-x: auto; font-size: 12.5px; line-height: 1.5; margin: 10px 0; }
+  pre code { background: none; padding: 0; }
+  .meta { color: #6b7280; font-size: 12px; margin-bottom: 24px; }
+  .lead { font-size: 15px; line-height: 1.6; color: #374151; margin: 16px 0 24px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 12.5px; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+  th { background: #f9fafb; font-weight: 600; border-bottom: 2px solid #d1d5db; font-size: 11.5px; letter-spacing: 0.02em; }
+  tr:last-child td { border-bottom: none; }
+  .pill { display: inline-block; padding: 1px 7px; border-radius: 3px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; vertical-align: middle; }
+  .pill-in { background: #dcfce7; color: #166534; }
+  .pill-out { background: #f3f4f6; color: #4b5563; }
+  .pill-pending { background: #fef3c7; color: #854d0e; }
+  .pill-collapse { background: #ddd6fe; color: #5b21b6; }
+  .pill-open { background: #fee2e2; color: #991b1b; }
+  .pill-rec { background: #dbeafe; color: #1e3a8a; }
+  .toc { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px 18px; margin: 16px 0 32px 0; font-size: 13px; }
+  .toc ol { padding-left: 22px; margin: 6px 0; }
+  .toc li { margin: 2px 0; }
+  .toc a { color: #1d5fa8; text-decoration: none; }
+  .small { font-size: 12px; color: #6b7280; }
+  .callout { background: #f9fafb; border-left: 3px solid #1d5fa8; padding: 10px 14px; margin: 14px 0; border-radius: 0 4px 4px 0; }
+  .callout-title { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #1d5fa8; margin-bottom: 4px; }
+  .callout-amber { border-left-color: #b45309; }
+  .callout-amber .callout-title { color: #b45309; }
+  .callout-rec { background: #eff6ff; border-left-color: #1d5fa8; }
+  .scope-table td:first-child { font-weight: 600; white-space: nowrap; }
+  .schema-block { background: #fafafa; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px 16px; margin: 8px 0; }
+  .schema-block h4 { margin-top: 0; }
+  .field-list { margin: 4px 0 4px 0; font-size: 12.5px; line-height: 1.5; font-family: Consolas, 'Courier New', monospace; }
+</style>
+</head>
+<body>
+
+<div style="border-bottom: 3px solid #0f2340; padding-bottom: 12px; margin-bottom: 8px;">
+  <div style="font-size: 10pt; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #b8922a; margin-bottom: 4px;">Dollar General &middot; Vendor Rebate System</div>
+  <h1>Target Schema Design &mdash; v0.1 (draft)</h1>
+  <div class="meta">2026-05-06 &middot; TPG Partners &middot; Working draft. Decisions marked
+    <span class="pill pill-rec">REC</span> are recommendations awaiting Ken's review.
+  </div>
+</div>
+
+<p class="lead">
+  This document is a <em>draft</em> of the target Postgres schema for the new VRS. It is informed by Ken's overview docs (AP Side, AP Calc, Forecast Engine), the FDD V4.1 (2010 foundational), the Toad ERD exports, and the live data CSV samples. Where I'm certain, decisions are marked <span class="pill pill-in">IN</span> / <span class="pill pill-out">OUT</span> / <span class="pill pill-collapse">COLLAPSE</span>. Where I'm not, they're marked <span class="pill pill-pending">PENDING</span> with the question that needs answering.
+</p>
+
+<div class="callout callout-amber">
+  <div class="callout-title">What this is not</div>
+  Not Prisma code yet. Not a contract. The artifact is a design document for review &mdash; once we converge on the scope and shape, the Prisma schema falls out of it in an afternoon. Reviewing this catches structural mistakes a thousand times cheaper than reviewing the code does.
+</div>
+
+<div class="toc">
+  <strong style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280;">Contents</strong>
+  <ol>
+    <li><a href="#approach">Design approach</a></li>
+    <li><a href="#scope">Scope decisions per subsystem</a></li>
+    <li><a href="#core">Core entities</a></li>
+    <li><a href="#statemachines">State machines</a></li>
+    <li><a href="#codelists">Code lists &amp; lookups</a></li>
+    <li><a href="#sign">Sign convention &amp; SBT collapse</a></li>
+    <li><a href="#vera">Vera-specific schema additions</a></li>
+    <li><a href="#open">Open decisions awaiting Ken</a></li>
+  </ol>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════ -->
+<h2 id="approach">1. Design approach</h2>
+
+<h3>What we keep from Ken's logical model</h3>
+<ul>
+  <li>The three-level hierarchy: <code>RebateProgram &rarr; RebateVendor &rarr; RebateVendorDept &rarr; CalculateResult</code></li>
+  <li>One calculation per <code>(program, vendor, dept, period)</code></li>
+  <li>Source-driven AP architecture (the 11+1 source codes drive calculation method)</li>
+  <li>Four earnings components: PMU, Margin, Adv Coop, Other Coop &mdash; with EADJ adjustments per component</li>
+  <li>Rebate Type as Source &times; Merch Type intermediary</li>
+  <li>Calculation state machine (Calculated &rarr; Reviewed &rarr; Approved &rarr; Batched &rarr; Distributed)</li>
+  <li>Agreement state machine with multi-tier approval routing (Pre-Negotiation through Attached AP Program)</li>
+  <li>The MDSE Agreement &harr; AP Rebate Program bridge via the Approval Queue</li>
+  <li>RSL / AP / GL as the three external batch destinations</li>
+</ul>
+
+<h3>What we change &mdash; Oracle Forms denormalization, dropped</h3>
+<ul>
+  <li><span class="pill pill-collapse">COLLAPSE</span> <strong>SBT / NSBT triplication.</strong> ~60% of CALCULATE_RESULT and REBATE_VENDOR_DEPT columns are SBT_/NSBT_ duplicates of base columns with the invariant <code>SBT_x + NSBT_x = x</code>. Ken's own doc flags this as "a multitude of issues" and a "future maintenance nightmare." Collapse to single columns + an SBT classification dimension.</li>
+  <li><span class="pill pill-out">DROP</span> <strong>Vestigial AADJ accrual adjustments.</strong> Per Ken: only ONE has ever been created in the entire life of VRS. The columns exist but always zero.</li>
+  <li><span class="pill pill-collapse">COLLAPSE</span> <strong>Time-horizon rollup columns</strong> (<code>cur_</code>, <code>ytd_</code>, <code>ely_</code>, <code>ltd_</code>). Aggregate views over period-grain rows; compute on read.</li>
+  <li><span class="pill pill-collapse">COLLAPSE</span> <strong>Review-screen rollups</strong> (<code>PM_*</code> = PMU+Margin, <code>AO_*</code> = AdvCoop+OtherCoop). Derive in views.</li>
+  <li><span class="pill pill-out">DROP</span> <strong><code>class_num</code> column.</strong> Always -1 in production data; class-level was never implemented. If class-level ever happens, restructure then.</li>
+  <li><span class="pill pill-collapse">COLLAPSE</span> <strong><code>REBATE_VENDOR_DEPT</code> as a calc cache.</strong> The legacy table mirrors the most-recent CalculateResult to power the Vend/Dept tab. We don't need a second persisted copy &mdash; query the source of truth and cache at the application layer if needed.</li>
+</ul>
+
+<h3>What's added for Vera + the new UX</h3>
+<ul>
+  <li><strong>analytics_summary</strong> &mdash; materialized 1010 summaries (vendor &times; dept &times; source &times; period)</li>
+  <li><strong>users</strong> &mdash; with role enum, replaces VRS_SECURITY</li>
+  <li><strong>vendor_health_signal</strong> (or similar) &mdash; cached signal computation for the bubble field's color encoding</li>
+  <li><strong>vera_session</strong>, <strong>vera_message</strong>, <strong>vera_proactive_digest</strong> &mdash; conversation memory and proactive surfacing</li>
+</ul>
+
+<!-- ═════════════════════════════════════════════════════════════ -->
+<h2 id="scope">2. Scope decisions per subsystem</h2>
+
+<table class="scope-table">
+  <thead>
+    <tr><th style="width:24%;">Legacy family</th><th style="width:14%;">Decision</th><th>Rationale</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>REBATE_PROGRAM / VENDOR / VENDOR_DEPT</code></td><td><span class="pill pill-in">IN</span></td><td>Core. Restructured (see §3).</td></tr>
+    <tr><td><code>CALCULATE_RESULT</code></td><td><span class="pill pill-in">IN</span></td><td>Core. Heavily normalized (SBT collapse, AADJ drop, rollups derived).</td></tr>
+    <tr><td><code>REBATE_ADJUSTMENTS</code></td><td><span class="pill pill-in">IN</span></td><td>EADJ source. AADJ columns dropped.</td></tr>
+    <tr><td><code>REBATE_CHECK / REBATE_DEDUCTION</code></td><td><span class="pill pill-in">IN</span></td><td>Cash flow tracking. Required for invoice + period close.</td></tr>
+    <tr><td><code>REBATE_INVOICE / REBATE_INV_*</code></td><td><span class="pill pill-in">IN</span></td><td>Invoice generation downstream of Distribute.</td></tr>
+    <tr><td><code>REBATE_BATCH_*</code></td><td><span class="pill pill-in">IN</span></td><td>RSL/AP/GL export records. Normalized into one batch table + line items.</td></tr>
+    <tr><td><code>REBATE_AUDIT_LOG</code></td><td><span class="pill pill-collapse">COLLAPSE</span></td><td>Replace trigger-loaded audit with application-layer audit (Postgres can do this with row-level triggers if we want, or we use a generic audit pattern). Per Ken his audit log "isn't really used" and "performance was negatively impacted."</td></tr>
+    <tr><td><code>REBATE_ALLOCATION / _SKU</code></td><td><span class="pill pill-pending">PENDING</span></td><td>Class/SKU level "Actuals" derived post-Finalize. In scope if we surface SKU-level earnings to Vera; out if we keep dept-grain only. <strong>Question for Ken: does Vera need SKU-grain?</strong></td></tr>
+    <tr><td><code>CALCULATE_SKU_*</code> (detail)</td><td><span class="pill pill-pending">PENDING</span></td><td>One detail table per Sourced source code. Massive transactional volume. <strong>Question for Ken: replicate, or leave on Oracle and reference via the analytics layer?</strong></td></tr>
+    <tr><td><code>RECALCULATE_*</code></td><td><span class="pill pill-pending">PENDING</span></td><td>Recalc support tables. Same scope question as CALCULATE_SKU_*.</td></tr>
+    <tr><td><code>PREV_PRICE_INFO</code></td><td><span class="pill pill-in">IN</span></td><td>Required for true-up logic on Sourced rebates. Small table.</td></tr>
+    <tr><td><code>PA_UPLOAD_* / PA_DASHBOARD</code></td><td><span class="pill pill-in">IN</span></td><td>Bulk upload feature. Useful in the new system.</td></tr>
+    <tr><td><code>UNSALE_*</code> (damages)</td><td><span class="pill pill-pending">PENDING</span></td><td>~17 tables. Significant subsystem. <strong>Question for Ken: active use or peripheral? If active, in scope or leave on Oracle?</strong></td></tr>
+    <tr><td><code>MDSE_AGMT_*</code> (agreements)</td><td><span class="pill pill-in">IN</span></td><td>Core MDSE side. Restructured (see §3).</td></tr>
+    <tr><td><code>MDSE_VENDOR_*</code></td><td><span class="pill pill-in">IN</span></td><td>Vendor + contact data on MDSE side. Merged into unified <code>vendor</code> table.</td></tr>
+    <tr><td><code>MDSE_AD_</code> (Ad Events)</td><td><span class="pill pill-pending">PENDING</span></td><td>Ad Print Co-op feature. Used by ADVCOOP rebates. <strong>Question for Ken: in scope?</strong></td></tr>
+    <tr><td><code>FPA_*</code> (forecasting)</td><td><span class="pill pill-out">DROP</span></td><td>Per Ken, "not maintained or used"; reporting is done outside the system. Vera + 1010 supersede.</td></tr>
+    <tr><td><code>MDSE_DASHBOARD_*</code></td><td><span class="pill pill-out">DROP</span></td><td>FPA reporting dashboards &mdash; replaced by Vera + bubble field. Confirmed dormant.</td></tr>
+    <tr><td><code>NSA_* / S5S5_*</code></td><td><span class="pill pill-pending">PENDING</span></td><td>Specialized calc subsystems that ultimately deposit into N-source rebate programs. <strong>Question for Ken: required for production calculations?</strong></td></tr>
+    <tr><td><code>VRS_SECURITY</code></td><td><span class="pill pill-collapse">COLLAPSE</span></td><td>Replaced by <code>users</code> + Azure AD SSO. Roles preserved as enum.</td></tr>
+    <tr><td><code>POG_TMP / PO_KEY_TMP</code></td><td><span class="pill pill-pending">PENDING</span></td><td>Plan-O-Gram and Purchase-Order temp tables. Used by upload + recalc. <strong>Question for Ken: persist or transient?</strong></td></tr>
+    <tr><td><code>VENDOR_EMAILS / _ADDR</code></td><td><span class="pill pill-in">IN</span></td><td>Outbound notification system. Useful for invoice emails, true-up notifications, Vera digests.</td></tr>
+    <tr><td>1010 transaction database</td><td><span class="pill pill-in">IN</span> (read-only)</td><td>Stays on Oracle. Nightly ETL into <code>analytics_summary</code> table.</td></tr>
+  </tbody>
+</table>
+
+<!-- ═════════════════════════════════════════════════════════════ -->
+<h2 id="core">3. Core entities</h2>
+
+<p>Below: the entities that ship in Sprint 1 / 2. Field lists are illustrative &mdash; final shape lands in the Prisma schema.</p>
+
+<div class="schema-block">
+  <h4><code>vendor</code> &mdash; vendor master</h4>
+  <pre><code>id                 uuid PK
+vendor_num         varchar  UNIQUE     -- legacy AP key
+ip_vendor_num      int      nullable   -- Island Pacific (merch-side) key
+name               varchar
+type               enum (DOMESTIC, IMPORT)
+private_brand      bool
+active             bool
+created_at, updated_at, created_by, updated_by</code></pre>
+  <p class="small">Merges legacy <code>REBATE_VENDOR.vendor_name</code> + AP vendor master + MDSE_VENDOR_* contacts. Drop <code>alt_vendor_num</code>/<code>alt_ip_vend_num</code> unless Ken confirms they're load-bearing (probably soft links to subsidiary records &mdash; pending).</p>
+</div>
+
+<div class="schema-block">
+  <h4><code>rebate_program</code> &mdash; AP-side program container</h4>
+  <pre><code>id                 uuid PK
+rebate_id          int      UNIQUE     -- legacy key
+description        varchar
+source             enum (R, S, D, B, F, C, P, N, E, Q, T, X)  -- locked at creation
+merch_type_id      FK -> merch_type
+rebate_type_id     FK -> rebate_type
+category_id        FK -> rebate_category
+analyst_id         FK -> user
+report_type        varchar  nullable
+beg_date           date
+end_date           date
+extract_beg_date   date
+extract_end_date   date
+closed_date        date     nullable
+forecast_id        int      nullable   -- legacy FPA link, kept for reference
+tier_type          enum (E, P, L, G)  nullable
+tier_thresh_type   varchar  nullable
+tier_calc_type     varchar  nullable
+sku_only           bool
+core_program       bool                -- pending Ken: meaning of core_flag
+both_program       bool                -- pending Ken: meaning of both_flag
+delete_flag        bool                -- soft-delete sentinel from legacy
+pop_stores         varchar  nullable   -- pending Ken: POP=Point of Purchase?
+dmg_contract_id    FK -> damage_contract  nullable    -- if UNSALE in scope
+comments           text
+audit columns</code></pre>
+</div>
+
+<div class="schema-block">
+  <h4><code>agreement</code> &mdash; MDSE-side contractual document</h4>
+  <pre><code>id                  uuid PK
+agreement_id        int      UNIQUE     -- legacy key, Oracle sequence
+vendor_id           FK -> vendor
+buyer_id            FK -> user
+delegate_id         FK -> user  nullable
+merch_type_id       FK -> merch_type
+source              enum                -- normalized to 4 user-facing options;
+                                        -- "No Source" maps to N/E/T/Q under the hood
+estimated_value     decimal(15,2)
+payment_type        enum (DEDUCTION, CHECK, MERCH_CREDIT?, ?)
+deduct_freq         enum (PERIOD, QUARTER, END_OF_PERIOD, WEEKLY?)
+status              enum                -- full state machine, see §4
+beg_date            date
+end_date            date
+based_on_actuals    bool                -- "negotiated/fixed" vs "based on actuals"
+contract_attached   bool
+final_contract_received bool
+private_brand_vendor bool
+created_via         enum (VRS_PROPER, VENDOR_PORTAL)
+audit columns</code></pre>
+  <p class="small">Approval routing rules are evaluated in the <em>service layer</em> on Move Forward, not stored as schema. Threshold ($75K), TPR-trigger, and domestic-check rules are configurable parameters.</p>
+</div>
+
+<div class="schema-block">
+  <h4><code>agreement_tier</code>, <code>agreement_dept</code>, <code>agreement_sku</code> &mdash; agreement structure</h4>
+  <p class="small">Standard one-to-many children of <code>agreement</code>. Tier rates by threshold; dept-level + SKU-level rebate parameters (<code>amt_per_unit</code>, <code>pct_per_unit</code>, etc.).</p>
+</div>
+
+<div class="schema-block">
+  <h4><code>rebate_vendor</code> &mdash; program &times; vendor</h4>
+  <pre><code>id                 uuid PK
+rebate_program_id  FK -> rebate_program
+vendor_id          FK -> vendor
+agreement_id       FK -> agreement  nullable     -- nullable: Rebate Programs can exist
+                                                 -- without a backing Agreement
+payment_type       enum                          -- snapshot at link time
+deduct_freq        enum
+earnings_type      enum (MDSE, NON_MDSE)
+sbt_classification enum                          -- COLLAPSED from triplication;
+                                                 -- pending Ken's clarification of meaning
+dollar_cap         decimal(15,2)  nullable
+pay_vendor_id      FK -> vendor    nullable      -- payee differs from rebate vendor
+no_sys_inv         bool
+audit columns</code></pre>
+</div>
+
+<div class="schema-block">
+  <h4><code>rebate_vendor_dept</code> &mdash; program &times; vendor &times; dept setup</h4>
+  <pre><code>id                 uuid PK
+rebate_vendor_id   FK -> rebate_vendor
+dept_num           int
+amt_per_unit       decimal(15,4)  nullable
+pct_per_unit       decimal(7,6)   nullable
+calculate_uom      enum (EACH, CASE)
+exclude_skus       bool                          -- toggle SKU list semantics
+                                                 -- (include vs exclude)
+tier_type          enum (E, P, L, G)  nullable
+tier_last_year     decimal(15,2)  nullable       -- for Growth tier type
+audit columns</code></pre>
+  <p class="small">No <code>class_num</code> &mdash; always -1 in legacy. No persisted earnings columns &mdash; the legacy table cached current-state earnings here for the Vend/Dept tab; we query <code>calculate_result</code> directly with appropriate indexing.</p>
+</div>
+
+<div class="schema-block">
+  <h4><code>calculate_result</code> &mdash; the calculation table (heavily normalized)</h4>
+  <pre><code>id                  uuid PK
+calc_id             int      UNIQUE      -- legacy REBATE_CALC_ID
+rebate_vendor_dept_id  FK -> rebate_vendor_dept
+fiscal_year         int                  -- 0 sentinel = current open period
+fiscal_period       int                  -- 0 sentinel = current open period
+is_open_period      bool                 -- denorm flag for fast queries
+                                         -- (true when year=0 AND period=0)
+
+-- earnings: positive scalars (sign-flipped on ETL; see §6)
+pmu                 decimal(15,2)
+margin              decimal(15,2)
+adv_coop            decimal(15,2)
+other_coop          decimal(15,2)
+
+-- earnings adjustments (EADJ only; AADJ dropped)
+pmu_adj             decimal(15,2)
+margin_adj          decimal(15,2)
+adv_coop_adj        decimal(15,2)
+other_coop_adj      decimal(15,2)
+
+-- prepaid (period-grain, not denormalized)
+beg_prepaid         decimal(15,2)
+per_prepaid         decimal(15,2)
+end_prepaid         decimal(15,2)
+
+-- workflow state (state machine see §4)
+state               enum (CALCULATED, REVIEWED, APPROVED, BATCHED, DISTRIBUTED)
+reviewed_at, reviewed_by FK -> user
+approved_at, approved_by FK -> user
+batched_at,  batched_by  FK -> user
+distributed_at, distributed_by FK -> user
+finalized_at        timestamp  nullable
+
+-- snapshot of vendor-side fields at calc time
+payment_type        enum
+deduct_freq         enum
+earnings_type       enum (MDSE, NON_MDSE)
+sbt_classification  enum            -- collapsed; per-line classification
+
+-- invoice / deduction linkage
+invoice_id          FK -> invoice  nullable
+deduction_seq_no    int            nullable
+
+audit columns
+
+UNIQUE (rebate_vendor_dept_id, fiscal_year, fiscal_period)</code></pre>
+
+  <p>Compared to legacy CALCULATE_RESULT (~190 columns):</p>
+  <ul style="font-size: 12.5px;">
+    <li>Drop ~120 columns of SBT_/NSBT_ duplicates (collapse to single + classification flag)</li>
+    <li>Drop ~20 PM_/AO_ rollup columns (derive in views)</li>
+    <li>Drop ~10 cur_/ytd_/ely_/ltd_ time-horizon rollups (compute via window functions)</li>
+    <li>Drop AADJ accrual-adjustment columns (vestigial)</li>
+    <li>Result: ~30 meaningful columns instead of 190</li>
+  </ul>
+</div>
+
+<div class="schema-block">
+  <h4>Computed views (PostgreSQL views, no separate storage)</h4>
+  <ul style="font-size: 12.5px;">
+    <li><code>vw_calc_result_with_rollups</code> &mdash; provides legacy <code>PM_*</code> (PMU+Margin) and <code>AO_*</code> (AdvCoop+OtherCoop) aggregates</li>
+    <li><code>vw_calc_result_ytd</code> &mdash; YTD aggregates by <code>(rebate_vendor_dept, fiscal_year)</code> via window functions</li>
+    <li><code>vw_calc_result_ltd</code> &mdash; Life-to-date</li>
+    <li><code>vw_calc_result_sbt_split</code> &mdash; if downstream consumers (RSL/AP/GL exports) need the SBT/NSBT breakdown, this view computes it from the <code>sbt_classification</code> flag</li>
+  </ul>
+</div>
+
+<div class="schema-block">
+  <h4>Other core tables (sketched)</h4>
+  <ul style="font-size: 12.5px;">
+    <li><code>check_</code> &mdash; vendor checks received, applied to period earnings</li>
+    <li><code>deduction</code> &mdash; systematic + on-demand deduction entries; FK to <code>calculate_result</code> when systematic</li>
+    <li><code>invoice</code> &mdash; generated from approved calculations during Distribute</li>
+    <li><code>adjustment</code> &mdash; manual earnings adjustments (the EADJ source)</li>
+    <li><code>batch</code> + <code>batch_line</code> &mdash; RSL/AP/GL exports; one batch row per (period, target system, function type), one line per calculate_result included</li>
+    <li><code>acct_control_master</code> &mdash; routing rules, transaction types, cost centers; preserved as-is from legacy</li>
+    <li><code>analytics_summary</code> &mdash; 1010 materialized: <code>(vendor, dept, source, fiscal_period) &rarr; volume + tier signals</code></li>
+    <li><code>user</code> &mdash; with role enum (AP_ANALYST, BUYER, DELEGATE, DMM, GMM, AP_MANAGER, READ_ONLY); replaces VRS_SECURITY</li>
+    <li><code>merch_type</code>, <code>rebate_type</code>, <code>rebate_category</code>, <code>source</code>, <code>tier_type</code> &mdash; reference / code tables</li>
+  </ul>
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════ -->
+<h2 id="statemachines">4. State machines</h2>
+
+<h3>Agreement state machine (from FDD V4.1, Section 5.1.3)</h3>
+
+<p>Routing rules at Move Forward time:</p>
+<ul style="font-size: 13px;">
+  <li>If <em>merch type = TPR</em> OR <em>value &ge; $75K</em>: &rarr; <code>PENDING_DMM_APPROVAL</code></li>
+  <li>If <em>payment_type = CHECK</em> AND <em>vendor type = DOMESTIC</em>: &rarr; <code>PENDING_DMM_APPROVAL</code> regardless of amount</li>
+  <li>Otherwise (value &lt; $75K, not TPR, not domestic-check): &rarr; <code>PENDING_AP_APPROVAL</code></li>
+  <li>If contract not attached and not "Received and Attached Final Contract": &rarr; <code>PENDING_BUYER_ACTION</code></li>
+</ul>
+
+<pre><code>Created internally:                    Created via Vendor Portal:
+   PRE_NEGOTIATION                        SUBMITTED_BY_VENDOR
+        │                                       │ (buyer accepts)
+        │ Move Forward                          ▼
+        ▼                                  PRE_NEGOTIATION  (joins chain)
+   ┌──────────────────────────────────┐
+   │  Routing rules (above)           │
+   └──────────────────────────────────┘
+        │
+        ├──► PENDING_DMM_APPROVAL ─► (approve) ─► PENDING_GMM_APPROVAL (if &ge; threshold)
+        │            │                                       │
+        │            │ (reject)                              │ (approve)
+        │            ▼                                       ▼
+        │       REJECTED_BY_DMM                       PENDING_AP_APPROVAL ─┐
+        │                                                                  │
+        └──► PENDING_AP_APPROVAL ────────────────────────────────────────────┤
+                     │                                                      │
+                     │ (Approval Queue creates Rebate Program)              │
+                     ▼                                                      │
+              ASSIGNED_TO_AP_REBATE_PROGRAM                                  │
+              (a.k.a. ATTACHED_AP_PROGRAM)                                   │
+                                                                            │
+        Side branches: PENDING_VENDOR_APPROVAL, PENDING_BUYER_APPRVL,        │
+                       REJECTED_BY_BUYER, REJECTED_BY_VENDOR,                │
+                       REJECTED_DURING_AP_APPROVAL,                          │
+                       APPROACHING_RENEWAL (system-set), NEGOTIATION_ENDED   │
+                       PENDING_BUYER_ACTION (multi-buyer scenarios),         │
+                       MULTI_DEPT_REJECTED_BY_BUYER,                         │
+                       CREATED_BY_AP, REVISED_BY_AP, BUYREV (revised),       │
+                       SUBMITTED_BY_VENDOR (portal)                          │
+                                                                            │
+        AP-side rejection routes back to MDSE: ──────────────────────────────┘</code></pre>
+
+<p class="small">Status enum will probably be ~18 values. Routing logic lives in service-layer code, evaluated at Move Forward; not encoded in the schema as transitions.</p>
+
+<h3>Calculation state machine (from VRS_Introduction.docx)</h3>
+
+<pre><code>CALCULATED ──► REVIEWED ──► APPROVED ──► BATCHED ──► DISTRIBUTED
+   ◄──────────── revertable ─────────────►              (locked)
+
+Finalize: closes the period; assigns real fiscal_year/fiscal_period;
+moves rows to history (or simply flips is_open_period to false).</code></pre>
+
+<!-- ═════════════════════════════════════════════════════════════ -->
+<h2 id="codelists">5. Code lists &amp; lookups</h2>
+
+<h3>Source codes (Addendum A of FDD)</h3>
+<table>
+  <thead><tr><th>Code</th><th>Type</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td><code>R</code></td><td>Sourced</td><td>Receipts &mdash; Domestic</td></tr>
+    <tr><td><code>S</code></td><td>Sourced</td><td>Sales (SKU level only)</td></tr>
+    <tr><td><code>D</code></td><td>Sourced</td><td>Drop Ships</td></tr>
+    <tr><td><code>B</code></td><td>Sourced</td><td>Receipts + Drop Ships (pseudo source)</td></tr>
+    <tr><td><code>F</code></td><td>Sourced</td><td>Receipts &mdash; Import (First Cost)</td></tr>
+    <tr><td><code>C</code></td><td>Sourced</td><td>Discount Amt / BOGO</td></tr>
+    <tr><td><code>P</code></td><td>Sourced</td><td>Purchases (rarely used per Ken)</td></tr>
+    <tr><td><code>N</code></td><td>No Source</td><td>Direct entry / Lump Sum</td></tr>
+    <tr><td><code>E</code></td><td>No Source</td><td>NS-Period (divide by # periods)</td></tr>
+    <tr><td><code>Q</code></td><td>No Source</td><td>NS-Quantity (SKU level only)</td></tr>
+    <tr><td><code>T</code></td><td>No Source</td><td>NS-Rate (SKU level only; rate &times; sides &times; stores)</td></tr>
+    <tr><td><code>X</code></td><td>Sourced</td><td>Store Allocations (added 2018)</td></tr>
+  </tbody>
+</table>
+
+<h3>Tier types (from REBATE_VENDOR_DEPT.tier_type)</h3>
+<table>
+  <thead><tr><th>Code</th><th>Name</th></tr></thead>
+  <tbody>
+    <tr><td><code>E</code></td><td>Excess</td></tr>
+    <tr><td><code>P</code></td><td>Pre-defined Ranges</td></tr>
+    <tr><td><code>L</code></td><td>Predefined Levels</td></tr>
+    <tr><td><code>G</code></td><td>Growth</td></tr>
+  </tbody>
+</table>
+
+<h3>Payment types (partial &mdash; pending Ken)</h3>
+<table>
+  <thead><tr><th>Code</th><th>Likely meaning</th><th>Source</th></tr></thead>
+  <tbody>
+    <tr><td><code>D</code></td><td>Deduction (default for domestic vendors)</td><td>FDD V4.1 Step 3</td></tr>
+    <tr><td><code>C</code></td><td>Check (default for import vendors)</td><td>FDD V4.1 Step 3</td></tr>
+    <tr><td><code>M</code></td><td>?  (Merchandise credit?)</td><td>Data only</td></tr>
+    <tr><td><code>P</code></td><td>?  (Prepaid?)</td><td>Data only</td></tr>
+  </tbody>
+</table>
+
+<h3>Deduction frequencies (partial &mdash; pending Ken)</h3>
+<table>
+  <thead><tr><th>Code</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>P</code></td><td>Period</td></tr>
+    <tr><td><code>Q</code></td><td>Quarter</td></tr>
+    <tr><td><code>E</code></td><td>End of Period</td></tr>
+    <tr><td><code>W</code></td><td>? (data has it; doc enumerates only P/Q/E)</td></tr>
+  </tbody>
+</table>
+
+<h3>Earnings types</h3>
+<table>
+  <thead><tr><th>Code</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>M</code></td><td>MDSE (default)</td></tr>
+    <tr><td><code>N</code></td><td>Non-MDSE</td></tr>
+  </tbody>
+</table>
+
+<h3>Roles (security model, replacing VRS_SECURITY)</h3>
+<table>
+  <thead><tr><th>Role</th><th>Origin</th></tr></thead>
+  <tbody>
+    <tr><td><code>AP_ANALYST</code></td><td>Implicit in Ken's docs</td></tr>
+    <tr><td><code>AP_MANAGER</code></td><td>Role-Lens doc</td></tr>
+    <tr><td><code>BUYER</code></td><td>FDD Section 397: "BUYER" group</td></tr>
+    <tr><td><code>DELEGATE</code></td><td>FDD: buyer's delegate</td></tr>
+    <tr><td><code>DMM</code></td><td>FDD Section 397: "DMM" group</td></tr>
+    <tr><td><code>GMM</code></td><td>FDD: GMM dashboard exists</td></tr>
+    <tr><td><code>FPA</code></td><td>FDD Section 397: "FP&amp;A" group &mdash; <em>kept for read-only access; FPA forecasting itself is dropped</em></td></tr>
+    <tr><td><code>FPA_SUPERVISOR</code></td><td>FDD Section 397</td></tr>
+    <tr><td><code>VENDOR_PORTAL</code></td><td>Separate auth surface, vendor self-service</td></tr>
+    <tr><td><code>READ_ONLY</code></td><td>Role-Lens doc; for finance, audit, executives</td></tr>
+  </tbody>
+</table>
+
+<!-- ═════════════════════════════════════════════════════════════ -->
+<h2 id="sign">6. Sign convention &amp; SBT collapse</h2>
+
+<h3>Sign convention</h3>
+<div class="callout callout-rec">
+  <div class="callout-title">Recommendation</div>
+  <strong>Store earnings as positive scalars.</strong> The legacy "natural negative" (negative = vendor owes DG) is sign-flipped at ETL ingest time, with a marker that says "this is what the vendor owes." UI renders semantically (color coding for owed-vs-paid). Aggregation, sorting, and Vera reasoning are all simpler with positive numbers. Bubble field "size = earnings" needs positives anyway.
+</div>
+<p>Trade-off: ETL has to flip signs on input, and downstream RSL/AP/GL exports have to flip back to legacy convention if those consumers expect negative. Cost is one ETL step; benefit is every query, view, and Vera prompt is more natural. <strong>Sign-on Ken</strong>: any downstream consumer that strictly requires negative values?</p>
+
+<h3>SBT / NSBT collapse</h3>
+<div class="callout callout-rec">
+  <div class="callout-title">Recommendation</div>
+  <strong>Drop the triplication. Add a single <code>sbt_classification</code> field per relevant row</strong> (likely on <code>rebate_vendor</code> or <code>calculate_result</code> &mdash; depending on whether the classification is a vendor attribute or a per-line attribute, which we don't yet know). Provide a <code>vw_calc_result_sbt_split</code> view that computes the SBT/NSBT split on demand for downstream consumers that need it.
+</div>
+<p>Risk: if the SBT/NSBT split is consumed downstream by RSL or AP exports in a way that requires the original split values stored as columns, the view-based approach may not be sufficient. <strong>Question for Ken</strong>: do RSL/AP/GL exports require the literal SBT_/NSBT_ columns, or can they be derived?</p>
+
+<!-- ═════════════════════════════════════════════════════════════ -->
+<h2 id="vera">7. Vera-specific schema additions</h2>
+
+<table>
+  <thead><tr><th style="width:24%;">Table</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>analytics_summary</code></td><td>Materialized 1010 summaries: <code>(vendor, dept, source, fiscal_period) &rarr; volume + signals (pace, tier_proximity, yoy_variance)</code>. Refreshed nightly. Indexed on vendor, dept.</td></tr>
+    <tr><td><code>vera_session</code></td><td>One per chat session. Stores user, role at session-start, started_at.</td></tr>
+    <tr><td><code>vera_message</code></td><td>One per question/answer pair. Stores prompt, response, tool calls invoked, latency.</td></tr>
+    <tr><td><code>vera_proactive_digest</code></td><td>Nightly per-analyst digest of flagged items (tier proximity, anomalies, expiring agreements, uncaptured opportunities).</td></tr>
+    <tr><td><code>vendor_health_signal</code></td><td>Cached signal values for the bubble-field color encoding. Refreshed on calc state change. Avoids recomputing health on every bubble-field render.</td></tr>
+    <tr><td><code>uncaptured_opportunity</code></td><td>Nightly-detected: vendors who participated in (e.g.) ADVCOOP last year but have no current-year agreement. Vera's "highest-value capability" surfaces these.</td></tr>
+  </tbody>
+</table>
+
+<!-- ═════════════════════════════════════════════════════════════ -->
+<h2 id="open">8. Open decisions awaiting Ken</h2>
+
+<p>Captured in <code>docs/08-questions-for-ken.html</code>. The schema-blocking ones:</p>
+<ol>
+  <li><span class="pill pill-open">BLOCKER</span> <strong>SBT acronym + downstream dependence.</strong> Drives whether collapse is safe or we have to preserve the triplication.</li>
+  <li><span class="pill pill-open">BLOCKER</span> <strong>Damages (UNSALE_*) scope.</strong> Active or peripheral? In or out of new schema?</li>
+  <li><span class="pill pill-open">BLOCKER</span> <strong>1010 schema reference.</strong> Granularity, refresh cadence, key tables/views to query.</li>
+  <li><span class="pill pill-open">BLOCKER</span> <strong>Detail Calculate tables (CALCULATE_SKU_*) scope.</strong> Replicate or leave on Oracle?</li>
+  <li><span class="pill pill-open">HIGH</span> <strong>NSA / S5S5 specialized calc subsystems.</strong> Scope decision.</li>
+  <li><span class="pill pill-open">HIGH</span> <strong>payment_type code list completion</strong> (M, P unconfirmed)</li>
+  <li><span class="pill pill-open">HIGH</span> <strong>deduct_freq value W</strong> &mdash; what is it?</li>
+  <li><span class="pill pill-open">MED</span> <strong>Flag meanings</strong>: <code>core_flag</code>, <code>both_flag</code>, <code>pop_stores</code>, <code>no_sys_inv</code>, <code>dollar_cap</code>'s scope</li>
+  <li><span class="pill pill-open">MED</span> <strong>alt_vendor_num / alt_ip_vend_num</strong> usage scenarios</li>
+  <li><span class="pill pill-open">MED</span> <strong>Vera SKU-grain need</strong> &mdash; do REBATE_ALLOCATION_SKU details need to be in the new schema, or is dept-grain enough?</li>
+</ol>
+
+<h3>Sign-off needed from Ken on TPG's recommendations</h3>
+<ul>
+  <li><span class="pill pill-rec">REC</span> Sign convention: store positive (flip at ETL)</li>
+  <li><span class="pill pill-rec">REC</span> SBT/NSBT: collapse to single columns + classification flag, view-derive the split</li>
+  <li><span class="pill pill-rec">REC</span> AADJ accrual adjustments: drop entirely (vestigial, only one ever created)</li>
+  <li><span class="pill pill-rec">REC</span> Class always -1: drop class_num column</li>
+  <li><span class="pill pill-rec">REC</span> FPA forecasting + MDSE_DASHBOARD_*: drop (replaced by Vera + 1010)</li>
+  <li><span class="pill pill-rec">REC</span> Time-horizon and review-screen rollups: derive in views, not stored</li>
+  <li><span class="pill pill-rec">REC</span> REBATE_VENDOR_DEPT calc-cache columns: drop (query CALCULATE_RESULT directly)</li>
+</ul>
+
+<hr style="margin: 40px 0 16px 0; border: none; border-top: 1px solid #e5e7eb;">
+<p class="small" style="text-align: center;">VRS Target Schema Design v0.1 (draft) &middot; TPG Partners &middot; 2026-05-06</p>
+
+</body>
+</html>

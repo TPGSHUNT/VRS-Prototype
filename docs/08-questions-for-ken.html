@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Questions for Ken — still-open items after doc review</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color: #1f2937; max-width: 980px; margin: 24px;">
+
+<h2 style="margin: 0 0 6px 0; font-weight: 600;">Questions for Ken &mdash; still-open items after doc review</h2>
+<p style="margin: 0 0 18px 0; color: #6b7280; font-size: 13px;">
+  Compiled 2026-05-06. Read everything in <code style="background:#f3f4f6;padding:1px 4px;border-radius:3px;">P:\TPG\Dollar General\VRS</code> first &mdash; AP Side Overview, AP Calc Overview, Introduction, Forecast Engine, Role-Lens / Vera, Build Plan, Architecture. Most of what I would have asked is already in your docs. Below are the items still ambiguous, contradictory with the data exports, or not covered.
+</p>
+
+<div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px 16px; margin: 0 0 18px 0; font-size: 13px; line-height: 1.55;">
+  <strong>Format:</strong>
+  <span style="display:inline-block; padding:1px 6px; border-radius:3px; background:#fee2e2; color:#991b1b; font-weight:600; font-size:11px;">HIGH</span> /
+  <span style="display:inline-block; padding:1px 6px; border-radius:3px; background:#fef3c7; color:#854d0e; font-weight:600; font-size:11px;">MED</span> /
+  <span style="display:inline-block; padding:1px 6px; border-radius:3px; background:#dcfce7; color:#166534; font-weight:600; font-size:11px;">LOW</span>
+  priority. Where I had a guess, I included it &mdash; just confirm or correct. Bullet answers are great. If something is easier to walk through verbally, flag it and we'll set up a call.
+</div>
+
+<div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:10px 14px; margin:0 0 24px 0; font-size:12.5px; line-height:1.55;">
+  <strong style="color:#1e3a8a;">What I learned from your docs (no need to re-explain):</strong>
+  E&amp;C = Extract + Calculate. Calculation state chain: Calculated &rarr; Reviewed &rarr; Approved &rarr; Batched &rarr; Distributed (revertable up through Batched). Year/Period = 0 for current period; real values set at Finalize. IP = Island Pacific. Source codes R/S/D/B/F/C/P/N/E/Q/T plus X (added 2018). Four Tier Types: E (Excess), P (Pre-defined Ranges), L (Predefined Levels), G (Growth). Four earnings components (PMU, Margin, Adv Coop, Other Coop), natural sign negative, SBT_ + NSBT_ = base. PM_* = PMU+Margin rollup, AO_* = AdvCoop+OtherCoop rollup. AADJ accrual adjustments are vestigial (only one ever created). EXCLUDE_SKUS toggles whether listed SKUs are excluded vs included. Class always -1 (class-level was never implemented). Rebate program / vendor / dept / calculate_result hierarchy, with REBATE_VENDOR_DEPT acting as the last-calc cache. Approval Queue creates Rebate Programs from Agreements. ~200 stored procs in production. Schema = REBATE_OWNER (in the RSL DB). Forecast engine architecture, 4 Agreement Groups, Merch/Period/Reallocation methods. Vendor Portal is a separate Java/Tomcat app. ~600&ndash;900 active vendors. REBATE_AUDIT_LOG exists (trigger-loaded). EARNINGS_TYPE = Mdse / Non Mdse. The "Ugly Sisters" merch types. Linked rebates feature. Vera = Vendor Earnings &amp; Rebate Advisor.
+</div>
+
+<style>
+  .pri-h{display:inline-block;padding:1px 6px;border-radius:3px;background:#fee2e2;color:#991b1b;font-weight:600;font-size:11px;margin-right:6px;vertical-align:middle;}
+  .pri-m{display:inline-block;padding:1px 6px;border-radius:3px;background:#fef3c7;color:#854d0e;font-weight:600;font-size:11px;margin-right:6px;vertical-align:middle;}
+  .pri-l{display:inline-block;padding:1px 6px;border-radius:3px;background:#dcfce7;color:#166534;font-weight:600;font-size:11px;margin-right:6px;vertical-align:middle;}
+  code{background:#f3f4f6;padding:1px 4px;border-radius:3px;font-size:90%;}
+  .guess{display:block;margin-top:4px;color:#6b7280;font-size:12px;font-style:italic;}
+  h3{margin:28px 0 8px 0;font-weight:600;font-size:16px;border-bottom:1px solid #e5e7eb;padding-bottom:4px;}
+  ol{padding-left:24px;}
+  ol li{margin:10px 0;line-height:1.5;}
+</style>
+
+<!-- ─────────────────────────────────────────── -->
+<h3>1. ERD &amp; schema overview</h3>
+<ol>
+  <li><span class="pri-h">HIGH</span> <strong>Full ERD &mdash; any chance?</strong> You mentioned you'd try. Even partial works (rebate-calc chain + FK references). Oracle SQL Developer's Data Modeler reverse-engineers from the data dictionary if you have read on <code>USER_CONSTRAINTS</code> &mdash; might be the path of least resistance.</li>
+  <li><span class="pri-h">HIGH</span> <strong>Complete table list with row counts.</strong> A one-shot <code>SELECT table_name, num_rows FROM user_tables ORDER BY num_rows DESC</code> is plenty &mdash; we just need the inventory.</li>
+</ol>
+
+<!-- ─────────────────────────────────────────── -->
+<h3>2. Vocabulary still ambiguous</h3>
+<ol start="3">
+  <li><span class="pri-h">HIGH</span> <strong>What does <code>SBT</code> stand for?</strong> Your AP Side doc references the SBT project and the column-tripling extensively but never spells out the acronym. <span class="guess">Guess: Subject By Tier? Same Bucket Tier?</span></li>
+  <li><span class="pri-h">HIGH</span> <strong><code>DEDUCT_FREQ</code> value <code>W</code></strong> &mdash; your doc enumerates only P (Period), Q (Quarter), E (End of Period), but the data exports show rows with <code>W</code>. New value? Legacy? Bug?</li>
+  <li><span class="pri-h">HIGH</span> <strong><code>PAYMENT_TYPE</code> code list.</strong> Doc describes the field as "the payment type at the time the calculation was created" but no code list. Data shows <code>M</code>, <code>D</code>, <code>C</code>, <code>P</code>. <span class="guess">Guess: D = Deduction, C = Check, M = Manual?, P = Prepaid?</span></li>
+  <li><span class="pri-m">MED</span> <strong><code>ELY</code> prefix in REBATE_VENDOR_DEPT</strong> &mdash; the time-horizon prefixes are <code>cur_</code>, <code>ytd_</code>, <code>ely_</code>, <code>ltd_</code>. <span class="guess">Guess: Earnings Last Year? End-of-Last-Year?</span></li>
+  <li><span class="pri-m">MED</span> <strong>Active source-code list today.</strong> Your AP Calc doc lists R, S, D, B, F, C, P, N, E, Q, T plus an X for Store Allocations being added in 2018. Did X land? Anything new since?</li>
+  <li><span class="pri-l">LOW</span> <strong>Authoritative <code>rebate_type</code> and <code>rebate_category_type</code> code lists</strong> &mdash; we can reverse-engineer from the data, but a master list (with descriptions) would be cleaner.</li>
+</ol>
+
+<!-- ─────────────────────────────────────────── -->
+<h3>3. Vendor identity &amp; relationships</h3>
+<ol start="9">
+  <li><span class="pri-h">HIGH</span> <strong><code>vendor_num</code> vs <code>ip_vendor_num</code></strong> &mdash; for the new system, which should be the canonical vendor key? Always 1:1 in production, or do you ever see a vendor_num mapping to multiple IP numbers (or vice versa)?</li>
+  <li><span class="pri-m">MED</span> <strong><code>alt_vendor_num</code> / <code>alt_ip_vend_num</code></strong> &mdash; when populated, and what scenario does the alt represent?</li>
+  <li><span class="pri-m">MED</span> <strong><code>pay_vendor</code> / <code>pay_ip_vendor</code></strong> on REBATE_VENDOR &mdash; the data shows these populated only on a few rows. What scenarios route payment to a different vendor (factoring? subsidiary roll-up? assigned receivable?).</li>
+  <li><span class="pri-m">MED</span> <strong><code>agreement_id</code> sparseness</strong> &mdash; many REBATE_VENDOR rows have it null. Your Intro doc says "the Rebate Program's Vendor is aware of the Agreement, not the other way around." When is agreement_id NOT populated? (Rebate created directly in AP without an Agreement? Older rebates predating MDSE? Manual program creation via Approval Queue's Acct Only Tab?)</li>
+  <li><span class="pri-l">LOW</span> <strong>Parent / subsidiary vendor relationships</strong> &mdash; same legal entity reporting under multiple vendor_nums? Any modeling in production?</li>
+</ol>
+
+<!-- ─────────────────────────────────────────── -->
+<h3>4. Flags &amp; small fields I couldn't pin down</h3>
+<ol start="14">
+  <li><span class="pri-m">MED</span> <strong>REBATE_PROGRAM flags</strong>: <code>rebate_flag</code>, <code>both_flag</code>, <code>core_flag</code>, <code>delete_flag</code>, <code>sku_only_flag</code>, <code>pop_stores</code>. Brief one-liners on each.</li>
+  <li><span class="pri-m">MED</span> <strong>REBATE_VENDOR fields</strong>: <code>dollar_cap</code> (cap on what?), <code>no_sys_inv</code> (suppresses what?).</li>
+  <li><span class="pri-h">HIGH</span> <strong>Damages / UNSALE_ subsystem &mdash; in or out for the new VRS?</strong> The Toad ERD shows ~17 UNSALE_ tables (UNSALE_CONTRACT + UNSALE_DS_CONTRACT for regular and drop-ship damage contracts, plus TRUE_UP, CREATE, AUDIT, EXCLUSIONS, etc.). The REBATE_PROGRAM linkage via <code>dmg_contract_pk</code> / <code>dmg_ds_contract_pk</code> is now clear. Two questions:
+    <ul style="margin-top: 6px;">
+      <li>Is the damages workflow active and important &mdash; or is it like FPA (still wired but nobody really uses it)?</li>
+      <li>If it's active, do we model it in the new system or leave it on Oracle as a peripheral? It's a substantial subsystem in its own right.</li>
+    </ul>
+  </li>
+</ol>
+
+<!-- ─────────────────────────────────────────── -->
+<h3>5. Workflow, roles &amp; service accounts</h3>
+<ol start="17">
+  <li><span class="pri-h">HIGH</span> <strong>DMM / GMM approval routing</strong> &mdash; when does an Agreement need DMM or GMM approval before reaching <code>PENDING_AP_APPROVAL</code>, vs going there directly? What drives the routing (merch type, dollar threshold, agreement type)?</li>
+  <li><span class="pri-m">MED</span> <strong>Service-account userids</strong> in <code>userid_created</code> / <code>userid_updated</code>. Confirmed sightings: <code>Calculate</code>, <code>Batch-Exec</code>, <code>S5S5_Calculate</code>, <code>QUEUE</code>, <code>Upload</code>, <code>Finalize</code>. Full list please &mdash; what does each represent (E&amp;C runs, batch jobs, the NSA / S5S5 specialized subsystems, the Opcon scheduler invocations, manual operations)?</li>
+  <li><span class="pri-m">MED</span> <strong>"Non MDSE" earnings type</strong> &mdash; your AP Side doc notes EARNINGS_TYPE was added during the Non MDSE project. What does Non MDSE cover in production today? Volume vs. MDSE?</li>
+  <li><span class="pri-m">MED</span> <strong>Cycle Close vs Period Close</strong> &mdash; the docs use both terms. Same process, different sides (MDSE/AP)? Or different processes entirely? Sequencing?</li>
+  <li><span class="pri-l">LOW</span> <strong>Real human userids</strong> seen in our sample (<code>areidl</code>, <code>cjenkins</code>, <code>lscoggin</code>, <code>kdickey</code>, <code>brmiddle</code>, <code>pmashbur</code>, <code>hrussell</code>, <code>jlankfor</code>, <code>payjones</code>, <code>rtabarez</code>) &mdash; can you map any to roles? Even a one-line "areidl is a senior AP analyst" helps Vera frame who's responsible for what in real data.</li>
+</ol>
+
+<!-- ─────────────────────────────────────────── -->
+<h3>6. Adjacent data &amp; systems we'll need to model</h3>
+<ol start="22">
+  <li><span class="pri-h">HIGH</span> <strong>1010 database access plan</strong>. The Role-Lens doc describes nightly materialized summaries; what's the cleanest way to query 1010 from the new VRS? Schema reference, key tables/views (vendor &times; dept &times; source &times; period summarization), expected nightly job runtime, who owns the connection?</li>
+  <li><span class="pri-h">HIGH</span> <strong>Where do contract documents live?</strong> The signed agreements (PDFs, scans, supporting emails) &mdash; SharePoint, a DMS, attached to the Approval Queue, somewhere else? Vera needs them for real contract analysis.</li>
+  <li><span class="pri-m">MED</span> <strong>Accounting Control Master</strong> &mdash; referenced in the Role-Lens doc as needing preservation. Brief on its structure and what it controls (RSL/AP/GL routing rules, transaction types, cost centers)?</li>
+  <li><span class="pri-m">MED</span> <strong>Detail Calculate tables</strong> (<code>CALCULATE_SKU_DC_RECV</code>, <code>CALCULATE_SKU_SALES</code>, <code>CALCULATE_SKU_DROP_SHIP</code>, etc.) &mdash; in scope for the new VRS, or do these stay archive-only on the Oracle side post-cutover?</li>
+  <li><span class="pri-m">MED</span> <strong>Tier threshold tables</strong> &mdash; where do the actual tier breakpoints live? (REBATE_VENDOR_DEPT has <code>tier_type</code> and <code>tier_last_year</code> but the threshold values themselves must be elsewhere.)</li>
+</ol>
+
+<!-- ─────────────────────────────────────────── -->
+<h3>7. Operational scale &amp; calendar</h3>
+<ol start="27">
+  <li><span class="pri-m">MED</span> <strong>Production scale today</strong> &mdash; active vendor count, active rebate program count, CALCULATE_RESULT rows per period, growth trajectory.</li>
+  <li><span class="pri-m">MED</span> <strong>Fiscal calendar</strong> &mdash; period count per year (we've seen periods 1&ndash;12 in samples; is it 12 monthly or 13 four-week, e.g. 4-4-5)? Anything special at year boundary beyond the standard close?</li>
+  <li><span class="pri-l">LOW</span> Time-zone convention for <code>*_date</code> fields &mdash; Eastern (Goodlettsville)? UTC?</li>
+</ol>
+
+<!-- ─────────────────────────────────────────── -->
+<h3>8. Vera-specific &mdash; the strategic shape of the demo</h3>
+<p style="font-size:13px;color:#6b7280;margin:0 0 8px 0;">These shape what Vera <em>does</em> in the demo. The Role-Lens doc gives capability categories &mdash; tier optimization, agreement restructuring, uncaptured opportunity, anomaly explanation, renewal calendar. These questions ground those categories in what you actually see day to day.</p>
+<ol start="30">
+  <li><span class="pri-h">HIGH</span> <strong>What signals do you watch today to know a vendor is "off"?</strong> The things you eyeball or query for when something doesn't smell right. Anomalous earnings swings? Long approval delays? Tier thresholds being missed? Patterns in deductions vs checks? Specific reports you run manually?</li>
+  <li><span class="pri-h">HIGH</span> <strong>What do users complain about most?</strong> Pain points are exactly what Vera should make go away. The exec doc calls out the 5-form period close; what else?</li>
+  <li><span class="pri-h">HIGH</span> <strong>"Uncaptured opportunity" &mdash; concrete example.</strong> The Vera doc names this as her highest-value capability ("identifying what doesn't exist"). What's a real-world example you've seen where DG missed earnings because an agreement wasn't in place &mdash; or had the wrong tier structure? Even a sanitized version helps.</li>
+  <li><span class="pri-m">MED</span> <strong>"Strategy" examples.</strong> 2&ndash;3 concrete strategic recommendations Vera should be able to make. (Restructure tier from flat to graduated? Switch source from VOLUME to TPR? Renegotiate before expiration?)</li>
+  <li><span class="pri-m">MED</span> <strong>What can't VRS do today that you wish it could?</strong> Reports that take too long, questions you can't easily answer, manual workarounds that bug you.</li>
+  <li><span class="pri-m">MED</span> <strong>Demo-worthy vendors &mdash; recognizable names.</strong> 2&ndash;3 vendors DG executives will instantly know and care about (P&amp;G, Coca-Cola, Unilever, etc.). Whoever has the most interesting earnings shape in the data.</li>
+  <li><span class="pri-m">MED</span> <strong>Demo-worthy vendors &mdash; great stories.</strong> A recovery story, an anomaly that was caught manually, a complex tier structure that demonstrates depth, a long-running negotiation that finally closed. Vera will look smarter if she's reasoning over a story arc.</li>
+  <li><span class="pri-l">LOW</span> <strong>Time period to lean on (or avoid)</strong> &mdash; is there a period range with the cleanest data, or a span we should skip (e.g. weird COVID-era periods, a known data-quality incident)?</li>
+</ol>
+
+<!-- ─────────────────────────────────────────── -->
+<p style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280;">
+  37 questions across 8 sections. Down from 71 once your overview docs were factored in. Skip anything tedious; flag what would be easier verbal.
+</p>
+
+</body>
+</html>
