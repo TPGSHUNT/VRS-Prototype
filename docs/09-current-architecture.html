@@ -121,17 +121,116 @@
   </tbody>
 </table>
 
-<h3>External integrations preserved</h3>
-<ul>
-  <li><strong>RSL</strong> (Retail Stock Ledger) &mdash; receives accruals and reclassifications</li>
-  <li><strong>AP</strong> (Accounts Payable) &mdash; receives systematic and on-demand deductions</li>
-  <li><strong>GL</strong> (General Ledger) &mdash; receives Coop expense postings</li>
-  <li><strong>Vendor Portal</strong> &mdash; existing Java/Tomcat application; remains separate; vendors submit agreements which feed the same approval queue</li>
-  <li><strong>Opcon scheduler</strong> &mdash; continues to invoke 1010 / Linux scripts at the data layer</li>
-</ul>
+<h3>External integrations &mdash; heterogeneous, and not as "external" as it looks</h3>
+<p>Per Ken's clarifications (May 2026, including a late follow-on), VRS doesn't sit at arm's length from DG's other systems &mdash; <strong>the VRS schema lives inside the RSL Oracle database instance</strong>, with Sales, Receipts, Drop Ship, and other operational data in sister schemas on the same DB. Master data (Vendor Master, Dept Master, Class Master) is exposed via Oracle materialized views, also intra-instance. Ken draws a sharp line between <strong>true interfaces</strong> (state-changing outbound handoffs &mdash; file drops or routine invocations) and <strong>data access</strong> (cross-schema reads, MVs, scheduled bulk feeds from 1010 into VRS Calculate tables). His phrasing: data access "is no different than querying a VRS table."</p>
+<p>The post-migration target preserves this heterogeneity. AP moves to Oracle ERP; RSL and GL stay in Lawson; the Vendor Master is bifurcated under the existing materialized view; 1010 stays where it is, walled off from VRS programmatically.</p>
+
+<h4 style="font-size: 11pt; margin-top: 18px;">True outbound interfaces &mdash; state-changing handoffs</h4>
+<table>
+  <thead>
+    <tr><th style="width:20%;">Target</th><th style="width:24%;">System (post-migration)</th><th>Mechanics today</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>AP</strong> (Accounts Payable)</td>
+      <td>Oracle ERP <em>(replacing Lawson AP)</em></td>
+      <td>VRS writes rows to <code>REBATE_BATCH_FILE</code>, copies them to <code>REBATE_BATCH_FILE_TMP</code>, a Linux shell script reads the TMP table to produce a flat file (.csv or fixed-length), an Operator kicks off the upload job (notified by VRS-generated email). Carries systematic and on-demand deductions.</td>
+    </tr>
+    <tr>
+      <td><strong>GL</strong> (General Ledger)</td>
+      <td>Lawson <em>(probably &mdash; Ken not 100% sure; see Q18 in doc 13)</em></td>
+      <td>Same flat-file pattern as AP. Carries Coop expense postings.</td>
+    </tr>
+    <tr>
+      <td><strong>RSL</strong> (Retail Stock Ledger)</td>
+      <td>Lawson <em>(stays)</em></td>
+      <td>Tighter than AP/GL: VRS directly invokes an RSL routine to upload the file. Carries accruals and reclassifications.</td>
+    </tr>
+    <tr>
+      <td><strong>Gold System</strong> <span class="pill pill-pending" style="font-size:9px;">SURFACED LATE</span></td>
+      <td>Gold (DG pricing system)</td>
+      <td>Gold pulls pricing data <em>out of</em> VRS through a couple of views Ken wrote a few years ago. VRS-owned, Gold-consumed.</td>
+    </tr>
+    <tr>
+      <td><strong>Treasury System</strong> <span class="pill pill-pending" style="font-size:9px;">SURFACED LATE</span></td>
+      <td>Treasury (newer DG system)</td>
+      <td>VRS loads a dedicated table with Treasury Invoice data; the Treasury system picks it up. Built by Ken roughly a year ago.</td>
+    </tr>
+    <tr>
+      <td><strong>Vendor Portal</strong></td>
+      <td>Java / Tomcat <em>(separate, no change)</em></td>
+      <td>Shadow-table copy-on-acceptance model. Limited merch-type support. Vendors submit agreements that feed the same approval queue.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 style="font-size: 11pt; margin-top: 18px;">Data access &mdash; sister schemas, materialized views, bulk feeds <span style="font-weight:400; color:#6b7280; font-size:90%;">(Ken does not call these "interfaces")</span></h4>
+<table>
+  <thead>
+    <tr><th style="width:20%;">Source</th><th style="width:24%;">Where it lives</th><th>How VRS gets it</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Sales / Receipts / Drop Ship / etc.</strong></td>
+      <td>Sister schemas on the RSL Oracle DB</td>
+      <td>VRS issues SQL against the sister schemas directly when the Extract runs. No file drop, no API &mdash; same DB instance, just different schemas. This is the bulk of "external" read traffic.</td>
+    </tr>
+    <tr>
+      <td><strong>Vendor Master</strong></td>
+      <td>Bifurcated post-migration: Lawson <code>VENDOR_MST</code> (historical / inactive) + Oracle ERP (active)</td>
+      <td>Read through an Oracle <strong>materialized view</strong>. The bifurcation is finessed under the MV so VRS-side code does not change. Both AP&nbsp;# (canonical AP) and IP&nbsp;# (canonical MDSE) are carried; <code>VENDOR_MST</code> stores IP&nbsp;# in a VARCHAR field.</td>
+    </tr>
+    <tr>
+      <td><strong>DG Common Area</strong></td>
+      <td>Oracle (shared)</td>
+      <td>Master tables used by multiple DG systems &mdash; Dept Master, Class Master, etc. Read access.</td>
+    </tr>
+    <tr>
+      <td><strong>Discount feed</strong> <span class="small">(for "Disc Amt BOGO" rebates)</span></td>
+      <td>1010 &rarr; staged into VRS Calculate tables nightly</td>
+      <td>~<strong>600M rows/day</strong> downloaded from 1010 and loaded into VRS so the data is on hand when an E&amp;C runs against the "Disc Amt BOGO Source." Volume is what makes 1010 the only viable source &mdash; no other system holds it; real-time queries against 1010 aren't fast enough for the E&amp;C path.</td>
+    </tr>
+    <tr>
+      <td><strong>NSA-related feeds</strong></td>
+      <td>1010 &rarr; staged into VRS</td>
+      <td>Several recurring 1010 extracts feed NSA's source-specific Calculate tables.</td>
+    </tr>
+    <tr>
+      <td><strong>Unsaleables True-up Extract</strong> <span class="pill pill-pending" style="font-size:9px;">PLANNED</span></td>
+      <td>Being replicated into 1010 (per a meeting Ken attended in early May 2026)</td>
+      <td>New downstream feed under construction; will follow the same 1010-staging pattern once landed.</td>
+    </tr>
+    <tr>
+      <td><strong>IBS (Damages source data)</strong></td>
+      <td>IBS</td>
+      <td>Two nightly DAMAGEFUNCTIONS procedures pull <code>MARKDOWN_HEADER</code>, <code>TRANSGEN_*</code>, <code>DCTRANS_*</code>, <code>POS_MKDN_ACBC_*</code> into VRS.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4 style="font-size: 11pt; margin-top: 18px;">1010 itself &mdash; out of scope for VRS direct access</h4>
+<p>1010 is a separate Oracle database, not part of the RSL Oracle instance, and <strong>VRS cannot query it programmatically</strong>. Ken's read: heavy ad-hoc use by the AP team; no formal BI tool identified; 1010 effectively serves as DG's analytics warehouse, even if informally. Data flows mostly <em>into</em> 1010 (operational systems including VRS). The selected 1010 &rarr; VRS feeds (Discount, NSA, Unsaleables) exist where the data isn't anywhere else and staleness is acceptable. Ownership of the inbound ETL paths sits with another IT group (still unidentified &mdash; see Q6 in doc 13).</p>
+
+<div class="callout callout-blue" style="margin-top:16px;">
+  <div class="callout-title">Implication for the rewrite</div>
+  Pulling VRS to Postgres is <strong>schema extraction from a shared Oracle instance</strong>, not standalone-app replatform. The sister schemas VRS reads (Sales, Receipts, Drop Ship, master data) are <em>not</em> moving with VRS. What is today an in-database SQL join becomes a network boundary. The new system needs a federated-read abstraction &mdash; <code>oracle_fdw</code>, scheduled snapshot tables, or an explicit ETL &mdash; standing in for what is currently a sister-schema query. This is a fundamental shape of the migration, not a network-boundary problem appearing for the first time in production.
+</div>
+
+<div class="callout callout-amber" style="margin-top:16px;">
+  <div class="callout-title">Strategic flag &mdash; pending Khari conversation</div>
+  Per Ken: "Everything is being done so that VRS itself does not have to change. It will continue to do things the same way for the foreseeable future." If accurate, DG's modernization plan preserves VRS as-is and the rebuild is TPG-driven rather than DG-driven. The Oracle ERP / Lawson migration timing and the 1010 ownership picture should be clarified with DG-side stakeholders (Khari) before locking in the production target architecture.
+</div>
 
 <!-- ═══════════════════════════════════════════════════════════ -->
 <h2 id="data">3. Data architecture</h2>
+
+<h3>What the migration actually is &mdash; schema extraction, not replatform</h3>
+<p>Because VRS shares an Oracle instance with RSL and the operational sister schemas it reads (see &sect;2), the rewrite is not "lift one app off Oracle and put it on Postgres." It is <strong>extracting the VRS schema</strong> out of a shared Oracle box whose neighbours stay where they are. Every cross-schema read VRS does today &mdash; Sales, Receipts, Drop Ship, master MVs &mdash; becomes a federated read in the new architecture. The 1010-staged feeds (Discount, NSA, Unsaleables) keep their bulk-load shape; the sister-schema joins are the part that needs new mechanics.</p>
+<ul>
+  <li><strong>Federated-read targets</strong>: Sales, Receipts, Drop Ship, Vendor Master MV, Common Area master tables.</li>
+  <li><strong>Candidate mechanisms</strong>: <code>oracle_fdw</code> for queries that can tolerate live cross-DB latency; <strong>scheduled snapshot tables</strong> in Postgres for the high-volume / repeatedly-queried slices (the same pattern the legacy already uses for Discount via 1010 staging); explicit ETL into <code>analytics_summaries</code> for things consumed by Vera.</li>
+  <li><strong>Decision needed pre-cutover</strong>: which of the sister schemas the VRS Extract reads <em>also</em> stay on Oracle long-term vs. get migrated themselves. Ken's read is they stay; that's the operating assumption until a DG-side stakeholder (Khari) confirms.</li>
+</ul>
 
 <h3>What we keep from Ken's model</h3>
 <ul>
@@ -159,8 +258,8 @@
 <p>Earnings are <em>natural negative</em> in DG's data (negative = vendor owes DG). The new system normalizes on ingest: store as positive scalars with explicit type (<code>earnings_owed</code> vs <code>earnings_paid</code>), and let the UI render the semantic. The current bubble-field metric for "annual rebate earnings" sums <code>finalEarnings</code>; with real data we'll either negate on read or store the absolute value &mdash; decision pending the migration ETL design.</p>
 
 <h3>1010 access pattern</h3>
-<p>The 1010 Oracle database holds billions of receipt, sales, and drop-ship records. It stays where it is &mdash; it is not migrated. The new VRS builds a <strong>read path</strong>: a nightly job executes summarization queries against 1010 and writes the results into materialized summary tables in the VRS Postgres database. Granularity: <code>vendor &times; dept &times; source &times; fiscal_period</code>. The application never queries 1010 directly.</p>
-<p>This makes the analytical layer fast (Postgres-native, indexed), independent of 1010's availability or schema, and trivially testable with mock data in the prototype.</p>
+<p>The 1010 Oracle database holds the longitudinal vendor-receipt / sales / drop-ship history at warehouse scale (DG bulk-stages ~600M rows of Discount data alone from 1010 into VRS daily). It stays where it is &mdash; it is not migrated, and VRS cannot query it programmatically (another IT group owns the inbound ETL paths). The new VRS builds a <strong>read path that mirrors the legacy 1010-staging pattern at a different granularity</strong>: a scheduled job summarizes 1010-derived data into materialized summary tables in the VRS Postgres database at <code>vendor &times; dept &times; source &times; fiscal_period</code> grain, suitable for Vera and pace-to-target views. The application never queries 1010 directly.</p>
+<p>This makes the analytical layer fast (Postgres-native, indexed), independent of 1010's availability or schema, and trivially testable with mock data in the prototype. A separate ingest path preserves the bulk-staged operational feeds (Discount, NSA, Unsaleables-true-up) that the legacy E&amp;C depends on &mdash; those are not Vera-derived analytics; they are operational source data without which specific source-types cannot calculate.</p>
 
 <h3>Tables planned for the prototype</h3>
 <p>15 core tables in Sprint 1 schema:</p>

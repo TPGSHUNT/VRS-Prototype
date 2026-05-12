@@ -1,0 +1,499 @@
+![](media/image1.png){width="10.447916666666666in"
+height="0.6770833333333334in"}
+
+ 
+
+Tab 1 in the Attached file
+
+ 
+
+![](media/image2.png){width="10.552083333333334in"
+height="0.8541666666666666in"}
+
+Tab 2 in the Attached file
+
+ 
+
+![](media/image3.png){width="10.583333333333334in"
+height="0.6979166666666666in"}
+
+Tab 3 in the attached
+
+ 
+
+![](media/image4.png){width="9.46875in" height="0.625in"}
+
+Active Vendors:  2500 (approx.)
+
+Active Rebate Programs -- 7665
+
+Calculate Result Counts by Period
+
+ 
+
+**Yr         Pd            Count**
+
+2022     1             30282
+
+2022     2             26919
+
+2022     3             28648
+
+2022     4             37066
+
+2022     5             40735
+
+2022     6             35087
+
+2022     7             40128
+
+2022     8             43330
+
+2022     9             40657
+
+2022     10           40132
+
+2022     11           40408
+
+2022     12           43285
+
+2023     1             41527
+
+2023     2             36149
+
+2023     3             40846
+
+2023     4             41346
+
+2023     5             35902
+
+2023     6             40379
+
+2023     7             49191
+
+2023     8             48182
+
+2023     9             44429
+
+2023     10           45376
+
+2023     11           37951
+
+2023     12           42473
+
+2024     1             39451
+
+2024     2             37192
+
+2024     3             39893
+
+2024     4             41155
+
+2024     5             41297
+
+2024     6             44921
+
+2024     7             42294
+
+2024     8             46322
+
+2024     9             48425
+
+2024     10           47687
+
+2024     11           46463
+
+2024     12           48131
+
+2025     1             47774
+
+2025     2             43463
+
+2025     3             38027
+
+2025     4             34164
+
+2025     5             36632
+
+2025     6             38732
+
+2025     7             38228
+
+2025     8             37904
+
+2025     9             40541
+
+2025     10           42886
+
+2025     11           38701
+
+2025     12           51971
+
+2026     1             48284
+
+2026     2             43476
+
+ 
+
+ 
+
+**From:** Ken Banks\
+**Sent:** Friday, May 8, 2026 10:24 AM\
+**To:** David Jurk \<djurk@tpg-partners.com\>\
+**Subject:** RE: Outstanding Questions
+
+ 
+
+Round 2
+
+ 
+
+I will do a round 3 and attach a spreadsheet with some of the data
+request.
+
+ 
+
+ 
+
+![](media/image5.png){width="9.739583333333334in"
+height="0.6145833333333334in"}
+
+These are primary keys to Damage Contracts set up in the Unsaleables
+(aka. Damages) Sub System. 
+
+ 
+
+![](media/image6.png){width="10.760416666666666in"
+height="0.6666666666666666in"}
+
+Most Agreements go to Pending AP Approval the first time they are Move
+Forward.
+
+ 
+
+There are two Thresholds that are defined as Parameters that control DMM
+and GMM Approval.
+
+ 
+
+![](media/image7.png){width="8.125in" height="0.5208333333333334in"}
+
+ 
+
+If the Agreement's Forecast exceeds these then the Status is set to
+Pending **DMM Approval** and then **GMM Approval **after the DMM
+Approves.
+
+ 
+
+There an ability for the DMM's to have to approve all TPRs but they got
+tired of approving them so now this is controlled by a Parameter as well
+so this is no longer done.
+
+ 
+
+![](media/image8.png){width="3.5104166666666665in"
+height="0.9479166666666666in"}
+
+ 
+
+If the Vendor is paying for an Agreement by Check and is not explicitly
+excluded based on the list of Vendors in the Parameter Table, the DMM
+has to approve.
+
+ 
+
+ 
+
+![](media/image9.png){width="10.40625in" height="0.8333333333333334in"}
+
+ 
+
+These are field that are in almost every table along with Date Created
+and Date Updated.  They are for research.  Sometimes they contain an
+real user's id or sometimes the name of a process.   Opcon had nothing
+do to with these.  There is not a full list anywhere.  User IDs come and
+go.  I will query  a couple of tables to give you a representative list
+as part of the data in round 3.
+
+ 
+
+![](media/image10.png){width="10.458333333333334in"
+height="0.6145833333333334in"}
+
+Non MDSE refers to product that is not sold.  An Example would be
+cleaning supplies.   Non MDSE is handled differently from an accounting
+perspective and it can also be handled  separately when doing the
+Review, Approve etc.   It is relatively small compared to MDSE.  
+
+ 
+
+This form allows you to get totals by MDSE versus Non Merchandise.  This
+is for 2026 so far.  950 million versus 8 million.  So, Non MDSE is less
+than .1 %.
+
+ 
+
+![](media/image11.png){width="7.916666666666667in"
+height="4.239583333333333in"}
+
+ 
+
+![](media/image12.png){width="7.822916666666667in"
+height="4.197916666666667in"}
+
+ 
+
+![](media/image13.png){width="10.15625in" height="0.65625in"}
+
+ 
+
+On the MDSE side Cycle Closes the Period.  On the AP Side, the Finalize
+closes the Period.  You really need to think about the MDSE side and the
+AP side as if they are separate systems. AP closes first (usually 1 week
+after the actual Period Close) and then MDSE closes in the week
+following that. 
+
+ 
+
+![](media/image14.png){width="10.354166666666666in"
+height="0.9895833333333334in"}
+
+ 
+
+These  user id's are SSO (Single Sign On) Users IDs --- it's what they
+use to log into everything.  One does not Log Into VRS by which I mean
+VRS does not have a Login screen.  When VRS is invoked, it  uses an
+Oracle Function to get the SSO_user id.   Using this User ID it looks
+(in an External Source called VRS_SECUIITY) to see what Security Group a
+user belongsto ,  These Groups are also defined in VRS.   For Each group
+there is a list of the Menu Options and for each Menu option, the group
+can have either Maintenance, Read Only or No access Authority.  I refer
+to this as: Menu Level Security.  A group can either be for an AP user
+or a MDSE User.  Here is what it looks like in VRS.
+
+ 
+
+![](media/image15.png){width="8.885416666666666in" height="4.28125in"}
+
+ 
+
+On the MDSE side there is a lower layer of security that determines who
+can Insert or Modify an Agreement.
+
+ 
+
+There is a report that they can run that list out the User IDs. So, in
+the Example below this tells you that only Lane and Amy have the
+VRS_ADMIN role. The 4^th^ and  5^th^ column list all the Menu Options
+along with the Authority level.
+
+ 
+
+![](media/image16.png){width="8.208333333333334in" height="1.28125in"}
+
+ 
+
+![](media/image17.png){width="10.8125in" height="0.9583333333333334in"}
+
+[1010 CANNOT be accessed or queried from VRS!!!]{.underline}  1010 is a
+completely independent data base with its own interface for writing
+queries and pulling data.  When VRS uses 1010 data, that data has to be
+pulled out of 1010 and run through a shell script to load the data into
+VRS (its why I do not like to use it unless there is no other way). 
+There is a product called Tendo that can be used for this purpose but we
+can no longer use it.  Control as to what goes into and comes out of
+1010  (programmatically)  lies within another IT group --- you have to
+go to them for anything that uses 1010 Programmatically. .   Users who
+have access to 1010 can do Ad Hoc queries all they want --- AP does this
+A LOT.
+
+ 
+
+**Note** -- I have heard rumors that they want to get rid of 1010. 
+
+ 
+
+![](media/image18.png){width="10.46875in" height="0.59375in"}
+
+ 
+
+A long time ago they resided in SharePoint (and some of the old ones
+still do) but quite a few years ago that was changed and now they are
+loaded into a VRS table (REBATE_ATTACHMENTS)  in a BLOB field. 
+Rendering was a lot easier when it was in SharePoint.
+
+ 
+
+![](media/image19.png){width="10.104166666666666in"
+height="0.8229166666666666in"}
+
+This Accounting information used to interface to other systems.  It is
+used during the Batching process.  In the screen shot below the **Acct
+Type **is referenced in the Rebate Type and since the Rebate Type is
+part of the Rebate Program, this is how it access the Acct Information.
+For each **Acct Type**  are contained 10 Transactions / Functions (the
+Column name in the table)  numbered 1 -- 10.  You can see that 4 are
+used for RSL 5 for GL and 1 for AP.
+
+ 
+
+![](media/image20.png){width="2.53125in" height="2.2916666666666665in"}
+
+ 
+
+![](media/image21.png){width="8.989583333333334in" height="4.78125in"}
+
+ 
+
+![](media/image22.png){width="10.364583333333334in"
+height="0.5833333333333334in"}
+
+ 
+
+Yes (in the first phase of the "new" VRS, no tables will go away, it is
+the UI that is being  changed, not the database or the PL/SQL)  ---
+these are the tables loaded by the Extract (the E of the E &C) and used
+by the Calculate (the C in the E&C).   There is at least one table (not
+including the Archived version) f[or each source]{.underline}. Most of
+the Sourced Sources (Ex: Receipts etc.  archive this data after a Rebate
+Closes.  Since these tables have the extract detail, they can get huge
+(in terms of row count) very fast.  The 4 No Source sources are not
+archived since the amount of date in them is very limited. 
+
+ 
+
+![](media/image23.png){width="10.78125in" height="0.6354166666666666in"}
+
+ 
+
+There are a couple of tables  (REABTE_TIER and REBATE_TERS)  that hold
+this information.
+
+ 
+
+ 
+
+![](media/image24.png){width="10.229166666666666in"
+height="0.5833333333333334in"}
+
+Will provide this in round 3
+
+ 
+
+![](media/image25.png){width="10.114583333333334in"
+height="0.6770833333333334in"}
+
+ 
+
+12 Periods in a Year.  Uses a 4 5 4 strategy.   4 weeks in Period 1, 5
+weeks in Period 2, 4 weeks in period 3 (Quarter end) etc.   Nothing
+special at Year end -- perhaps some subtle difference in code that loads
+the various buckets in the REBATE_VENDOR_DEPT but that is it.
+
+ 
+
+ 
+
+![](media/image26.png){width="6.927083333333333in"
+height="0.5520833333333334in"}
+
+99% of the Dates are set using with Oracle's SYSDATE so this would be
+the actual date where the server is that is running the code. There is
+no special conversions done.
+
+ 
+
+![](media/image27.png){width="4.5in" height="0.4895833333333333in"}
+
+**Note** -- I will tell you up front, most of these are questions I am
+not going to be able to answer very well, if at all. This is the sort of
+stuff that the users of the system really need to answer.
+
+ 
+
+ 
+
+![](media/image28.png){width="10.270833333333334in"
+height="0.9583333333333334in"}
+
+I think they look at Earnings and they can tell when they drop below
+what they are expecting.  One of the main things they run is called the
+Buyers Report although I think there are several versions of it.
+
+ 
+
+![](media/image29.png){width="10.4375in" height="0.7708333333333334in"}
+
+Depends on if you are talking about the MDSE side of the AP side.  I
+don't hear much from the MDSE side but I suspect their complaints are
+legion ---  they just get never back to me. They suffer from a genuine
+lack of understanding of how the system works.  One of the biggest
+problems is the lack of superusers.   They rely on FPA to support them
+but FPA abandoned the system years ago so whoever is stuck in FPA
+supporting  the system (usually the new kid on the block who knows
+nothing about the system) comes to me and just about the time I get
+somebody trained, they move on and it starts over again. When I am gone,
+support for the MDSE side will suffer a lot.  Most of the problems are
+really lack of understanding of the system but the user present them as
+if they are bugs.  So, if this gets turned over to IT Support, they are
+going be trying to track a lot a lot of things that are perceived as
+issue which are not.  This s because they don't have a clue how the
+system works either.
+
+ 
+
+As for AP, they have their own personal programmer and they understand
+very well how the system works plus they have invested in documenting
+the system for themselves.    But probably the top 3 issues are:
+Performance, Performance and last but not least, Performance.   Now, AP
+spends an enormous amount of time verifying and double checking to make
+sure all the Calculations are correct. Anything that would improve the
+time it takes do to that would be of great benefit.  AP is always
+looking for ways to save time.
+
+ 
+
+![](media/image30.png){width="10.697916666666666in"
+height="0.8645833333333334in"}
+
+ 
+
+I don't really quite know how to answer this. Obviously if it could find
+instances where potential Earnings were missed this would be of great
+benefit. 
+
+ 
+
+![](media/image31.png){width="9.729166666666666in"
+height="0.6041666666666666in"}
+
+I don't really know how to answer this but I can tell you that things
+like Switching from VOLUIME to TPR is not one of them.  On MDSE side it
+has some capability to indicate that a renegotiation is needed. 
+
+ 
+
+![](media/image32.png){width="9.979166666666666in"
+height="0.6979166666666666in"}
+
+I would like for VRS to be able to directly access 1010 -- that would
+open up world of possibilities.   I would like to see a compressive help
+system that could be updated dynamically by the users that would explain
+both  how the system functions and business scenarios and how to handle
+them.
+
+ 
+
+ 
+
+ 
+
+**Note** - Here is very slimmed down ERD showing the Critical Rebate
+Program Tables and how they relate. You can see now the Acct Information
+ties back to the Rebate
+
+ 
+
+![](media/image33.png){width="6.666666666666667in"
+height="8.885416666666666in"}

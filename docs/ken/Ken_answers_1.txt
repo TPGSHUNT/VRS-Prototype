@@ -1,0 +1,727 @@
+ 
+
+![](media/image1.png){width="11.041666666666666in"
+height="2.0729166666666665in"}
+
+ 
+
+FYI -- The Extract and Calculate are actually two separate processes
+that are almost run together.
+
+-   **Extract** -- pulls the Data used to do the Calculation.   Works at
+    the Rebate Level.
+
+-   **Calculation** -- uses the date pulled by the Extract to derive the
+    Earnings.
+
+>  
+
+FYI - There were originally only 3 "Ugly Sisters" but only one remains
+(Adv Coop).  The other two have gone the way of all flesh. They are
+still there, they are just not used.  
+
+ 
+
+![](media/image2.png){width="10.71875in" height="1.25in"}
+
+ 
+
+Done -- let me know if that worked or not.
+
+ 
+
+![](media/image3.png){width="10.6875in" height="0.7083333333333334in"}
+
+ 
+
+I will work on this after I finish answering all the questions.
+
+ 
+
+![](media/image4.png){width="10.6875in" height="0.6145833333333334in"}
+
+ 
+
+SBT -- Scan Based Trading
+
+ 
+
+![](media/image5.png){width="7.614583333333333in"
+height="1.4583333333333333in"}
+
+ 
+
+ 
+
+![](media/image6.png){width="10.458333333333334in" height="0.65625in"}
+
+This best way to think this is how often a Vendor is billed --- how
+often the system will Create A Deduction and or Invoice for purposes of
+billing  The original Frequencies were:
+
+ 
+
+-   Period
+
+-   Quarter
+
+ 
+
+Along the way **Weekly** and End of **Rebate** were added.  Weekly is a
+very specialize process that creates a deduction per week.  It is
+special because VRS works by Period -- Weekly just does not fit in to
+that concept.  It was shoe-horned in.   I have literally (with the past
+few weeks) added the ability for there to be user defined Frequences but
+they all act like End of Rebate.
+
+ 
+
+What they do a lot these days for Vendors that are set up as Deduct
+(which most are -- a vendor has to have a lot of pull to no be set up
+this way)  is the run On Demand Deductions.   This allows then create a
+Deduction without waiting for the End of Period processing.
+
+ 
+
+Here is what is currented defined in Production.
+
+ 
+
+![](media/image7.png){width="1.9166666666666667in"
+height="2.2083333333333335in"}
+
+ 
+
+ 
+
+![](media/image8.png){width="10.1875in" height="0.625in"}
+
+ 
+
+This best way to think of this is that it dictates how a vendor pays. 
+The original values were
+
+-   Check
+
+-   Deduciton
+
+ 
+
+But several have been added since.  Here is what is currently in
+Production.
+
+ 
+
+![](media/image9.png){width="2.125in" height="1.6145833333333333in"}
+
+ 
+
+![](media/image10.png){width="8.9375in" height="0.6458333333333334in"}
+
+Yes - Ely is End of Last Year
+
+ 
+
+![](media/image11.png){width="10.6875in" height="0.65625in"}
+
+Note -- Purchases has never been used.  X is used some.   Adding  a
+Source is a major undertaking so we do not do it very often.
+
+ 
+
+
+
+
+
+  -----------------------------------------------------------------------
+  B                  Receipt & Drop Ship
+  ------------------ ----------------------------------------------------
+  C                  Discount Amt/BOGO
+
+  D                  Drop Ships
+
+  E                  NS - Period
+
+  F                  Receipts - Import (First Cost)
+
+  N                  No Source
+
+  P                  Purchases
+
+  Q                  NS - Quantity
+
+  R                  Receipts - Domestic
+
+  S                  Sales
+
+  T                  NS - Rate
+
+  X                  Store Transfers
+  -----------------------------------------------------------------------
+
+ 
+
+ 
+
+![](media/image12.png){width="10.40625in" height="0.8229166666666666in"}
+
+Category is really just a Grouping mechanism.
+
+Category has far too many entries because of the mind-numbingly stupid
+decision to create one every time an  Ad Coop is set up on the MDSE side
+(I did not have control over how the MDSE side was designed).
+
+I'll have to dump these into a spreadsheet and send then to you.
+
+ 
+
+Note that what the Rebate Type does is group these 3 Values together.
+
+ 
+
+-   Merch Type
+
+-   Source
+
+-   Accounting Information
+
+ 
+
+So, when you set up a Rebate, you pick the Rebate Type and this
+determines the values of the 3 pieces of information used above.
+
+ 
+
+ 
+
+
+
+
+
+  -----------------------------------------------------------------------
+  ADVCOOP               Advertising Coop
+  --------------------- -------------------------------------------------
+  ADVCOSBT              Advertising Coop - SBT
+
+  ADVCPNSP              Advertising Coop
+
+  ANALYTIC              DG Media NW Non-Endemic
+
+  BOPIS                 Customer Delivery Allowance
+
+  CARDCOMP              Card Compliance Reimb
+
+  CAROLINA              Carolina Coupon
+
+  CAROLNSP              Carolina Coupon
+
+  CLPSTNS               Clip Strip
+
+  CLPSTNSP              Clip Strip
+
+  CLPSTNSR              Clip Strip
+
+  CLPSTVSC              Clip Strip - Var Store Count
+
+  COMECOM               Commissions - eCommerce
+
+  COMMECOM              Commissions - eCommerce - DNU
+
+  COMMEFTF              Commissions - EFT Fees
+
+  COMMISSN              Commissions
+
+  COMMTG                Company Meeting
+
+  COMTGNSP              Company Meeting
+
+  COMTGSBT              Company Meeting - SBT
+
+  COSTCHNG              Labor Funding
+
+  COSTCHNS              Cost Increase Admin Fee
+
+  COUPBOGO              Coupons
+
+  COUPBSBT              Coupons - SBT BOGO
+
+  COUPECOM              Coupons - eCommerce
+
+  COUPON                Coupon Redemptions
+
+  COUPONSQ              Coupon Redemptions
+
+  CPRPRNS               Competitive Price Protection
+
+  CPRPRNSB              Competitive Price Protect SBT
+
+  CPRPRNSQ              Competitive Price Protection
+
+  CPRPRRCT              Competitive Price Protection
+
+  CPRPRSLS              Competitive Price Protection
+
+  CSTINCAF              Cost Increase Admin Fee
+
+  CSTINCNS              Cost Increase Admin Fee
+
+  DAMAGEDS              Damages
+
+  DAMAGES               Damages
+
+  DCALLONS              DC Allowance
+
+  DCALLOPO              DC Allowance
+
+  DCALLSBT              DC Allowance - SBT
+
+  DGMEDIAN              DG Media Network
+
+  DGMNNSP               DG Media Network
+
+  DGRACING              Premier Partner/DG HERO
+
+  DGRACSBT              DG Racing - SBT
+
+  DMGDC                 Damages
+
+  DMGDCIMP              Damages
+
+  DMGDCNS               Damages
+
+  DMGDCNSP              Damages
+
+  DMGDCNSQ              Damages
+
+  DMGIMNSP              Unsaleables Allowance
+
+  DMGOI                 Off Invoice Damages
+
+  EAS                   Electrnc Article Surveillance
+
+  EASNS                 EAS
+
+  EASSALES              Electrnc Article Surveillance
+
+  ENDCAPNS              End Cap
+
+  ENDCPNSP              End Cap
+
+  ENDCPNSR              End Cap
+
+  ENDCVSC               End Cap - Var Store Count
+
+  EXCLNSR               Exclusivity
+
+  EXCLRCP               Exclusivity
+
+  EXCLSNP               Exclusivity
+
+  EXCLUSIV              Exclusivity
+
+  EXCSBTNS              Exclusivity - SBT
+
+  EXSBTNSP              Exclusivity - SBT
+
+  FIXTRNSP              Fixture/Sign/Display
+
+  FIXTRNSR              Fixture/Sign/Display
+
+  FIXTRRCP              Fixture/Sign/Display
+
+  FIXTRSBT              Fixture/Sign/Display-SBT
+
+  FIXTURES              Fixture/Sign/Display
+
+  FREIGHT               Collect Frt P/Up Allow
+
+  FRGHTRSV              Collect Frt P/Up Allow Reserve
+
+  FRNTENSP              Front End
+
+  FRNTENSR              Front End
+
+  FRNTESBT              Front End - SBT
+
+  FRNTSLS               Front End
+
+  FRONTEND              Front End
+
+  LABORSBT              Labor Funding/POG Reset-SBT
+
+  LABRFUND              Labor Funding/POG Reset
+
+  LABRFUNR              Labor Funding
+
+  MILKDCDS              Milk/Ice Cream
+
+  MILKICE               Milk/Ice Cream
+
+  MILKICES              Milk/Ice Cream
+
+  MILKICNS              Milk/Ice Cream
+
+  MKTSTNSQ              Market Store
+
+  MKTSTORE              Market Store
+
+  MKTSTRNS              Market Store
+
+  MRKDCIMP              Markdown Core
+
+  MRKDCNS               Markdown Core
+
+  MRKDCNSP              Markdown Core
+
+  MRKDCNSQ              Markdown Core
+
+  MRKDCSBT              Markdown Core SBT
+
+  MRKDWNS               Markdown Non Core
+
+  MRKDWNSQ              Markdown Non Core
+
+  NEWITNS               New Item/Slotting Allowance
+
+  NEWITNSP              New Item/Slotting Alowance
+
+  NEWITNSR              New Item/Slotting Allowance
+
+  NEWITR                New Item/Slotting Allowance
+
+  NEWITSBT              New Item/Slotting Allow-SBT
+
+  NSA                   New Store Allowance
+
+  NSADCDS               New Store Allowance
+
+  NSADS                 New Store Allowance
+
+  NSAIMP                NSA Import
+
+  NSAIMPCT              NSA Import Percentage Vendors
+
+  NSANS                 New Store Allowance
+
+  NSANSP                New Store Allowance
+
+  NSARCPT               NSA - Domestic Receipts
+
+  OPTCOMPM              Optimized Compliance Monitorng
+
+  OTHERDC               Other
+
+  OTHERINC              Misc Other Income
+
+  OTHERNS               Other
+
+  OTHERNSP              Other
+
+  OTHERNSQ              Other
+
+  OTHSBNSP              Other SBT
+
+  OTHSBTNS              Other SBT
+
+  OTPCMNSP              Optimized Compliance Monitorng
+
+  PERISHDS              Perishable
+
+  PERISHNS              Perishable
+
+  PERISHSL              Perishables
+
+  PLCALIMP              Placement
+
+  PLCALNS               Placement Allowance
+
+  PLCALNSP              Placement Allowance
+
+  PLCALNSR              Placement Allowance
+
+  PLCALRCT              Placement Allowance
+
+  PLCALVSC              Placement Allowance
+
+  PLCCOKE               Placement Coke
+
+  PLCCOKNS              Placement Coke
+
+  PLCCONSP              Placement Coke
+
+  PLCPEPNS              Placement Pepsi
+
+  PLCPEPSI              Placement Pepsi
+
+  PLCPPNSP              Placement Pepsi
+
+  PLCSBNSP              Placement - SBT
+
+  PLCSBTNS              Placement - SBT
+
+  PLC_RDBX              Placement Allowance-Redbox
+
+  PREPAID               Prepaid Funds
+
+  PRIVBNSR              Private Brands
+
+  PRIVBRND              Private Brands
+
+  PRODRCVY              Product Recovery
+
+  PSTAUDCY              Post Audit Current Year
+
+  PSTAUDPY              Post Audit Prior Years
+
+  RECALNS               Recall/Product Removal
+
+  RECALNSQ              Recall/Product Removal
+
+  REDBOX                Redbox Commission
+
+  S5S5NS                Spend 5 Save 5
+
+  SCNBK                 Scanbacks
+
+  SCNBKNS               Scanback
+
+  SCNBKSBT              Scanbacks - SBT
+
+  SCNBOGO               Scanbacks - BOGO
+
+  SCNNSSBT              Scanbacks - SBT NS
+
+  SCNSBBGO              Scanbacks - BOGO SBT
+
+  SDWSBNSP              Side Wing - SBT
+
+  SDWSBNSR              Side Wing - SBT
+
+  SIDEWNS               Side Wing
+
+  SIDEWNSP              Side Wing
+
+  SIDEWNSR              Side Wing
+
+  SIDEWVSC              Side Wing - Var Store Count
+
+  SPND5SV5              Customer Bounceback
+
+  SUPCHAIN              Supply Chain
+
+  SUPCHNDC              Supply Chain DC Rcpts
+
+  SUPCHNSP              Supply Chain
+
+  SUPCHNSR              Supply Chain Store Rcpts
+
+  SUPCHSBT              Supply Chain - SBT
+
+  SWEEPS                Sweepstakes
+
+  SWEEPSBT              Sweepstakes
+
+  TPR                   Temporary Price Reduction
+
+  TPRBOGO               Temporary Price Reduction BOGO
+
+  TPRNS                 Temporary Price Reduction
+
+  TPRSBBGO              Temporary Prc Reduct -SBT BOGO
+
+  TPRSBT                Temporary Price Reduction -SBT
+
+  TPRSBTNS              Temporary Price Reduction -SBT
+
+  VOLCKDC               Volume Coke
+
+  VOLCKDS               Volume Coke
+
+  VOLCKNS               Volume Coke
+
+  VOLCKX                Volume Coke
+
+  VOLCOKES              Volume Coke
+
+  VOLDC                 DC Volume
+
+  VOLDS                 DS Volume
+
+  VOLDSSBT              DS Volume - SBT
+
+  VOLGDSBT              Volume Growth Incentive SBT
+
+  VOLGIMP               Import Volume Growth
+
+  VOLGRDC               Volume Growth Incentive
+
+  VOLGRDS               Volume Growth Incentive
+
+  VOLGRNS               Volume Growth Incentive
+
+  VOLGRNSP              Volume Growth Incentive
+
+  VOLGRSLS              Volume Growth Incentive
+
+  VOLGRX                Volume Growth Incentive
+
+  VOLGSBTN              Volume Growth Incentive SBT
+
+  VOLGXSBT              Volume Growth Incentive SBT
+
+  VOLIMP                Import Volume
+
+  VOLNS                 Volume
+
+  VOLNSP                Volume
+
+  VOLPEDC               Volume Pepsi
+
+  VOLPEDS               Volume Pepsi
+
+  VOLPENS               Volume Pepsi
+
+  VOLPEPSI              Volume Pepsi
+
+  VOLPEX                Volume Pepsi
+
+  VOLPRCPT              Volume Purchase Incentive
+
+  VOLPRIMP              Volume Purchase Incentive
+
+  VOLPRNS               Volume Purchase Incentive
+
+  VOLPRNSQ              Volume Purchase Incentive
+
+  VOLS                  Volume
+
+  VOLSBTNS              Volume - SBT
+
+  VOLSSBT               Volume - SBT
+
+  VOLX                  DC & DS Volume
+
+  VOLXFR                Volume
+  -----------------------------------------------------------------------
+
+ 
+
+![](media/image13.png){width="11.020833333333334in" height="0.65625in"}
+
+On the AP side, the AP \# is canonical but on the MDSE side the IP \# is
+canonical.  They are 1 to 1 from a VRS perspective.  On the Vendor
+Master (which is driven by the AP# )  - there are a lot of Vendors that
+have no IP \# but VRS does not use them because they were set up for
+other purposes ahd fall into a Vendor Class not used by VRS.
+
+ 
+
+ 
+
+![](media/image14.png){width="8.166666666666666in"
+height="0.4479166666666667in"}
+
+This is to deal with the scenario where there is a difference between
+the Vendor that owns the Product versus who delivers it.  In some cases
+the Alt Vendor is needed to pull in the data for the Calculation.
+
+ 
+
+![](media/image15.png){width="10.208333333333334in"
+height="0.7604166666666666in"}
+
+This is to deal with the scenario where a different vendor is billed
+versus the one used to calculate the Earnings.
+
+ 
+
+ 
+
+![](media/image16.png){width="10.677083333333334in"
+height="0.9270833333333334in"}
+
+If the Merchandisers create an Agreement  (on the MDSE side of VRS) or
+one comes in from the Portal,  and then a Rebate Program is created from
+that Agreement, then the Rebate Vendor will have a reference to the
+Agreement.  But there are many, many Rebates that have no corresponding
+Agreement on the MDSE side.  Pretty much any Rebate created from a Sub
+System (NSA, DG Media, BOPIS, Customer Bounce Back etc.) do not have
+Agreements on the MDSE Side.  This is one of the reasons FPA (Forecast
+and Planning) abandoned using VRS even though they were the ones that
+designed the  MDSE side (this is why you do no let Business people do
+the design). The Agreements in the MDSE side do not even come close to
+representing a complete picture.
+
+ 
+
+![](media/image17.png){width="10.15625in" height="0.7708333333333334in"}
+
+I think this is fairly low.  One of the Issues AP has with the Oracle
+ERP is that it enforces uniqueness on the Vendor Name.  The only way
+this grouping is done today is by giving two vendors [exactly the same
+name]{.underline} --- In other words, there is no formal relationship
+set up to handle this.
+
+ 
+
+![](media/image18.png){width="10.479166666666666in" height="0.4375in"}
+
+** **
+
+**Rebate Flag -- Not Used **(I don't remember what its original purpose
+was)
+
+** **
+
+**Both Flag** (Y or NULL) -- used with the Source Receipts -- when set
+to Yes indicate to the Extract (the E in the E&C)  to use Both Import
+and Domestic Receipts
+
+ 
+
+**Core** is a reference to whether not an Item is carried year round.  
+DG also has seasonal Items -- these are not Core.  On the Rebate program
+for certain sources (Ex: Receipts) , you can indicate whether only Core,
+Non Core or Both are used by the Extract (the E in the E&C).  
+
+ 
+
+**Delete Flag** -- this just means that the Rebate is marked for
+Delete.  It is prohibitive from a performance perspective to delete a
+Rebate directly from the Form.  So the Delete Flag was introduced to
+mark the Rebate for Delete and then a Nighty process deletes them.  
+
+ 
+
+**SKU Only Flag** (Y or NULL)  - This a form level control. When set to
+Yes it does not allow you to use the Exclude SKU feature.
+
+ 
+
+![](media/image19.png){width="7.291666666666667in"
+height="1.0729166666666667in"}
+
+On a Rebate the POP_STORES flag has 3 values:
+
+ 
+
+-   C -- Chain
+
+-   P -- Pop Stores
+
+-   B -- Both
+
+ 
+
+ 
+
+![](media/image20.png){width="7.78125in" height="0.5104166666666666in"}
+
+ 
+
+This is Cap on Earnings. A lot of rebates are performance based so they
+might eventually calculate more then the Vendor is will to pay.   So the
+Rebate / Vendor is capped at van amount and that is the max earnings
+that the rebate will generate.
+
+ 

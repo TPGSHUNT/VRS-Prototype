@@ -1,0 +1,158 @@
+First, thanks so much for all the effort that was involved here. But, as
+you might expect, each round of answers - at least in part - generates
+follow-on questions. So, here\'s another list - and I\'m sorry about the
+difficulty in handling some of the images you\'ve sent.
+
+ 
+
+Second, I\'ve got some more general, high-level questions that I\'ll
+just post here:
+
+ 
+
+-   Is there a current-state DG systems architecture diagram or context
+    map you can share --- even an old
+
+     one? A one-page picture of what VRS connects to upstream and
+downstream would either confirm or correct
+
+     what we\'ve reverse-engineered from your overview docs.
+
+> **No.  VRS was developed piecemeal over many years and in the early
+> years and the thing that suffered the most from the cost cutting was
+> documentation.  The best diagram I have is below but it is exceeding
+> high level and this does not really cover the interfaces. **
+
+** **
+
+![](media/image1.png){width="6.604166666666667in"
+height="3.7395833333333335in"}
+
+               
+
+ 
+
+-   Does DG have a primary data warehouse or BI platform that reporting
+    and analytics already run against
+
+> today? Snowflake, Synapse, Databricks, an internal data lake ---
+> anything of that shape. Whatever it is,
+>
+> that\'s almost certainly where 1010\'s data lands post-retirement, and
+> it\'s the right target for our
+>
+> analytics layer to integrate with rather than designing against the
+> legacy 1010 boundary.
+>
+>  
+>
+> **I believe that is what 1010 is used for.**
+>
+>  
+
+-   AP, RSL, and GL --- what are these systems today, and how does VRS
+    actually hand off to each in
+
+> production? We\'ve inferred file drops via REBATE_BATCH_FILE_TMP plus
+> operator-instruction emails as the
+>
+> current interface. Is that still accurate, or has it been modernized
+> to APIs or direct loads since? And
+>
+> what\'s the underlying system for each --- Oracle ERP for AP, and what
+> for RSL and GL specifically?
+>
+>  
+>
+> **AP is Accounts Payable and the system name is Lawon.  It has been
+> highly customized over the years which is how their IT dept does
+> things (Buy a package and customize it).  VRS is an outlier in this
+> respect since it was developed from scratch --- it is the bastard
+> stepchild. Lawson AP is what is being replaced by the Oracle ERP.  VRS
+> sends Deductions (Amounts deducted from what DG owes them) to AP.
+>  Very loose interface.   VRS creates the data for a flat file (In the
+> beginning it created the file but no longer) and sends the Operators
+> an email.  A shell script reads the database and produces the physical
+> file and an Operator kicks off a job to upload.**
+>
+> ** **
+>
+> **GL is the General Ledger -- I think it may be part of Lawson but I
+> do not know.  VRS interfaces to it the same way.**
+>
+> ** **
+>
+> **RSL is the Retail Stock Ledger and it is also part of Lawson.   Its
+> interface is a little tighter in that VRS actually invokes an RSL
+> routine to upload the file.**
+>
+> ** **
+>
+> **There are two tables: REBATE_BATCH_FILLE and REBATE_BATCH_FILE_TMP. 
+> In REBATE_BATCH_FILE resides the output data for the 3  interface
+> files.  One row in the table represents one row in the output file and
+> row data exists in a single column (both .csv and fixed length record
+> types are used). When the ability for VRS to create files (using
+> UTL_FILE) was removed (the DBA's did not want field created directly
+> on the Database Server),  REBATE_BATCH_FILE_TMP was introduced and the
+> code that used to create the file now loads the data from
+> REBATE_BATCH_FILLE into REBATE_BATCH_FILLE_TMP and it is from there
+> that the Linux shell script pulls it to create the actual interface
+> file that is uploaded by the External System.**
+>
+>  
+>
+>  
+
+-   The canonical vendor master --- where does it actually live? VRS
+    uses two vendor identities depending
+
+> on which side it\'s looking from (AP \# on the AP side, IP \# / Island
+> Pacific on the MDSE side), with
+>
+> REBATE_VENDOR carrying both. Which one is the authoritative
+> source-of-truth that a rebuild should query
+>
+> against, and is anyone planning to consolidate them?
+>
+>  
+>
+> **The VENDOR_MST as it is called is part of Lawson and it is really
+> the Source of Truth. VRS accesses it via a Materialized view. This is
+> one of the things that is being finessed with the switch to Oracle.
+>  The Vendor Master will now be bifurcated and reside in Oracle (Active
+> Vendors) and in Lawson (historical Inactive Vendors, which VRS
+> needs).  VRS will not notice since it access it via a Materialized
+> view. The IP Vendor number is in the  VENDOR_MASTER  in a large
+> VARCHAR field but the actual IP Vendor \# is a NUMBER(5) which is how
+> it was defined in Island Pacific and how it is defined in VRS Tables
+> that use it.**
+>
+> ** **
+>
+> **DG uses what they call a "Common Area".   This is a set of Oracle
+> tables that contain Master data (Dept Master, Class Master etc.). 
+> Data used by multiple systems.**
+>
+>  
+
+-   Other DG modernization initiatives running in parallel with this
+    one. If AP, RSL, IBS, or anything
+
+> else VRS hands off to is itself being rebuilt or replaced, we\'d
+> rather aim at the new target than the
+>
+> legacy one. Anything you\'ve heard about --- even at the rumor level
+> --- would help us avoid building against
+>
+> systems that are also on their way out.
+>
+>  
+>
+> **The main project is the replacement of Lawson AP with the Oracle
+> ERP.  Everything is being done so that VRS itself does not have to
+> change. It will continue to do things the same way for the foreseeable
+> future.  The Vendor Master change was one of the biggest issues but
+> that has been solved. I believe that RSL will remain in Lawson.  The
+> RSL Data base will remain along with the data that is pulled by the
+>  Extract (the E in E&C) . **

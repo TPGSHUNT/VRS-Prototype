@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VRS &middot; Role &times; Functionality Matrix</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; color: #1f2937; max-width: 1240px; margin: 24px auto; padding: 0 24px; line-height: 1.5; font-size: 13.5px; }
+  h1 { font-size: 22pt; font-weight: 600; margin: 8px 0 4px 0; letter-spacing: -0.01em; }
+  h2 { font-size: 13pt; font-weight: 600; margin: 26px 0 6px 0; color: #0f2340; }
+  p { margin: 8px 0; }
+  .meta { color: #6b7280; font-size: 12px; margin-bottom: 22px; }
+  .lead { font-size: 14px; color: #374151; margin: 14px 0 22px 0; line-height: 1.6; }
+  table { border-collapse: collapse; width: 100%; margin: 4px 0 22px 0; font-size: 12px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #e5e7eb; vertical-align: middle; }
+  th { background: #f9fafb; font-weight: 600; border-bottom: 2px solid #d1d5db; font-size: 11px; letter-spacing: 0.02em; }
+  th.role { text-align: center; width: 78px; }
+  td.role { text-align: center; font-size: 14px; font-weight: 600; color: #1d5fa8; }
+  td.role.cond { color: #b45309; }
+  td.role.view { color: #6b7280; }
+  td.section { background: #f3f4f6; font-weight: 600; color: #0f2340; text-transform: uppercase; letter-spacing: 0.05em; font-size: 11px; padding: 8px 10px; }
+  tr:hover td { background: #fafbfc; }
+  tr:hover td.section { background: #f3f4f6; }
+  code { background: #f3f4f6; padding: 1px 5px; border-radius: 3px; font-family: Consolas, 'Courier New', monospace; font-size: 90%; }
+  .legend { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px 14px; margin: 14px 0; font-size: 12.5px; line-height: 1.7; }
+  .legend .sym { display: inline-block; width: 18px; text-align: center; font-size: 14px; font-weight: 600; margin: 0 2px; }
+  .legend .pri { color: #1d5fa8; }
+  .legend .cond { color: #b45309; }
+  .legend .view { color: #6b7280; }
+  .callout { background: #fff7ed; border-left: 3px solid #b45309; padding: 10px 14px; margin: 14px 0; border-radius: 0 4px 4px 0; font-size: 12.5px; }
+  .callout-blue { background: #eff6ff; border-left-color: #1d5fa8; }
+  .small { font-size: 11.5px; color: #6b7280; }
+  ul { padding-left: 22px; margin: 8px 0; }
+  li { margin: 3px 0; }
+  .role-key { font-size: 10px; color: #6b7280; font-weight: 400; display: block; margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<div style="border-bottom: 3px solid #0f2340; padding-bottom: 12px; margin-bottom: 8px;">
+  <div style="font-size: 10pt; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: #b8922a; margin-bottom: 4px;">Dollar General &middot; Vendor Rebate System</div>
+  <h1>Role &times; Functionality Matrix</h1>
+  <div class="meta">2026-05-11 &middot; TPG Partners &middot; <strong>FOR KEN VALIDATION</strong> &middot; What each role can do in the new VRS, mapped to the role-lens / slider-panel IA</div>
+</div>
+
+<p class="lead">
+  This matrix describes the new VRS landing-page IA in terms of <em>what each role does and sees</em>. The shell is uniform &mdash; a bubble-field canvas with slider panels left and right &mdash; but the contents differ by role: which tabs appear, what notices surface, what context-menu actions exist on a vendor bubble, and what authority the user has during the period rhythm. Ken &mdash; we'd appreciate you eyeballing this and flagging anything wrong, missing, or simplified to the point of distortion. The roles below come from your AP-Side Overview plus the role-lens framing in <code>VRS_Role_Lens_Vera</code>; the SVP column is a guess based on a single column appearing in extracts.
+</p>
+
+<div class="legend">
+  <strong>Legend:</strong>
+  <span class="sym pri">&#9679;</span> Primary &mdash; this is part of the role's regular job &nbsp;|&nbsp;
+  <span class="sym cond">&#9680;</span> Conditional &mdash; only under specific rules (threshold, merch type, etc.) &nbsp;|&nbsp;
+  <span class="sym view">&#9675;</span> View-only &mdash; can see, can't act &nbsp;|&nbsp;
+  <span class="sym" style="color:#d1d5db;">&middot;</span> Not available
+  <br>
+  <strong>Role codes:</strong>
+  <strong>APA</strong> = AP Analyst &nbsp;|&nbsp;
+  <strong>APM</strong> = AP Manager &nbsp;|&nbsp;
+  <strong>BYR</strong> = Buyer / Delegate &nbsp;|&nbsp;
+  <strong>DMM</strong> = Divisional Merch Mgr &nbsp;|&nbsp;
+  <strong>GMM</strong> = General Merch Mgr &nbsp;|&nbsp;
+  <strong>SVP</strong> = SVP <em>(uncertain &mdash; flag for Ken)</em> &nbsp;|&nbsp;
+  <strong>R/O</strong> = Read-Only (finance, audit, exec)
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th style="width: 32%;">Functionality</th>
+      <th class="role">APA</th>
+      <th class="role">APM</th>
+      <th class="role">BYR</th>
+      <th class="role">DMM</th>
+      <th class="role">GMM</th>
+      <th class="role">SVP</th>
+      <th class="role">R/O</th>
+      <th style="width: 20%;">Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+
+    <!-- ─── SHELL ─── -->
+    <tr><td class="section" colspan="9">Shell &mdash; what they see on first paint</td></tr>
+    <tr>
+      <td><strong>Left tab:</strong> Notices (alerts, pending work, completed jobs)</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&middot;</td>
+      <td class="small">Contents differ by role &mdash; see "Notices content" below</td>
+    </tr>
+    <tr>
+      <td><strong>Left tab:</strong> Admin (gated by role)</td>
+      <td class="role">&middot;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td class="small">AP Manager only in current model</td>
+    </tr>
+    <tr>
+      <td><strong>Right tab:</strong> Vendors (default = filterable list; morphs by context-menu action)</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td>
+      <td class="small">Universal &mdash; default list is portfolio-scoped where applicable</td>
+    </tr>
+    <tr>
+      <td><strong>Right tab:</strong> Vera (query panel)</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td>
+      <td class="small">Role-aware answers; same tab, different responses</td>
+    </tr>
+    <tr>
+      <td><strong>Bubble field</strong> default scope</td>
+      <td class="role view">portfolio</td><td class="role view">all</td><td class="role view">portfolio</td><td class="role view">portfolio</td><td class="role view">division</td><td class="role view">?</td><td class="role view">all</td>
+      <td class="small">Portfolio = vendors the user owns / approves; <em>division</em> for GMM</td>
+    </tr>
+
+    <!-- ─── BUBBLE CONTEXT MENU ─── -->
+    <tr><td class="section" colspan="9">Bubble context menu &mdash; right-click actions on a vendor bubble</td></tr>
+    <tr>
+      <td>View vendor record (default action)</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td>
+      <td class="small">Loads vendor-framed view in Vendors panel</td>
+    </tr>
+    <tr>
+      <td>Ask Vera about this vendor</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td>
+      <td class="small">Pre-seeds Vera with vendor context</td>
+    </tr>
+    <tr>
+      <td>View open agreements</td>
+      <td class="role">&#9675;</td><td class="role">&#9675;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9675;</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Create agreement</td>
+      <td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td class="small">MDSE-side origination</td>
+    </tr>
+    <tr>
+      <td>Edit agreement (Pre-Negotiation only)</td>
+      <td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Move Forward (advance agreement state)</td>
+      <td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Approve agreement &mdash; DMM stage</td>
+      <td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td class="small">Triggered by merch type / value threshold (rules TBD; doc 13 Q3)</td>
+    </tr>
+    <tr>
+      <td>Approve agreement &mdash; GMM stage</td>
+      <td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td class="small">Triggered after DMM, conditional</td>
+    </tr>
+    <tr>
+      <td>Approve agreement &mdash; AP stage (creates Rebate Program)</td>
+      <td class="role">&middot;</td><td class="role">&#9680;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td class="small">Some installations route through APA; APM owns by default</td>
+    </tr>
+    <tr>
+      <td>Reject agreement</td>
+      <td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td class="small">Sends back to Buyer with reason</td>
+    </tr>
+    <tr>
+      <td>Create rebate program (no agreement)</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td class="small">For AP-only rebates with no MDSE agreement</td>
+    </tr>
+    <tr>
+      <td>Run E&amp;C (Extract &amp; Calculate)</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>View calculation results</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9675;</td><td class="role">&#9675;</td><td class="role">&#9675;</td><td class="role">&#9675;</td><td class="role">&#9675;</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Review / adjust calculation (EADJ entries)</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td class="small">Adj tab in legacy</td>
+    </tr>
+    <tr>
+      <td>Approve calculation (move to Approved state)</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Batch (move to Batched state)</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Distribute (Batched &rarr; Distributed; creates invoices/deductions)</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Revert calculation state (one step back)</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td class="small">Through Batched; not after Distributed</td>
+    </tr>
+    <tr>
+      <td>Add deduction (systematic)</td>
+      <td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td class="small">Auto-generated by Distribute &mdash; no manual user creates these</td>
+    </tr>
+    <tr>
+      <td>Add deduction (on-demand)</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>View invoices &amp; checks</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9675;</td><td class="role">&#9675;</td><td class="role">&#9675;</td><td class="role">&#9675;</td><td class="role">&#9675;</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Generate invoice (Distribute side-effect)</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>View 1010 Intelligence (pace, tier, YoY)</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td>
+      <td class="small">Universal &mdash; the differentiator</td>
+    </tr>
+    <tr>
+      <td>Reassign vendor's programs to a different analyst</td>
+      <td class="role">&middot;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td></td>
+    </tr>
+
+    <!-- ─── NOTICES CONTENT ─── -->
+    <tr><td class="section" colspan="9">Notices (left panel) &mdash; what surfaces for this user</td></tr>
+    <tr>
+      <td>Calcs awaiting your review (own portfolio)</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td class="small">APM gets aggregate workload view</td>
+    </tr>
+    <tr>
+      <td>Anomalies in your portfolio (1010-derived)</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Approval-queue items awaiting your action</td>
+      <td class="role">&middot;</td><td class="role">&#9680;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td class="small">Buyer: rejections to address; DMM/GMM: their stage</td>
+    </tr>
+    <tr>
+      <td>Period-close blockers</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td class="small">APM: full picture; APA: own scope</td>
+    </tr>
+    <tr>
+      <td>Renewals approaching (90-day window)</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Background job results (E&amp;C, batch, distribute, invoice gen)</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td class="small">Tab pulses on completion</td>
+    </tr>
+    <tr>
+      <td>Uncaptured-opportunity callouts (Vera proactive)</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td class="small">Nightly digest items from Vera</td>
+    </tr>
+
+    <!-- ─── ADMIN ─── -->
+    <tr><td class="section" colspan="9">Admin (left panel, role-gated) &mdash; configuration &amp; governance</td></tr>
+    <tr>
+      <td>Reassign programs across analysts</td>
+      <td class="role">&middot;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Finalize period</td>
+      <td class="role">&middot;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td class="small">Closes the period; assigns Year/Period; moves to history</td>
+    </tr>
+    <tr>
+      <td>Maintain merch types / rebate types / categories</td>
+      <td class="role">&middot;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Edit Accounting Control Master (RSL/AP/GL routing)</td>
+      <td class="role">&middot;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Edit parameter table</td>
+      <td class="role">&middot;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>Manage users &amp; role assignments</td>
+      <td class="role">&middot;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>View audit log</td>
+      <td class="role">&middot;</td><td class="role">&#9679;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&middot;</td><td class="role">&#9675;</td>
+      <td class="small">R/O for finance audit; APM for ops</td>
+    </tr>
+
+    <!-- ─── REPORTS ─── -->
+    <tr><td class="section" colspan="9">Reports &amp; exports</td></tr>
+    <tr>
+      <td>Run legacy reports (VRS Export, History Extract, etc.)</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td>
+      <td class="small">During transition; report inventory in doc 12 D4</td>
+    </tr>
+    <tr>
+      <td>Export portfolio to CSV</td>
+      <td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td><td class="role">&#9679;</td>
+      <td></td>
+    </tr>
+
+  </tbody>
+</table>
+
+<!-- ─────────────────── -->
+<h2>Open questions for Ken</h2>
+<div class="callout">
+  These are the spots where we're guessing &mdash; please correct or confirm:
+  <ul style="margin: 8px 0 0 22px;">
+    <li><strong>SVP role.</strong> Column appears in some MDSE-extract dumps above DMM. Is there actually an SVP-level approval step, or is that column unused / legacy / a corner-case override path?</li>
+    <li><strong>AP-stage agreement approval.</strong> We have it on AP Manager by default with AP Analyst as conditional. Which is right? Does APA do this routinely, or only the manager?</li>
+    <li><strong>Buyer renewal-notice visibility.</strong> We have buyers seeing 90-day renewal alerts. Is that something buyers track today, or is it AP-driven?</li>
+    <li><strong>Read-Only scope.</strong> Should R/O see full vendor portfolio, or division-scoped? (Finance audit vs. exec dashboard suggests two sub-roles.)</li>
+    <li><strong>Reassignment authority.</strong> Only AP Manager today? Or is there a peer-reassignment between analysts during heavy weeks?</li>
+    <li><strong>"Add deduction (on-demand)".</strong> AP Analyst &amp; AP Manager. Anyone else, or never anyone else?</li>
+    <li><strong>Approval-queue items for AP Manager.</strong> Marked conditional &mdash; meaning APM sometimes acts on AP-stage approvals. Should that be primary instead?</li>
+    <li><strong>1010 Intelligence panel for all roles.</strong> We've granted universal access. Any concern about exposing 1010-derived analytics to read-only / vendor-adjacent roles?</li>
+  </ul>
+</div>
+
+<h2>Out of scope of this matrix</h2>
+<div class="callout callout-blue">
+  <ul style="margin: 4px 0 0 22px;">
+    <li><strong>Vendor Portal users.</strong> They live in the separate Java/Tomcat app, not in this shell. Their action set (view own programs, submit agreements, view 1010-derived pace-to-target) is described in doc 09 &sect;4 and unchanged by this matrix.</li>
+    <li><strong>Service accounts.</strong> <code>Calculate</code>, <code>Batch-Exec</code>, <code>S5S5_Calculate</code>, <code>QUEUE</code>, <code>Upload</code>, <code>Finalize</code> &mdash; these run scheduled work; they don't have a UI session.</li>
+    <li><strong>NSA &amp; S5S5 subsystem-specific operators.</strong> If there are dedicated users for these subsystems (vs. a generalist AP Analyst handling them), please flag &mdash; we'd add a column.</li>
+  </ul>
+</div>
+
+<hr style="margin: 32px 0 16px 0; border: none; border-top: 1px solid #e5e7eb;">
+<p class="small" style="text-align: center;">VRS Role &times; Functionality Matrix &middot; TPG Partners &middot; 2026-05-11 &middot; For Ken validation</p>
+
+</body>
+</html>
