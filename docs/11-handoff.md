@@ -1,264 +1,117 @@
-# VRS Prototype — Handoff for the Next Thread
+# VRS Prototype — Handoff
 
-**Author:** Claude (continuing) | **Date:** 2026-05-07 | **For:** the next Claude thread to pick this up
-
----
-
-## 0. How to use this document
-
-This is the single entry point for a fresh thread. Read it once top-to-bottom, then dive into the linked files only when you need depth on a specific area. Sections 1–3 give you orientation; section 4 is the map of existing artifacts; sections 5–8 are the substantive architecture/functionality knowledge.
-
-**Do this first when you pick up:**
-1. Read `MEMORY.md` (already auto-loaded into your context).
-2. Skim this handoff doc end-to-end.
-3. Read `docs/10-target-schema-design.html` — most current strategic artifact.
-4. Read `docs/09-current-architecture.html` — what we're building.
-5. Skim `docs/08-questions-for-ken.html` — the open questions list.
-6. Check `git log --oneline -20` for recent commits.
-
-After that you'll be roughly where the previous thread was at ~75% confidence.
+**Date:** 2026-05-15
+**Supersedes:** the prior contents of this file (2026-05-07) and extends `docs/15-handoff-12-may-2026.html` (2026-05-12) with this session's findings. Read `15-handoff-12-may-2026.html` for the Ken-round detail; read this for current state and where work stops.
 
 ---
 
-## 1. The project in one paragraph
+## 0. Read order for a fresh thread
 
-David (Stan Hunt Consulting LLC) is rebuilding Dollar General's **Vendor Rebate System (VRS)** — a 30-year-old Oracle Forms application that calculates and disburses vendor rebates. The legacy author, **Ken Banks**, retires January 2027, which is the forcing function. The new system is a Next.js + Postgres + Prisma web application. The **prototype phase** has two simultaneous goals: (1) evaluate whether the legacy data model is salvageable for the rebuild (it isn't, fully — see schema design doc), and (2) provide a compelling demo for an agentic AI named **Vera** (Vendor Earnings & Rebate Advisor). Production will run on Azure AI Foundry with GPT-4o; the prototype runs on Anthropic Claude.
-
-## 2. Where work stopped
-
-**Current branch:** `main`. Recent commits:
-- `a1e5c42` — Phase 2a: bubble field with quadrant layout + axis selectors
-- `73c4915` — Initial scaffold
-
-**Sprint status:** Sprint 2 (bubble field). Sprint 1 (scaffold + auth + schema seed) complete.
-
-**The last meaningful work product** was `docs/10-target-schema-design.html` — a comprehensive target schema design with REC items flagged for Ken's sign-off and BLOCKER items flagged for resolution before Prisma write-up.
-
-**Immediate next forcing function** (per the previous thread's last suggestion to the user): bundle questions doc (08) + schema design (10) and send to Ken. His responses to questions 1, 4, 22, 24 (BLOCKER items) plus sign-off on REC items unlocks the actual Prisma schema write-up — estimated "an afternoon" of work once design is approved.
-
-## 3. Calibrated confidence
-
-The previous thread tracked this honestly. As of the last interaction:
-
-- **Pre-Ken-doc dive:** ~60%
-- **After reading FDD V4.1, AP_Side_Overview, the ERD, and exploring data:** ~75%
-
-What's missing for the remaining 25%:
-- SBT/NSBT acronym + downstream dependence (BLOCKER)
-- UNSALE damages scope (BLOCKER — separate subsystem? own tables?)
-- 1010 schema reference (BLOCKER — need to know what's queryable)
-- CALCULATE_SKU_* scope (BLOCKER — bring forward or archive-only?)
-- Verification that storing earnings as positive doesn't break some unseen downstream consumer
-- A real read of Sprint 2's bubble-field code quality
+1. `MEMORY.md` (auto-loaded).
+2. This file, top to bottom.
+3. `docs/15-handoff-12-may-2026.html` — Ken rounds 1–5 detail, IT-audience reframe, role-matrix.
+4. `docs/12-coverage-gap-analysis.html` — what's documented to rebuild-grade (~68–73%).
+5. `docs/ken/Ken_answers_1/2/3.txt` + `Ken_followon_questions.txt` — Ken's actual words.
+6. `git log --oneline -8`.
 
 ---
 
-## 4. Map of existing artifacts
+## 1. Project state in one paragraph
 
-### 4.1 Memory system
-Path: `C:\Users\david\.claude\projects\C--Users-david-development-vrs-prototype\memory\`
-
-- `MEMORY.md` — the index (auto-loaded)
-- `project_vera.md` — Vera concept, capabilities, two-phase architecture, dual project goals
-- `legacy_dg_rebate_model.md` — schema details, state machine, source codes, IP=Island Pacific, Tier Types, schema name (REBATE_OWNER), PM_/AO_ rollups, AADJ vestigial
-- `project_stan_data_delivery.md` — Ken Banks context, retirement deadline, data location
-- `reference_doc_library.md` — pointer to `P:\TPG\Dollar General\VRS` (the trove)
-- `reference_ap_side_overview.md` — canonical field reference (Ken's primary doc)
-- `project_legacy_subsystems.md` — UNSALE, MDSE_DASHBOARD, P-family, VENDOR_EMAILS, etc.
-
-### 4.2 In-repo documentation (`docs/`)
-- `02-schema-reference.md` — early notes
-- `03-schema-clarifications.md` — early Q&A
-- `04-schema-addendum.md` — early follow-ups
-- `05-info-needed-from-ken.md` — early version of questions list
-- `06-design-language.md` — UI/visual design tokens
-- `07-bubble-metrics.md` / `.html` — bubble field metric definitions
-- `08-questions-for-ken.html` — **current questions list (37 questions, 8 sections)** with "What I learned from your docs" preface
-- `09-current-architecture.html` — **current-state architecture doc**, 8 sections: Vision, Stack, Data Architecture, IA, Domain Model (state machines as ASCII), Vera Architecture, Build Status, Open Decisions
-- `10-target-schema-design.html` — **most current strategic artifact**, 8 sections: Approach, Subsystem Scope, Core Entities (field-by-field), State Machines, Code Lists, Sign Convention & SBT collapse, Vera-specific Additions, Open Decisions
-
-Doc 06–10 are the live ones. 02–05 are superseded but retained for history.
-
-### 4.3 Ken's source documents (extracted to text)
-Path: `docs/ken/`
-- `VRS_AP_Side_Overview.txt` — 173KB. Ken's primary reference. CALCULATE_RESULT field defs around p.129 of the original docx.
-- `VRS_FDD_V4.1.txt` — 400KB / 9818 lines. 2010 Functional Design Document. Source of agreement state machine, payment_type defaults, security groups, Source Code Addendum A.
-- `VRS_Analysis_and_Architecture.txt` — additional context
-
-### 4.4 Source materials (read-only, on the share)
-- `P:\TPG\Dollar General\VRS\` — Ken's full document library (13+ files; canonical)
-- `P:\TPG\Dollar General\VRS Web\Data\` — 6 CSVs of live data + 15 ERD bitmap exports
-
-### 4.5 Local data extracts
-Path: `data/` (git-ignored)
-- `data/erd/erd_1.png` … `erd_15.png` — Toad ERD exports converted from BMP. erd_8 = P-family detail. erd_14 = UNSALE detail. erd_6 = MDSE_DASHBOARD (dormant). erd_1/2/3 are macro tiles, too compressed to read.
-- CSV samples (gitignored)
+Rebuilding Dollar General's 30-year Oracle Forms VRS. Ken Banks (author) retires Jan 2027. Two prototype goals: evaluate the legacy data model and build a demo workbench for **Vera** (Vendor Earnings & Rebate Advisor). As of this session the project is **mid-reconciliation**: Ken has answered ~5 rounds of questions and delivered real data, which resolves almost every prior schema BLOCKER but also reframes the demo strategy. Sprint 2 (bubble field) is the latest committed code; the Prisma schema has not been rewritten against Ken's answers yet.
 
 ---
 
-## 5. Architecture insights — the new system
+## 2. CRITICAL — git/context state (read this first)
 
-### 5.1 Stack
-- **Frontend:** Next.js (App Router), TypeScript, Tailwind, shadcn/ui, D3 for the bubble field
-- **Backend:** Next.js API routes, Prisma ORM
-- **Database:** PostgreSQL 16
-- **Auth:** NextAuth (currently role-sim login; production will be SSO)
-- **AI (prototype):** Anthropic Claude API
-- **AI (production):** Azure AI Foundry, GPT-4o
-- **Hosting (target):** TBD — likely Azure given the AI alignment
+This session ran on the **travel laptop**, which started with **stale local git** (was at `b54307a` Phase 2b; handoff-11-era). The remote had two newer commits the laptop never had:
 
-### 5.2 Two-phase Vera architecture
-The prototype is intentionally a workbench for Vera. Phase 1 (prototype, current): Claude does the agentic reasoning, with tool-use against our Postgres replica of legacy data. Phase 2 (production): same orchestration pattern, but routed through Azure AI Foundry with GPT-4o, with read access to live DG transactional systems including the **1010 transaction database** (DG's billions-of-rows receipt/sales/drop-ship store).
+- `930aa17` Phase 2c — Ken follow-on answers, coverage gap + role matrix docs
+- `3a33aa9` Phase 2d — role-matrix reconciliation + 12 May handoff
 
-### 5.3 Data architecture — three layers
+These were pulled (rebase) and are now local. A new commit was added and pushed:
 
-**Source-of-truth (legacy):** Oracle, schema `REBATE_OWNER` on the RSL DB. ~50+ tables across the families catalogued in `project_legacy_subsystems.md`. Read-only from our perspective. CALCULATE_RESULT is ~190 columns wide.
+- `a59139e` — `docs/db-baseline-state.md` (DB baseline manifest for cross-machine verification)
 
-**Prototype Postgres:** A semantic redesign rather than a schema migration. Key target schema decisions (all marked REC, awaiting Ken sign-off):
-- Store earnings as **positive scalars** (sign-flip on ETL ingest, sign-flip back on export) — see section 6.6 below
-- **Collapse SBT/NSBT triplication** to single columns + a flag (waiting on Ken to confirm SBT semantics)
-- **Drop AADJ** (vestigial — only one ever created; EADJ is the active adjustment mechanism)
-- **Drop class_num** (denormalization that doesn't pay rent)
-- **Drop FPA + MDSE_DASHBOARD** (Ken's docs flag them as unmaintained; Vera + 1010 supersede)
-- **Derive PM_/AO_ rollups in views**, not store as columns
-
-Net result: CALCULATE_RESULT shrinks from ~190 columns to ~30. That's the headline schema win.
-
-**Future production:** A live Postgres mirror or stream off the same source data, with integration paths back to RSL/AP/GL via the existing batch infrastructure.
-
-### 5.4 Information architecture (workbench UI)
-The bubble field is the **landing surface** of the workbench. It plots vendor-or-program records on a configurable two-axis grid (axis selectors per quadrant), with bubble size encoding earnings magnitude. From there a buyer drills into agreement detail, tier configuration, and the calculation state machine. The bubble field is the visual hook for the demo and the natural surface where Vera will overlay recommendations.
-
-Per `docs/06-design-language.md`: monospace font system, no emojis (David has explicit preference), grid-aligned spacing.
-
-### 5.5 Build status snapshot (per `docs/09-current-architecture.html`)
-- Sprint 1 (DONE): scaffold, role-sim login, AppShell, schema + seed aligned with Ken's CSVs
-- Sprint 2 (CURRENT): bubble field with quadrant layout + axis selectors
-- Sprint 3 (PENDING): drill-down screens, agreement detail
-- Sprint 4 (PENDING): Vera integration, demo polish
-
-8-week, 4-sprint plan.
+`origin/main` HEAD is now `a59139e`. **Lesson: on session start, always `git fetch` and check `HEAD..origin/main` before reasoning about state.** Much of this session's early analysis was wasted re-deriving things Ken had already answered, because the answers were on the remote, not local.
 
 ---
 
-## 6. Functional/domain insights
+## 3. What this session (2026-05-15) established
 
-### 6.1 Three-level hierarchy
-```
-REBATE_PROGRAM
-  └── REBATE_VENDOR
-        └── REBATE_VENDOR_DEPT
-              └── CALCULATE_RESULT  (the per-period earnings record)
-```
+### 3.1 Database state
+- The local DB is the **untouched synthetic seed** (50 vendors, 150 programs, 2,370 calc rows, FY2025 P01–P05 only, migration `20260502010319_init`). **No writes were made this session.**
+- Full fingerprint + cross-machine interpretation guide written to `docs/db-baseline-state.md` (committed). Use it on the home laptop to detect drift / whether real-data ingest has happened.
+- DB runs in local Docker (`vrs-postgres`, port 5435; `vrs-redis` 6379). Docker Desktop must be started manually before `npm run db:up` — pre-demo checklist item.
 
-A program ties to one or more vendors; each vendor-on-program ties to one or more departments; per-period calculation results live at the leaf.
+### 3.2 DB hosting decision (settled for now)
+Stay on the **local Docker container**. Considered managed (Neon/Azure). Decision drivers: real DG financial data is confidential (governance), this is the last travel-laptop session before the demo, and the cross-laptop continuity problem is solved well enough by the baseline manifest. Redis stays a per-machine local container (no shared state). **When real DG data is ingested, that instance needs a governance-approved home (Azure, not third-party) — revisit then.**
 
-### 6.2 The four earnings components
-Every CALCULATE_RESULT decomposes earnings into four components:
-- **PMU** (Purchase Mark Up) — per-unit kickback on purchase
-- **Margin** — share-of-margin programs
-- **Adv Coop** — advertising co-op
-- **Other Coop** — non-advertising co-op
+### 3.3 Real data inventory — none ingested
+`P:\TPG\Dollar General\VRS Web\Data` holds six real CSVs: `REBATE_PROGRAM` (~40K rows), `REBATE_VENDOR` (~122K), `REBATE_VENDOR_DEPT` (~143K, 140 cols), `CALCULATE_RESULT_2024/2025/2026` (~851K rows total, 192 cols, **three fiscal years**). **The DB is 100% synthetic; none of this is loaded.** This multi-year real data is the substrate Vera's marquee capability (uncaptured-opportunity detection) needs and the synthetic single-year seed cannot provide.
 
-PMU + Margin → rolled up as **PM_** on the Review Screen. Adv Coop + Other Coop → rolled up as **AO_**. All four flow negative in the legacy data (see 6.6).
+### 3.4 Ken's answers — prior BLOCKERs resolved
+The earlier "data still needed" framing and the draft data-request email are **obsolete — do not send.** Resolved by Ken:
+- SBT = **Scan Based Trading** (one narrow follow-up open: do RSL/AP/GL exports need literal SBT_/NSBT_ columns).
+- **1010 cannot be queried from VRS at all** — separate DB, another IT group owns it, flow is mostly VRS→1010. Kills the "Vera reads 1010" architecture; her substrate is VRS-resident calc data only.
+- CALCULATE_SKU_* etc. stay — Phase 1 of "new VRS" keeps all tables, changes only the UI.
+- Full source / merch-type / rebate-type code lists delivered (`Ken_answers_1.txt`); X = Store Transfers (corrects our docs), P never used.
+- AP# canonical AP-side (VARCHAR(9)), IP# canonical MDSE-side (NUMBER(5)), 1:1.
+- Scale: ~2,500 active vendors, 7,665 active programs, ~40K calc rows/period; per-period counts 2022–2026 given.
+- Roles ground truth: `docs/ken/DG_Roles_flat.csv` (15 groups × 90 forms × M/R/N). No login screen (SSO).
 
-### 6.3 Calculation state machine
-```
-Calculated → Reviewed → Approved → Batched → Distributed
-```
-Revertable up through Batched. After Distributed (records have flowed to RSL/AP/GL), it's frozen. **Year/Period = 0** is the sentinel for "current open period"; real period values are stamped at Finalize.
+### 3.5 Two confirmed bugs (provable against real data — not yet fixed)
+1. `web/src/lib/bubble-data.ts` sums `finalEarnings` assuming positive; **real earnings are negative** (vendor owes DG). Normalize on ingest or render the sign.
+2. Schema/seed uses **13 periods / 4-4-5**; DG is **12 periods / 4-5-4**. Affects `FiscalPeriod`, period logic, aging/health rules.
 
-### 6.4 Agreement state machine (from FDD V4.1)
-Routing rules:
-- $75K threshold OR TPR merch type → routes to DMM
-- Domestic + check payment → routes to DMM regardless of amount
-- Otherwise → routes to AP
+### 3.6 Strategic reframes from Ken (carry forward — affect demo priority)
+- **Demo audience is IT, not business.** Load-bearing claim: *"we can convert your Oracle Forms/Reports inventory in reasonable time and money."* Khari expects a **fully working AI-converted form, not a mock.** Form-conversion is not currently one of the three build areas — that gap matters.
+- **VRS is being preserved, not modernized.** DG's real project (Lawson AP → Oracle ERP) is engineered so VRS doesn't change. The rebuild is **TPG-driven, not DG-driven.** Verify with Khari before locking architecture tone.
 
-Security groups: DMM, BUYER, FP&A, FP&A_SUPERVISOR.
+### 3.7 The round-3 attachment mix-up (actionable)
+`docs/15-handoff` said `VRS_DATA_ROUND_3.xlsx` was attached to Ken's **May 11 16:24** email. That is **wrong**:
+- The May 11 16:24 email ("VRS prototype Functionality by Roles matrix") attachment is the **security-groups roles matrix**. The file now sitting on the share as `VRS_DATA_ROUND_3.xlsx` is that roles export — and it is a **content duplicate of `docs/ken/DG_Roles_flat.csv`** (both 1,351 rows, identical). It adds nothing.
+- The **real round-3 deliverable** (Ken: *"Round 3 — Tab 1/2/3 in the Attached file"* — data-request items, representative user IDs, tier structures) is attached to Ken's **May 8 18:10 "RE: Outstanding Questions"** email. **That attachment is still NOT on disk.** (Outlook MCP can locate/read the email but cannot extract the binary; needs a manual save.)
+- Also uncaptured: Ken's **May 11 14:07 "RE: Outstanding Questions"** has Visio architecture diagrams attached.
 
-### 6.5 Source codes (11 + 1)
-R, S, D, B, F, C, P, N, E, Q, T — defined in FDD Addendum A. Plus **X** (Store Allocations, added 2018+).
-
-### 6.6 The negative-earnings convention
-**Why earnings are negative in the legacy data** (asked and answered in the previous thread):
-1. **AP-system perspective.** AP tracks "what DG owes vendors" with positive numbers. A rebate is the opposite direction — money flowing FROM vendor TO DG — so naturally negative.
-2. **Cost-accounting / RSL perspective.** Rebates are contra-cost-of-goods. Storing them negative makes `purchase_cost + rebate_earnings` produce the right net cost.
-3. **PMU is literally a markdown.** Marking purchase cost down = subtracting = negative.
-
-Confirmed in data: every CALCULATE_RESULT earnings figure sampled was negative. Confirmed in Ken's image003.png: "Note that the natural state of Earning is *negative*."
-
-**Recommendation in target schema:** flip to positive in Postgres for analytics/Vera ergonomics; flip back at RSL/AP/GL export time. Pending Ken's confirmation that no downstream consumer breaks on this.
-
-### 6.7 Tier types (4)
-- **E** — Excess
-- **P** — Pre-defined Ranges
-- **L** — Predefined Levels
-- **G** — Growth
-
-### 6.8 SBT / NSBT split
-Every earnings column appears triplicated as `x`, `SBT_x`, `NSBT_x` where `SBT_x + NSBT_x = x`. **The SBT acronym is still unknown** — top BLOCKER question for Ken. Hypothesis: "Subject to" some accounting treatment vs. not. The collapse-recommendation in doc 10 depends on this answer.
-
-### 6.9 IP, ELY, and other glossary items resolved
-- **IP** = Island Pacific (DG's merch-side vendor master)
-- **ELY** = a payment_type code identified during FDD grep
-- **AADJ** = Accrual Adjustments (vestigial; one ever created)
-- **EADJ** = Earnings Adjustments (active mechanism)
-- **E&C** = Extract and Calculate (the calculation engine, *not* "Earnings and Calculations" as I once guessed)
-
-### 6.10 The 1010 transaction database
-DG's billions-of-rows receipt/sales/drop-ship/PO store. The legacy E&C engine extracts from 1010 to produce CALCULATE_SKU_* detail tables, which then aggregate into CALCULATE_RESULT. In the new system Vera will need read access to 1010 for some classes of question. Schema reference is a BLOCKER question.
+Verified via Outlook MCP (mailbox djurk@tpg-partners.com; "Ken-VRS" folder name does not resolve — search by sender `kbanks@tpg-partners.com`).
 
 ---
 
-## 7. Open items, by category
+## 4. Refreshed read on the three build areas
 
-### 7.1 BLOCKER — must resolve before Prisma write-up
-1. **SBT acronym + downstream dependence** (Q1 in doc 08)
-2. **UNSALE damages scope** (Q4) — bring forward fully, or treat as separate subsystem?
-3. **1010 schema reference** (Q22) — what tables, what columns, what access?
-4. **CALCULATE_SKU_* scope** (Q24) — recreate the SKU-level calc tables in Postgres, or leave archive-only on Oracle?
-
-### 7.2 REC items — need Ken's sign-off
-- Sign-flip earnings to positive on ETL
-- Collapse SBT/NSBT triplication
-- Drop AADJ
-- Drop class_num denormalization
-- Drop FPA and MDSE_DASHBOARD families
-- Derive PM_/AO_ rollups in views
-
-### 7.3 Pending build work
-- Sprint 2 bubble field — verify it's actually feature-complete; previous thread did not visually QA
-- Sprint 3 drill-downs (not started)
-- Sprint 4 Vera integration (not started)
-- Prisma schema write-up (blocked on Ken)
+| Area | Understanding | Note |
+|---|---|---|
+| Bubble interface | ~85% | Plus a corrections punch list from Ken (drop `estimatedValue` default axis — only meaningful in S5S5; add Merch Type × Earnings preset; aggregate by Vendor **Name** not #) and the two §3.5 bugs. |
+| Functional panels (L/R) | ~40% → **~70%** | Now grounded in `DG_Roles_flat.csv` + `docs/14-role-functionality-matrix.html` (the ground-truth 15-group × 90-form permission set), not guessed. Residual: FPA-encoded-vs-operating fork (with Ken). |
+| Ask Vera (two-tier) | pattern ~80%, execution ~35% | Substrate question simplified (VRS calc data only — no 1010). Reprioritized behind form-conversion given §3.6. Tool contract + hallucination control still unspecified — highest risk in a financial demo. |
 
 ---
 
-## 8. Important user/collaboration context
+## 5. Genuinely-still-open items
 
-### 8.1 About David
-- Senior consultant at Stan Hunt Consulting LLC
-- Works alongside Ken Banks (the legacy VRS author at DG)
-- Comfortable being challenged; wants calibrated confidence, not cheerleading
-- Prefers terse, no-summary responses; reads diffs himself
-- No emojis in any artifact
-- Wants memory updated as understanding grows
-
-### 8.2 Working preferences observed
-- Prefers HTML for "deliverable" docs (08, 09, 10), Markdown for working notes
-- Reads documentation top-to-bottom; long docs are fine if they're well-structured
-- Will explicitly say "Go" when he wants execution to proceed
-
-### 8.3 Things to avoid
-- Don't generate planning/decision documents he didn't ask for
-- Don't summarize what was just done at the end of every response
-- Don't use emojis
-- Don't conflate "extracted" — be precise about file format conversions
+- **The real round-3 xlsx** (May 8 18:10 email attachment) — not on disk. The biggest concrete gap.
+- Typed-text of deduct_freq/payment_type lists (Q9/Q10); SBT export dependency (Q12); GL account codes (Q4); active-vendor SQL + report runtimes (Q5).
+- 6 role questions sent to Ken 12 May (FPA-encoded-vs-operating is load-bearing for MDSE roles).
+- **Not Ken:** Oracle PL/SQL dives (NSA/S5S5/Damages/engine, Gold/Treasury views); external DG teams (1010 owner, ERP integration, portal ownership).
+- Strategy: should the demo's center of gravity shift toward form-conversion? — David/Khari decision.
 
 ---
 
-## 9. Suggested first move for the new thread
+## 6. Where we're leaving off — next actions (ordered)
 
-Open `docs/10-target-schema-design.html` and read it carefully. Then check whether Ken has responded to the questions doc (08) — if so, reconcile his answers against the BLOCKER list in section 7.1 above. If yes to all four, proceed to Prisma schema write-up. If no, the highest-leverage thing you can do is package the questions doc + schema design as an email-ready bundle for David to send Ken (this was the previous thread's last open suggestion).
+1. **Manually save the May 8 18:10 "RE: Outstanding Questions" attachment** into `docs/ken/` (and optionally the May 11 14:07 Visio diagrams). The `VRS_DATA_ROUND_3.xlsx` currently on the share is the roles duplicate — **not** this; do not rely on it.
+2. Fix the two confirmed bugs (§3.5) — cheap, provable against real data. Awaiting David's go (working norm: ask before touching code).
+3. Decide demo center of gravity (form-conversion vs Vera/bubble) given §3.6 — strategy conversation, not an engineering call.
+4. Then: Prisma schema rewrite against Ken's answers (12/4-5-4 calendar, negative earnings, SBT collapse, real code lists). Previously estimated "an afternoon" once design is settled.
+5. `docs/db-baseline-state.md` and this handoff must be **committed to travel** between laptops (git is the only transport; the Claude memory dir is machine-local). Not yet committed this turn — ask David before committing.
 
-If David is mid-conversation about something else entirely, follow his lead — this handoff is a backstop, not a railroad.
+---
+
+## 7. Working norms (carry forward)
+
+- Ask before acting on anything touching code or commits. Observations are signals to discuss, not directives to fix.
+- Calibrated confidence, no cheerleading. No emojis. Terse; David reads diffs himself.
+- Trust Ken on legacy VRS behavior; not on rewrite architecture or DB portability.
+- Don't generate unsolicited planning/decision docs.
+- On session start: `git fetch` and check `HEAD..origin/main` before reasoning about state (see §2).
