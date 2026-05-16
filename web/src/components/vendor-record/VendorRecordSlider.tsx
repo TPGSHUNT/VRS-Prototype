@@ -146,21 +146,9 @@ export function VendorRecordSlider({
                 <TabsContent value="intelligence">
                   <IntelligenceTab data={record.intelligence} />
                 </TabsContent>
-                {TAB_ORDER.filter(
-                  (t) =>
-                    ![
-                      'overview',
-                      'calculations',
-                      'agreements',
-                      'programs',
-                      'invoices',
-                      'intelligence',
-                    ].includes(t.id),
-                ).map((t) => (
-                  <TabsContent key={t.id} value={t.id}>
-                    <Placeholder label={t.label} />
-                  </TabsContent>
-                ))}
+                <TabsContent value="activity">
+                  <ActivityTab rows={record.activity} />
+                </TabsContent>
               </div>
             </Tabs>
           </>
@@ -596,15 +584,36 @@ function Empty({ msg }: { msg: string }) {
   );
 }
 
-function Placeholder({ label }: { label: string }) {
+function ActivityTab({ rows }: { rows: VendorRecord['activity'] }) {
+  if (rows.length === 0)
+    return <Empty msg="No recorded activity for this vendor." />;
   return (
-    <div className="flex h-64 flex-col items-center justify-center gap-1 text-center">
-      <div className="text-sm font-medium text-gray-700">{label}</div>
-      <div className="text-xs text-gray-400">
-        Built in a later Phase&nbsp;1 increment — tab structure is live, body
-        pending.
-      </div>
-    </div>
+    <ol className="relative ml-2 border-l border-gray-200">
+      {rows.map((e, i) => {
+        const reject = e.action === 'Rejected';
+        return (
+          <li key={i} className="mb-5 ml-4">
+            <span
+              className={`absolute -left-[5px] mt-1.5 h-2.5 w-2.5 rounded-full ${
+                reject ? 'bg-red-500' : 'bg-blue-500'
+              }`}
+            />
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-sm font-medium text-gray-900">
+                {e.action}
+              </span>
+              <time className="whitespace-nowrap text-xs text-gray-400">
+                {e.ts.slice(0, 10)}
+              </time>
+            </div>
+            <div className="text-xs text-gray-500">
+              {e.actor} · Agmt&nbsp;#{e.agmt}
+              {e.detail ? ` · ${e.detail}` : ''}
+            </div>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 

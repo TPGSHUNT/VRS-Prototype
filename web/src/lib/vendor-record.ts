@@ -93,6 +93,14 @@ export interface VendorRecord {
       anomalyReason: string | null;
     }>;
   };
+  // Chronological lifecycle feed, derived from real agreement audit timestamps.
+  activity: Array<{
+    ts: string;
+    actor: string;
+    action: string;
+    agmt: number;
+    detail: string | null;
+  }>;
   // Tab counts so headers are real even before each tab's body is built.
   counts: {
     programs: number;
@@ -130,6 +138,16 @@ export async function getVendorRecord(
           estimatedValue: true,
           startDate: true,
           endDate: true,
+          createdAt: true,
+          dmmApprovedAt: true,
+          dmmApprovedBy: true,
+          gmmApprovedAt: true,
+          gmmApprovedBy: true,
+          apApprovedAt: true,
+          apApprovedBy: true,
+          rejectedAt: true,
+          rejectedBy: true,
+          rejectionReason: true,
         },
       },
       analyticsSummaries: {
@@ -297,6 +315,39 @@ export async function getVendorRecord(
       .slice(0, 100),
   };
 
+  const userName = new Map(
+    (
+      await prisma.user.findMany({ select: { id: true, name: true } })
+    ).map((u) => [u.id, u.name]),
+  );
+  const activity = v.agreements
+    .flatMap((a) => {
+      const ev: VendorRecord['activity'] = [];
+      const push = (
+        ts: Date | null,
+        by: string | null,
+        action: string,
+        detail: string | null = null,
+      ) => {
+        if (!ts) return;
+        ev.push({
+          ts: ts.toISOString(),
+          actor: (by && userName.get(by)) || 'system',
+          action,
+          agmt: a.agmtId,
+          detail,
+        });
+      };
+      push(a.createdAt, null, 'Agreement created', a.description);
+      push(a.dmmApprovedAt, a.dmmApprovedBy, 'DMM approved');
+      push(a.gmmApprovedAt, a.gmmApprovedBy, 'GMM approved');
+      push(a.apApprovedAt, a.apApprovedBy, 'AP approved');
+      push(a.rejectedAt, a.rejectedBy, 'Rejected', a.rejectionReason);
+      return ev;
+    })
+    .sort((x, y) => (x.ts < y.ts ? 1 : x.ts > y.ts ? -1 : 0))
+    .slice(0, 100);
+
   const components = calcs.reduce(
     (a, c) => ({
       pmu: a.pmu + num(c.pmuEarnings),
@@ -337,6 +388,7 @@ export async function getVendorRecord(
     programs,
     invoices,
     intelligence,
+    activity,
     counts: {
       programs: programs.length,
       calculations: calcs.length,
