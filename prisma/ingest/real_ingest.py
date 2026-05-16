@@ -21,6 +21,61 @@ import csv, io, os, subprocess, sys, uuid, datetime
 
 DATA = r"P:\TPG\Dollar General\VRS Web\Data"
 EXTRACT = r"P:\TPG\Dollar General\VRS Web\RebateProgramExtact.csv"
+UNAPPROVED = r"P:\TPG\Dollar General\VRS Web\UnapprovedExtract.csv"
+MERCH = {"ADVCOOP","BOPIS","CLPSTP","COMMISSN","COMMTG","COTRKT","CPRPR",
+ "CSTINCAF","DGMEDIAN","DGRACING","DMGDC","ENDCAP","EXCLUSIV","FIXTURES",
+ "FREIGHT","FRONTEND","LABRFUND","MILKICE","MKTSTORE","MRKDWNC","MRKDWNNC",
+ "NEWITEM","NSA","OTHER","PLCALLOW","POSTAUDT","PREPAID","PRIVBRND","RECALL",
+ "S5S5","SCAN","SCNBK","SIDEWING","SUPCHAIN","TPR","VOLCOKE","VOLGRWTH",
+ "VOLPEPSI","VOLUME"}
+
+
+def agmt_status(s: str) -> str:
+    s = (s or "").lower()
+    if "reject" in s: return "REJECTED"
+    if "pending ap" in s: return "PENDING_AP_APPROVAL"
+    if "pending dmm" in s: return "PENDING_DMM_APPROVAL"
+    if "pending gmm" in s: return "PENDING_GMM_APPROVAL"
+    if "assign" in s: return "ASSIGNED"
+    if "expire" in s: return "EXPIRED"
+    if "cancel" in s: return "CANCELLED"
+    return "PRE_NEGOTIATION"
+
+
+import re
+usedEmails: set[str] = set()
+usedCodes: set[str] = set()
+
+
+def slug(s: str) -> str:
+    return re.sub(r"[^a-z0-9]+", ".", (s or "").strip().lower()).strip(".")
+
+
+def mkEmail(local: str) -> str:
+    e = f"{local or 'x'}@dollargeneral.com"
+    n = 1
+    while e in usedEmails:
+        e = f"{local}{n}@dollargeneral.com"
+        n += 1
+    usedEmails.add(e)
+    return e
+
+
+def mkCode(seed: str) -> str:
+    base = re.sub(r"[^A-Za-z]", "", seed or "").upper()
+    c = base[:3] or "XX"
+    n = 1
+    while c in usedCodes:
+        c = (base[:2] or "X") + str(n)
+        n += 1
+    usedCodes.add(c)
+    return c
+
+
+def q(sql: str):
+    out = subprocess.run(PSQL + ["-t", "-A", "-F", "\t", "-c", sql],
+                         capture_output=True, text=True, check=True).stdout
+    return [ln.split("\t") for ln in out.splitlines() if ln.strip()]
 PSQL = ["docker", "exec", "-e", "PGCLIENTENCODING=UTF8", "-i", "vrs-postgres",
         "psql", "-U", "vrs", "-d", "vrs", "-q"]
 csv.field_size_limit(10_000_000)
@@ -253,6 +308,108 @@ def main():
                 "createdAt", "updatedAt"], gen())
         print(f"  orphans skipped: {orph}")
         st["rvd"] = rvdmap; save_state(st)
+
+    if stage in ("agreements", "all"):
+        # Real agreements from UnapprovedExtract (~250 rows, the only real
+        # agreement source). Creates real Buyer/DMM/SVP Users so MDSE seat-
+        # scoping + contract value have a real basis. SVP → GMM slot (prototype
+        # enum has no SVP; SVP is the real above-DMM escalation).
+        print("STAGE agreements — UnapprovedExtract")
+        for em, cd in q('SELECT email, COALESCE("analystCode",\'\') FROM "User"'):
+            usedEmails.add(em)
+            if cd:
+                usedCodes.add(cd)
+        vid = {nm.strip().upper(): i for i, nm in
+               q('SELECT id, name FROM "Vendor"')}
+        unspec = q("SELECT id FROM \"ProgramType\" WHERE code='UNSPEC'")
+        pt_unspec = unspec[0][0] if unspec else q('SELECT id FROM "ProgramType" LIMIT 1')[0][0]
+
+        people: dict[str, tuple[str, str]] = {}  # name -> (id, role)
+
+        def person(name: str, role: str):
+            name = (name or "").strip()
+            if not name or name.lower() == "kbanks":
+                return None
+            if name not in people:
+                i = str(uuid.uuid4())
+                people[name] = (i, role)
+            return people[name][0]
+
+        agr = []
+        skip = 0
+        for row in rd(UNAPPROVED):
+            vn = (row.get("Vendor Name") or "").strip().upper()
+            v = vid.get(vn)
+            if not v:
+                skip += 1
+                continue
+            b = person(row.get("Buyer"), "BUYER")
+            d = person(row.get("DMM"), "DMM")
+            s = person(row.get("SVP"), "GMM")
+            if not b:
+                skip += 1
+                continue
+            aid = (row.get("Agmt ID") or "").strip()
+            mt = (row.get("Merch Type") or "").strip().upper()
+            agr.append([
+                str(uuid.uuid4()),
+                int(aid) if aid.isdigit() else abs(hash(aid)) % 10**9,
+                v, mt if mt in MERCH else "OTHER", "",
+                f"{row.get('Category') or mt} — {row.get('Vendor Name')}"[:200],
+                b, pt_unspec, num(row.get("Forecast")),
+                dt(row.get("Begin Date")) or EPOCH,
+                dt(row.get("End Date")) or EPOCH,
+                agmt_status(row.get("Status")),
+                d or "", s or "", NOW, NOW,
+            ])
+        # create the real MDSE Users
+        urows = []
+        for nm, (i, role) in people.items():
+            urows.append([i, mkEmail(slug(nm)), nm, mkCode(nm), role,
+                          True, NOW, NOW])
+        copy_in("User", ["id", "email", "name", "analystCode", "role",
+                          "active", "createdAt", "updatedAt"], urows)
+        copy_in("Agreement", ["id", "agmtId", "vendorId", "merchType",
+                "source", "description", "buyerId", "programTypeId",
+                "estimatedValue", "startDate", "endDate", "status",
+                "dmmApprovedBy", "gmmApprovedBy", "createdAt", "updatedAt"], agr)
+        print(f"  agreements: {len(agr)}  users: {len(urows)}  skipped(no vendor match): {skip}")
+
+    if stage in ("periods", "all"):
+        # Real period calendar (K12). Derived from CalculateResult: every dated
+        # (year,period) in the real extract is 100% finalized → closed; the
+        # year=0/period=0 VRS "current period" sentinel is the only open one.
+        # 4-5-4 dates synthesized per FY (real per-period dates not in extract;
+        # not surfaced by health, which keys off isClosed + year/period).
+        print("STAGE periods — real FiscalPeriod from CalculateResult")
+        out = subprocess.run(
+            PSQL + ["-t", "-A", "-F", ",", "-c",
+                    'SELECT DISTINCT "fiscalYear","fiscalPeriod" '
+                    'FROM "CalculateResult" ORDER BY 1,2'],
+            capture_output=True, text=True, check=True).stdout
+        pw = [4, 5, 4, 4, 5, 4, 4, 5, 4, 4, 5, 4]
+
+        def fp_rows():
+            import datetime as _dt
+            for line in out.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                y, p = (int(x) for x in line.split(","))
+                if y == 0:  # current-period sentinel → the one open period
+                    yield [str(uuid.uuid4()), p, y, "2026-03-01",
+                           "2026-03-28", False, "", ""]
+                    continue
+                cur = _dt.date(y, 2, 1)
+                for i in range(1, p):
+                    cur += _dt.timedelta(weeks=pw[(i - 1) % 12])
+                end = cur + _dt.timedelta(weeks=pw[(p - 1) % 12]) - _dt.timedelta(days=1)
+                yield [str(uuid.uuid4()), p, y, cur.isoformat(),
+                       end.isoformat(), True, end.isoformat(), "Finalize"]
+        psql_c('TRUNCATE "FiscalPeriod" RESTART IDENTITY CASCADE;')
+        copy_in("FiscalPeriod", ["id", "fiscalPeriod", "fiscalYear",
+                "periodStart", "periodEnd", "isClosed", "closedAt",
+                "closedBy"], fp_rows())
 
     if stage in ("calc", "all"):
         print("STAGE calc — CalculateResult (streamed, 3 FYs)")

@@ -260,7 +260,9 @@ model Agreement {
   vendorId           String
   vendor             Vendor          @relation(fields: [vendorId], references: [id])
   merchType          MerchType
-  source             Source
+  // UnapprovedExtract (real agreements) has no Source column → nullable on
+  // real ingest (Phase 3.1 #2); synthetic seed still sets it.
+  source             Source?
   description        String
   buyerId            String
   buyer              User            @relation("AgreementBuyer", fields: [buyerId], references: [id])

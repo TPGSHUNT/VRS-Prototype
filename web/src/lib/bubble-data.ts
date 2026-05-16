@@ -95,24 +95,54 @@ export async function getBubbleData(viewer: {
     open_in_closed: boolean;
     unfinalized_closed: boolean;
     actionable_open: boolean;
+    contract_value: number;
+    active_agreements: number;
+    queue_pending: boolean;
     in_analyst_scope: boolean;
+    in_buyer_scope: boolean;
+    in_dmm_scope: boolean;
+    in_gmm_scope: boolean;
   };
 
+  // CTEs: aggregate calc/programs per vendor and agreements per vendor
+  // separately (joining Agreement into the 851K-calc join would explode it),
+  // then LEFT JOIN per vendor. Agreement is now real (UnapprovedExtract).
+  const INFLIGHT = "('SUBMITTED_BY_VENDOR','PRE_NEGOTIATION','PENDING_DMM_APPROVAL','PENDING_GMM_APPROVAL','PENDING_AP_APPROVAL','ASSIGNED')";
   const rows = await prisma.$queryRaw<Row[]>(Prisma.sql`
-    SELECT v.id, v."vendorNumber", v.name,
-      COALESCE(SUM(c."finalEarnings"), 0)::float8 AS annual_earnings,
-      COUNT(DISTINCT rp.id) FILTER (WHERE rp.active)::int AS active_programs,
-      COALESCE(bool_or(c.status = 'OPEN' AND c."fiscalYear" = ${cY} AND c."fiscalPeriod" = ${cP}), false) AS open_in_closed,
-      COALESCE(bool_or(c.status <> 'FINALIZED' AND c."fiscalYear" = ${cY} AND c."fiscalPeriod" = ${cP}), false) AS unfinalized_closed,
-      COALESCE(bool_or(c.status IN ('PENDING_REVIEW','REVIEWED') AND c."fiscalYear" = ${oY} AND c."fiscalPeriod" = ${oP}), false) AS actionable_open,
-      COALESCE(bool_or(rp."analystId" = ${userId}), false) AS in_analyst_scope
-    FROM "Vendor" v
-    JOIN "RebateVendor" rv ON rv."vendorId" = v.id
-    JOIN "RebateProgram" rp ON rp.id = rv."rebateProgramId"
-    JOIN "RebateVendorDept" d ON d."rebateVendorId" = rv.id
-    LEFT JOIN "CalculateResult" c ON c."rebateVendorDeptId" = d.id
-    WHERE v.active
-    GROUP BY v.id, v."vendorNumber", v.name
+    WITH calc AS (
+      SELECT v.id, v."vendorNumber", v.name,
+        COALESCE(SUM(c."finalEarnings"), 0)::float8 AS annual_earnings,
+        COUNT(DISTINCT rp.id) FILTER (WHERE rp.active)::int AS active_programs,
+        COALESCE(bool_or(c.status = 'OPEN' AND c."fiscalYear" = ${cY} AND c."fiscalPeriod" = ${cP}), false) AS open_in_closed,
+        COALESCE(bool_or(c.status <> 'FINALIZED' AND c."fiscalYear" = ${cY} AND c."fiscalPeriod" = ${cP}), false) AS unfinalized_closed,
+        COALESCE(bool_or(c.status IN ('PENDING_REVIEW','REVIEWED') AND c."fiscalYear" = ${oY} AND c."fiscalPeriod" = ${oP}), false) AS actionable_open,
+        COALESCE(bool_or(rp."analystId" = ${userId}), false) AS in_analyst_scope
+      FROM "Vendor" v
+      JOIN "RebateVendor" rv ON rv."vendorId" = v.id
+      JOIN "RebateProgram" rp ON rp.id = rv."rebateProgramId"
+      JOIN "RebateVendorDept" d ON d."rebateVendorId" = rv.id
+      LEFT JOIN "CalculateResult" c ON c."rebateVendorDeptId" = d.id
+      WHERE v.active
+      GROUP BY v.id, v."vendorNumber", v.name
+    ),
+    agg AS (
+      SELECT a."vendorId" vid,
+        COALESCE(SUM(a."estimatedValue") FILTER (WHERE a.status::text IN ${Prisma.raw(INFLIGHT)}),0)::float8 cv,
+        COUNT(*) FILTER (WHERE a.status::text IN ${Prisma.raw(INFLIGHT)})::int aa,
+        bool_or(a.status = 'PENDING_AP_APPROVAL') qp,
+        bool_or(a."buyerId" = ${userId} OR a."delegateId" = ${userId}) buyer,
+        bool_or(a."dmmApprovedBy" = ${userId} OR a.status = 'PENDING_DMM_APPROVAL') dmm,
+        bool_or(a."gmmApprovedBy" = ${userId} OR a.status = 'PENDING_GMM_APPROVAL') gmm
+      FROM "Agreement" a GROUP BY a."vendorId"
+    )
+    SELECT calc.*,
+      COALESCE(agg.cv,0)::float8 AS contract_value,
+      COALESCE(agg.aa,0)::int AS active_agreements,
+      COALESCE(agg.qp,false) AS queue_pending,
+      COALESCE(agg.buyer,false) AS in_buyer_scope,
+      COALESCE(agg.dmm,false) AS in_dmm_scope,
+      COALESCE(agg.gmm,false) AS in_gmm_scope
+    FROM calc LEFT JOIN agg ON agg.vid = calc.id
   `);
 
   const mapped: BubbleVendor[] = rows.map((r) => {
@@ -124,25 +154,30 @@ export async function getBubbleData(viewer: {
       vendorNumber: r.vendorNumber,
       name: r.name,
       health,
-      queuePending: false, // Agreement table empty post real-ingest (no extract)
+      queuePending: r.queue_pending,
       metrics: {
-        contractValue: 0, // Agreement: no real extract
-        grossVolume: 0, // AnalyticsSummary: 1010-derived, no extract
+        contractValue: Number(r.contract_value),
+        grossVolume: 0, // AnalyticsSummary: 1010-derived, no extract (K11)
         annualEarnings: Number(r.annual_earnings),
-        activeAgreements: 0, // Agreement: no real extract
+        activeAgreements: Number(r.active_agreements),
         activePrograms: Number(r.active_programs),
       },
     };
   });
 
-  // ─── Seat scoping (P1.7) ─────────────────────────────────────────────
-  // AP_ANALYST scopes by real RebateProgram.analystId. BUYER/DMM/GMM scope
-  // via Agreement, which has no real extract yet → empty until that lands
-  // (honest, not fabricated; see docs/19 K9-extension). Estate → all.
+  // ─── Seat scoping (P1.7) — now real for every operator tier ──────────
+  // AP_ANALYST ← RebateProgram.analystId; BUYER/DELEGATE/DMM/GMM ← real
+  // Agreement (UnapprovedExtract). grossVolume still 0 (no 1010 extract, K11).
+  const scopeFlag: Record<string, (r: Row) => boolean> = {
+    AP_ANALYST: (r) => r.in_analyst_scope,
+    BUYER: (r) => r.in_buyer_scope,
+    BUYER_DELEGATE: (r) => r.in_buyer_scope,
+    DMM: (r) => r.in_dmm_scope,
+    GMM: (r) => r.in_gmm_scope,
+  };
+  const pred = scopeFlag[role];
   const scopedIds = new Set(
-    role === 'AP_ANALYST'
-      ? rows.filter((r) => r.in_analyst_scope).map((r) => r.id)
-      : [],
+    pred ? rows.filter(pred).map((r) => r.id) : [],
   );
   const totalCount = mapped.length;
   const scopedCount = isEstate ? totalCount : scopedIds.size;
