@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node -e \"const{spawnSync}=require('child_process');spawnSync('next',['dev'],{stdio:'inherit',shell:true,env:{...process.env,AUTH_SECRET:require('crypto').randomBytes(32).toString('hex')}})\"",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

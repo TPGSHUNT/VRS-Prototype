@@ -10,7 +10,10 @@ import { prisma } from '@vrs/db';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
-  session: { strategy: 'jwt' },
+  // Demo: 30-min idle cap, AND `AUTH_SECRET` is regenerated on every
+  // `npm run dev` (see web/package.json) so every server restart invalidates
+  // all sessions → you always land on the role selector. Prod uses Entra ID.
+  session: { strategy: 'jwt', maxAge: 60 * 30 },
   providers: [
     Credentials({
       name: 'role-sim',

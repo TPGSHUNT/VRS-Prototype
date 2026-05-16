@@ -3,7 +3,7 @@
 // Returns five metrics per vendor so the work surface can let the user pick
 // X / Y / size axes interactively.
 
-import { prisma } from '@vrs/db';
+import { prisma, Prisma } from '@vrs/db';
 import type { UserRole } from '@vrs/db';
 
 export type BubbleHealth = 'GREEN' | 'AMBER' | 'RED';
@@ -58,15 +58,6 @@ export interface BubbleVendor {
   metrics: Record<MetricKey, number>;
 }
 
-const NON_TERMINAL_AGREEMENT_STATUSES = [
-  'SUBMITTED_BY_VENDOR',
-  'PRE_NEGOTIATION',
-  'PENDING_DMM_APPROVAL',
-  'PENDING_GMM_APPROVAL',
-  'PENDING_AP_APPROVAL',
-  'ASSIGNED',
-] as const;
-
 export interface BubbleDataResult {
   bubbles: BubbleVendor[];
   scope: ScopeInfo;
@@ -77,6 +68,9 @@ export async function getBubbleData(viewer: {
   role: UserRole;
   showAll?: boolean;
 }): Promise<BubbleDataResult> {
+  // REAL SCALE (Phase 3.1): ~2,573 vendors / ~851K calc rows. The old
+  // findMany-include-all-then-reduce-in-JS approach OOMs here. Aggregate
+  // server-side: one grouped query → one row per vendor.
   const lastClosed = await prisma.fiscalPeriod.findFirst({
     where: { isClosed: true },
     orderBy: [{ fiscalYear: 'desc' }, { fiscalPeriod: 'desc' }],
@@ -85,166 +79,74 @@ export async function getBubbleData(viewer: {
     where: { isClosed: false },
     orderBy: [{ fiscalYear: 'asc' }, { fiscalPeriod: 'asc' }],
   });
+  const cY = lastClosed?.fiscalYear ?? -1;
+  const cP = lastClosed?.fiscalPeriod ?? -1;
+  const oY = currentOpen?.fiscalYear ?? -1;
+  const oP = currentOpen?.fiscalPeriod ?? -1;
+  const { userId, role, showAll } = viewer;
+  const isEstate = ESTATE_ROLES.includes(role);
 
-  const vendors = await prisma.vendor.findMany({
-    where: { active: true },
-    include: {
-      agreements: {
-        select: {
-          id: true,
-          status: true,
-          estimatedValue: true,
-          buyerId: true,
-          delegateId: true,
-          dmmApprovedBy: true,
-          gmmApprovedBy: true,
-        },
-      },
-      rebateVendors: {
-        include: {
-          rebateProgram: { select: { active: true, analystId: true } },
-          invoices: { where: { status: { not: 'PAID' } } },
-          rebateVendorDepts: {
-            include: { calculateResults: true },
-          },
-        },
-      },
-      analyticsSummaries: {
-        select: { anomalyFlag: true, tierAlert: true, transactionVolume: true },
-      },
-    },
-  });
+  type Row = {
+    id: string;
+    vendorNumber: number;
+    name: string;
+    annual_earnings: number;
+    active_programs: number;
+    open_in_closed: boolean;
+    unfinalized_closed: boolean;
+    actionable_open: boolean;
+    in_analyst_scope: boolean;
+  };
 
-  const now = Date.now();
-  const dayMs = 86_400_000;
+  const rows = await prisma.$queryRaw<Row[]>(Prisma.sql`
+    SELECT v.id, v."vendorNumber", v.name,
+      COALESCE(SUM(c."finalEarnings"), 0)::float8 AS annual_earnings,
+      COUNT(DISTINCT rp.id) FILTER (WHERE rp.active)::int AS active_programs,
+      COALESCE(bool_or(c.status = 'OPEN' AND c."fiscalYear" = ${cY} AND c."fiscalPeriod" = ${cP}), false) AS open_in_closed,
+      COALESCE(bool_or(c.status <> 'FINALIZED' AND c."fiscalYear" = ${cY} AND c."fiscalPeriod" = ${cP}), false) AS unfinalized_closed,
+      COALESCE(bool_or(c.status IN ('PENDING_REVIEW','REVIEWED') AND c."fiscalYear" = ${oY} AND c."fiscalPeriod" = ${oP}), false) AS actionable_open,
+      COALESCE(bool_or(rp."analystId" = ${userId}), false) AS in_analyst_scope
+    FROM "Vendor" v
+    JOIN "RebateVendor" rv ON rv."vendorId" = v.id
+    JOIN "RebateProgram" rp ON rp.id = rv."rebateProgramId"
+    JOIN "RebateVendorDept" d ON d."rebateVendorId" = rv.id
+    LEFT JOIN "CalculateResult" c ON c."rebateVendorDeptId" = d.id
+    WHERE v.active
+    GROUP BY v.id, v."vendorNumber", v.name
+  `);
 
-  const mapped: BubbleVendor[] = vendors.map((v) => {
-    const allCalcs = v.rebateVendors.flatMap((rv) =>
-      rv.rebateVendorDepts.flatMap((rvd) => rvd.calculateResults),
-    );
-    const allInvoices = v.rebateVendors.flatMap((rv) => rv.invoices);
-
-    const closedCalcs = lastClosed
-      ? allCalcs.filter(
-          (c) =>
-            c.fiscalPeriod === lastClosed.fiscalPeriod &&
-            c.fiscalYear === lastClosed.fiscalYear,
-        )
-      : [];
-    const openCalcs = currentOpen
-      ? allCalcs.filter(
-          (c) =>
-            c.fiscalPeriod === currentOpen.fiscalPeriod &&
-            c.fiscalYear === currentOpen.fiscalYear,
-        )
-      : [];
-
-    // ─── Health rules ────────────────────────────────────────────
-    const hasOpenInClosed = closedCalcs.some((c) => c.status === 'OPEN');
-    const hasAnomaly = v.analyticsSummaries.some((s) => s.anomalyFlag);
-    const hasOverdue60 = allInvoices.some(
-      (inv) => (now - inv.dueDate.getTime()) / dayMs > 60,
-    );
-    const queuePending = v.agreements.some((a) => a.status === 'PENDING_AP_APPROVAL');
-
+  const mapped: BubbleVendor[] = rows.map((r) => {
     let health: BubbleHealth = 'GREEN';
-    if (hasOpenInClosed || hasAnomaly || hasOverdue60) {
-      health = 'RED';
-    } else {
-      const hasUnfinalizedClosed = closedCalcs.some((c) => c.status !== 'FINALIZED');
-      const hasActionableOpen = openCalcs.some(
-        (c) => c.status === 'PENDING_REVIEW' || c.status === 'REVIEWED',
-      );
-      const hasTierAlert = v.analyticsSummaries.some((s) => s.tierAlert);
-      const hasOverdue30 = allInvoices.some(
-        (inv) => (now - inv.dueDate.getTime()) / dayMs > 30,
-      );
-      if (
-        hasUnfinalizedClosed ||
-        hasActionableOpen ||
-        hasTierAlert ||
-        queuePending ||
-        hasOverdue30
-      ) {
-        health = 'AMBER';
-      }
-    }
-
-    // ─── Metrics ─────────────────────────────────────────────────
-    const annualEarnings = allCalcs.reduce(
-      (sum, c) => sum + Number(c.finalEarnings),
-      0,
-    );
-    const contractValue = v.agreements
-      .filter((a) =>
-        (NON_TERMINAL_AGREEMENT_STATUSES as readonly string[]).includes(a.status),
-      )
-      .reduce((sum, a) => sum + Number(a.estimatedValue), 0);
-    const grossVolume = v.analyticsSummaries.reduce(
-      (sum, s) => sum + Number(s.transactionVolume),
-      0,
-    );
-    const activeAgreements = v.agreements.filter((a) =>
-      (NON_TERMINAL_AGREEMENT_STATUSES as readonly string[]).includes(a.status),
-    ).length;
-    const activePrograms = v.rebateVendors.filter(
-      (rv) => rv.rebateProgram.active,
-    ).length;
-
+    if (r.open_in_closed) health = 'RED';
+    else if (r.unfinalized_closed || r.actionable_open) health = 'AMBER';
     return {
-      id: v.id,
-      vendorNumber: v.vendorNumber,
-      name: v.name,
+      id: r.id,
+      vendorNumber: r.vendorNumber,
+      name: r.name,
       health,
-      queuePending,
+      queuePending: false, // Agreement table empty post real-ingest (no extract)
       metrics: {
-        contractValue,
-        grossVolume,
-        annualEarnings,
-        activeAgreements,
-        activePrograms,
+        contractValue: 0, // Agreement: no real extract
+        grossVolume: 0, // AnalyticsSummary: 1010-derived, no extract
+        annualEarnings: Number(r.annual_earnings),
+        activeAgreements: 0, // Agreement: no real extract
+        activePrograms: Number(r.active_programs),
       },
     };
   });
 
   // ─── Seat scoping (P1.7) ─────────────────────────────────────────────
-  const { userId, role, showAll } = viewer;
-  const isEstate = ESTATE_ROLES.includes(role);
-
-  const inScope = (
-    v: (typeof vendors)[number],
-  ): boolean => {
-    switch (role) {
-      case 'AP_ANALYST':
-        return v.rebateVendors.some(
-          (rv) => rv.rebateProgram.analystId === userId,
-        );
-      case 'BUYER':
-        return v.agreements.some((a) => a.buyerId === userId);
-      case 'BUYER_DELEGATE':
-        return v.agreements.some(
-          (a) => a.delegateId === userId || a.buyerId === userId,
-        );
-      case 'DMM':
-        return v.agreements.some(
-          (a) => a.dmmApprovedBy === userId || a.status === 'PENDING_DMM_APPROVAL',
-        );
-      case 'GMM':
-        return v.agreements.some(
-          (a) => a.gmmApprovedBy === userId || a.status === 'PENDING_GMM_APPROVAL',
-        );
-      default:
-        return true;
-    }
-  };
-
+  // AP_ANALYST scopes by real RebateProgram.analystId. BUYER/DMM/GMM scope
+  // via Agreement, which has no real extract yet → empty until that lands
+  // (honest, not fabricated; see docs/19 K9-extension). Estate → all.
   const scopedIds = new Set(
-    vendors.filter((v) => inScope(v)).map((v) => v.id),
+    role === 'AP_ANALYST'
+      ? rows.filter((r) => r.in_analyst_scope).map((r) => r.id)
+      : [],
   );
   const totalCount = mapped.length;
   const scopedCount = isEstate ? totalCount : scopedIds.size;
   const showingAll = isEstate || !!showAll;
-
   const bubbles = showingAll
     ? mapped
     : mapped.filter((b) => scopedIds.has(b.id));

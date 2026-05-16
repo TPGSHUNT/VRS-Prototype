@@ -176,12 +176,15 @@ model ProgramType {
 }
 
 // ─── 3. REBATE TYPE ──────────────────────────────────────────────────────────
-// Compound code — e.g. R-COTRKT, S-NSA. The FK target for AcctControlMaster.
+// Real DG rebate_type codes are unitary (e.g. OTHERNSP, NSANS), NOT the
+// compound R-COTRKT form, and don't carry a clean source/merchType. Phase 3.1
+// real ingest: source/merchType nullable so real codes load without fabricated
+// enum values (real per-program Source comes from RebateProgramExtact instead).
 
 model RebateType {
   code           String              @id
-  source         Source
-  merchType      MerchType
+  source         Source?
+  merchType      MerchType?
   description    String
   usedByMdse     Boolean             @default(true)
   active         Boolean             @default(true)
@@ -302,9 +305,9 @@ model RebateProgram {
   rebateType       RebateType  @relation(fields: [rebateTypeCode], references: [code])
   programTypeId    String
   programType      ProgramType @relation(fields: [programTypeId], references: [id])
-  // Denormalized from RebateType.source for query convenience.
-  // Service layer (createRebateProgram) always derives this from rebateType.source.
-  source           Source
+  // Real per-program Source (RebateProgramExtact rebate_id→Source join on
+  // Phase 3.1 ingest). Nullable: not every real program resolves a Source.
+  source           Source?
   analystId        String
   analyst          User        @relation("ProgramAnalyst", fields: [analystId], references: [id])
   agreementId      String?
