@@ -137,9 +137,21 @@ export function VendorRecordSlider({
                 <TabsContent value="agreements">
                   <AgreementsTab rows={record.agreements} />
                 </TabsContent>
+                <TabsContent value="programs">
+                  <ProgramsTab rows={record.programs} />
+                </TabsContent>
+                <TabsContent value="invoices">
+                  <InvoicesTab rows={record.invoices} />
+                </TabsContent>
                 {TAB_ORDER.filter(
                   (t) =>
-                    !['overview', 'calculations', 'agreements'].includes(t.id),
+                    ![
+                      'overview',
+                      'calculations',
+                      'agreements',
+                      'programs',
+                      'invoices',
+                    ].includes(t.id),
                 ).map((t) => (
                   <TabsContent key={t.id} value={t.id}>
                     <Placeholder label={t.label} />
@@ -347,6 +359,98 @@ function AgreementsTab({ rows }: { rows: VendorRecord['agreements'] }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function ProgramsTab({ rows }: { rows: VendorRecord['programs'] }) {
+  if (rows.length === 0)
+    return <Empty msg="No rebate programs for this vendor." />;
+  return (
+    <div className="overflow-hidden rounded-lg border border-gray-200">
+      <table className="w-full text-sm">
+        <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+          <tr>
+            <Th>Program&nbsp;#</Th>
+            <Th>Type</Th>
+            <Th>Source</Th>
+            <Th>Analyst</Th>
+            <Th>Depts</Th>
+            <Th>Status</Th>
+            <Th className="text-right">Earned</Th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {rows.map((p, i) => (
+            <tr key={i} className="hover:bg-gray-50">
+              <Td className="tabular-nums">{p.program}</Td>
+              <Td className="text-xs text-gray-600">{p.type}</Td>
+              <Td className="text-xs text-gray-600">{p.source}</Td>
+              <Td className="text-xs">{p.analyst ?? '—'}</Td>
+              <Td className="tabular-nums">{p.depts}</Td>
+              <Td>
+                <span
+                  className={`inline-block rounded px-1.5 py-0.5 text-[11px] font-medium ${
+                    p.active
+                      ? 'bg-green-100 text-green-800'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  {p.active ? 'active' : 'inactive'}
+                </span>
+              </Td>
+              <Td className="text-right tabular-nums">
+                {formatEarningsShort(p.earnings)}
+              </Td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function InvoicesTab({ rows }: { rows: VendorRecord['invoices'] }) {
+  if (rows.length === 0)
+    return <Empty msg="No invoices for this vendor." />;
+  return (
+    <div>
+      <div className="mb-2 text-xs text-gray-500">
+        {rows.length === 300 ? 'Showing 300 most-recent' : `${rows.length}`} ·
+        most recent first
+      </div>
+      <div className="overflow-hidden rounded-lg border border-gray-200">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+            <tr>
+              <Th>Invoice</Th>
+              <Th>Period</Th>
+              <Th>Type</Th>
+              <Th>Status</Th>
+              <Th>Due</Th>
+              <Th className="text-right">Amount</Th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {rows.map((inv) => (
+              <tr key={inv.number} className="hover:bg-gray-50">
+                <Td className="text-xs">{inv.number}</Td>
+                <Td>
+                  FY{inv.year}·P{String(inv.period).padStart(2, '0')}
+                </Td>
+                <Td className="text-xs text-gray-600">{inv.type}</Td>
+                <Td>
+                  <StatusBadge status={inv.status} />
+                </Td>
+                <Td className="whitespace-nowrap text-xs text-gray-500">
+                  {inv.dueDate}
+                </Td>
+                <Td className="text-right tabular-nums">${fmt(inv.amount)}</Td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

@@ -314,7 +314,7 @@ export function BubbleField({ vendors, xMetric, yMetric, sizeMetric, onSelect }:
               className="fill-gray-600"
               style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase' }}
             >
-              X · {METRIC_LABELS[xMetric]} {METRIC_FORMAT[xMetric] === 'money' ? '($, log)' : '(count, log)'} →
+              X · {METRIC_LABELS[xMetric]} {METRIC_FORMAT[xMetric] === 'money' ? '($ · by rank)' : '(count · by rank)'} →
             </text>
             <text
               transform={`translate(20, ${size.height / 2}) rotate(-90)`}
@@ -322,7 +322,7 @@ export function BubbleField({ vendors, xMetric, yMetric, sizeMetric, onSelect }:
               className="fill-gray-600"
               style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase' }}
             >
-              Y · {METRIC_LABELS[yMetric]} {METRIC_FORMAT[yMetric] === 'money' ? '($, log)' : '(count, log)'} →
+              Y · {METRIC_LABELS[yMetric]} {METRIC_FORMAT[yMetric] === 'money' ? '($ · by rank)' : '(count · by rank)'} →
             </text>
           </>
         )}

@@ -52,6 +52,25 @@ export interface VendorRecord {
     startDate: string;
     endDate: string;
   }>;
+  programs: Array<{
+    program: number;
+    type: string;
+    source: string;
+    active: boolean;
+    analyst: string | null;
+    depts: number;
+    earnings: number; // this vendor's normalized earnings under the program
+  }>;
+  invoices: Array<{
+    number: string;
+    year: number;
+    period: number;
+    type: string;
+    amount: number;
+    status: string;
+    dueDate: string;
+    paid: boolean;
+  }>;
   // Tab counts so headers are real even before each tab's body is built.
   counts: {
     programs: number;
@@ -94,8 +113,27 @@ export async function getVendorRecord(
       analyticsSummaries: { select: { transactionVolume: true } },
       rebateVendors: {
         include: {
-          rebateProgram: { select: { active: true, programNumber: true } },
-          invoices: { where: { status: { not: 'PAID' } }, select: { id: true } },
+          rebateProgram: {
+            select: {
+              active: true,
+              programNumber: true,
+              rebateTypeCode: true,
+              source: true,
+              analyst: { select: { name: true } },
+            },
+          },
+          invoices: {
+            select: {
+              invoiceNumber: true,
+              fiscalPeriod: true,
+              fiscalYear: true,
+              invoiceType: true,
+              amount: true,
+              status: true,
+              dueDate: true,
+              paidAt: true,
+            },
+          },
           rebateVendorDepts: {
             select: {
               departmentCode: true,
@@ -125,7 +163,40 @@ export async function getVendorRecord(
   const calcs = v.rebateVendors.flatMap((rv) =>
     rv.rebateVendorDepts.flatMap((rvd) => rvd.calculateResults),
   );
-  const invoices = v.rebateVendors.flatMap((rv) => rv.invoices);
+  const allInvoices = v.rebateVendors.flatMap((rv) => rv.invoices);
+  const openInvoiceCount = allInvoices.filter(
+    (i) => String(i.status) !== 'PAID',
+  ).length;
+
+  const programs = v.rebateVendors
+    .map((rv) => ({
+      program: rv.rebateProgram.programNumber,
+      type: rv.rebateProgram.rebateTypeCode,
+      source: String(rv.rebateProgram.source),
+      active: rv.rebateProgram.active,
+      analyst: rv.rebateProgram.analyst?.name ?? null,
+      depts: rv.rebateVendorDepts.length,
+      earnings: rv.rebateVendorDepts.reduce(
+        (s, d) =>
+          s + d.calculateResults.reduce((t, c) => t + num(c.finalEarnings), 0),
+        0,
+      ),
+    }))
+    .sort((a, b) => b.earnings - a.earnings);
+
+  const invoices = allInvoices
+    .map((i) => ({
+      number: i.invoiceNumber,
+      year: i.fiscalYear,
+      period: i.fiscalPeriod,
+      type: String(i.invoiceType),
+      amount: num(i.amount),
+      status: String(i.status),
+      dueDate: i.dueDate.toISOString().slice(0, 10),
+      paid: i.paidAt != null,
+    }))
+    .sort((a, b) => b.year - a.year || b.period - a.period)
+    .slice(0, 300);
 
   const calculations = v.rebateVendors
     .flatMap((rv) =>
@@ -190,15 +261,17 @@ export async function getVendorRecord(
       contractValue: v.agreements
         .filter((a) => IN_FLIGHT_AGREEMENT.includes(a.status))
         .reduce((s, a) => s + num(a.estimatedValue), 0),
-      openInvoices: invoices.length,
+      openInvoices: openInvoiceCount,
     },
     calculations,
     agreements,
+    programs,
+    invoices,
     counts: {
-      programs: v.rebateVendors.filter((rv) => rv.rebateProgram.active).length,
+      programs: programs.length,
       calculations: calcs.length,
       agreements: v.agreements.length,
-      invoices: invoices.length,
+      invoices: allInvoices.length,
     },
   };
 }
