@@ -6,7 +6,12 @@
 
 ## Provenance note
 
-This is the **Phase-0 synthetic seed** produced by `prisma/seed.ts` at migration **`20260516132320_phase0_baseline`** (the stale `20260502010319_init` was deleted and consolidated into this single clean baseline — docs/20 P0.7). Still 100% synthetic, single fiscal year **FY2025**, now **12 periods / 4-5-4** (P01–P11 closed, P12 open). No real-data ingest, no demo-narrative enrichment.
+This is the **Phase-0 baseline** produced by `prisma/seed.ts` at migration **`20260516132320_phase0_baseline`**. Structure is still synthetic (generated programs/vendors/calcs, single FY2025, **12 periods / 4-5-4**, P01–P11 closed/P12 open) — but **identities and links are now REAL**, sourced from the committed fixture `prisma/fixtures/real-identities.json` (extracted from Ken's `RebateProgramExtact` / `UnapprovedExtract` / `VRS_Vendors` on the P: share):
+- **Users** = real DG people: AP `lscoggin`/`areidl` → AP_MANAGER (Ken: only Lane & Amy hold VRS_ADMIN; corroborated by docs/17 image062), real AP analysts (kdickey/rtabarez/cjenkins/nmiller/smorthal/rmacheel), real Buyers/DMMs, real SVPs modeled into the GMM escalation slot.
+- **Analyst→program ownership** weighted by each analyst's real program-create volume.
+- **Buyer/DMM→vendor** from the real UnapprovedExtract mapping (round-robin real pools for vendors not in it).
+- **Per-vendor earnings** scaled to real 2025 magnitudes (PEPSICO/Coca-Cola/etc. dominate).
+No real-data *ingest* (the 575 MB CALCULATE_RESULT CSVs) and no demo-narrative enrichment yet — that's Phase 3.
 
 The seed RNG is deterministic (`makeRng(42)`), so **counts, distributions, and numeric ranges are reproducible across machines/runs** — only row UUIDs and `createdAt`/`updatedAt` timestamps differ. Comparison is structural/semantic (below), not row-level.
 
@@ -18,36 +23,40 @@ Earnings sign (Decision ①): `finalEarnings` is **normalized positive** (= valu
 |---|---|
 | Migration | `20260516132320_phase0_baseline` (only one, applied) |
 | Vendor | 50 |
-| User | 7 |
+| User | 26 (real identities) |
+| User roles | AP_ANALYST:6 AP_MANAGER:2 BUYER:7 BUYER_DELEGATE:1 DMM:6 GMM:3 READ_ONLY:1 |
+| AP_MANAGER names | lscoggin, areidl |
 | ProgramType | 36 |
 | RebateType | 15 |
 | Agreement | 85 |
 | RebateProgram | 150 |
-| RebateTier | 321 |
-| RebateVendor | 192 |
-| RebateVendorDept | 471 |
-| CalculateResult | 5652 |
+| RebateTier | 320 |
+| RebateVendor | 195 |
+| RebateVendorDept | 477 |
+| CalculateResult | 5724 |
 | CalculateResultAdjustment | 10 |
 | AcctControlMaster | 28 |
 | Batch | 3 |
 | BatchItem | 120 |
 | Check | 60 |
 | Deduction | 20 |
-| Invoice | 331 |
-| AnalyticsSummary | 560 |
-| Notification | 90 |
+| Invoice | 332 |
+| AnalyticsSummary | 540 |
+| Notification | 375 (15 × 25 non-read-only users) |
 | FiscalPeriod | 12 |
 | CALC periods present | `1..12` |
-| CALC finalEarnings sum / min / max | 146,283,589 / -1,560 / 71,892 |
-| CALC finalEarningsLegacy sum | -146,283,589 (exact mirror of finalEarnings) |
-| CALC status dist | APPROVED:119 FINALIZED:5155 OPEN:136 PENDING_REVIEW:111 REVIEWED:131 |
+| CALC finalEarnings sum / min / max | 335,169,429 / -1,526 / 447,836 |
+| CALC finalEarningsLegacy sum | -335,169,429 (exact mirror of finalEarnings) |
+| CALC status dist | majority FINALIZED (P1–P10); P11 carries the RED/AMBER fates (some OPEN/PENDING_REVIEW/APPROVED); P12 mixed open-period statuses |
+| Program owners (distinct analysts) | 6, weighted: kdickey 59 · rtabarez 45 · cjenkins 15 · nmiller 14 · smorthal 13 · rmacheel 4 |
+| Top vendors by earnings | PEPSICO ≈ 78.8M · Coca-Cola ≈ 42M · P&G ≈ 36.8M · Dr Pepper ≈ 34.5M (real-scale) |
 | FiscalPeriod closed | P1–P11 closed; **P12 open** |
 | Vendor number range | 1041 .. 315965 |
 | Vendor.apNumber | 9-digit zero-padded (e.g. `000001041`); all 50 set |
 | Vendor.ipNumber | NUMBER(5); all 50 set |
-| RebateVendorDept.ipVendorNum | set on 471 / 471 |
+| RebateVendorDept.ipVendorNum | set on 477 / 477 |
 | RebateProgram extract dates | 150/150 set; extractBegin (`2024-12-29`) < rebate start (`2025-02-02`) |
-| Agreement.agmtId range | 370900 .. 372754 (sequence-shaped, not 1..N) |
+| Agreement.agmtId range | sequence-shaped (~370900 .. 372754), not 1..N |
 | Agreement status dist | ASSIGNED:50 CANCELLED:2 EXPIRED:5 PENDING_AP_APPROVAL:8 PENDING_GMM_APPROVAL:1 PRE_NEGOTIATION:10 REJECTED:3 SUBMITTED_BY_VENDOR:6 |
 | Vendor sample (first 5 by num) | PEPSICO BEVERAGE SALES LLC \| COCA COLA BOTTLERS \| DR PEPPER SNAPPLE GROUP \| PROCTER & GAMBLE-EDI \| ROLLING FRITO LAY SALES LP |
 

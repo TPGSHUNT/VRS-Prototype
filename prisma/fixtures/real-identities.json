@@ -1,0 +1,725 @@
+{
+ "apUsers": [
+  {
+   "userid": "lscoggin",
+   "weight": 7469
+  },
+  {
+   "userid": "areidl",
+   "weight": 3558
+  },
+  {
+   "userid": "kdickey",
+   "weight": 2843
+  },
+  {
+   "userid": "rtabarez",
+   "weight": 1820
+  },
+  {
+   "userid": "kbanks",
+   "weight": 1343
+  },
+  {
+   "userid": "cjenkins",
+   "weight": 807
+  },
+  {
+   "userid": "nmiller",
+   "weight": 488
+  },
+  {
+   "userid": "smorthal",
+   "weight": 448
+  },
+  {
+   "userid": "rmacheel",
+   "weight": 219
+  },
+  {
+   "userid": "load est",
+   "weight": 146
+  }
+ ],
+ "buyers": [
+  "kbanks",
+  "Holly Camma",
+  "Rebecca Fair",
+  "Eric Hedberg",
+  "Dave Mast",
+  "Amy Gillis",
+  "Heather Emch",
+  "Katelyn Bobo",
+  "Sudarshan",
+  "Nick Galletti",
+  "Meagan Standifer",
+  "Jennifer Macagba",
+  "Matt Morgan",
+  "lscoggin",
+  "Jenny ONeill",
+  "Cyndi Mount",
+  "Reagan Stotz",
+  "smorthal@dollargeneral.com",
+  "Bill Pollard",
+  "Nicole Carver",
+  "Buyer1",
+  "kbxxxx",
+  "Joe Miller",
+  "Lauren Mutchler",
+  "Kristen Heinz",
+  "Lauren Bowers",
+  "xxxxxx",
+  "Travis Chesser",
+  "Ken Banks",
+  "Sathiyapriya Munuswamy",
+  "kbxxxxxx",
+  "Will Miller",
+  "XXXX",
+  "Jenny Baethe",
+  "Jennifer Dilts",
+  "Jeff Cawiezell",
+  "xxxx",
+  "kbanks@dollargeneral.com"
+ ],
+ "dmms": [
+  "Pooh Vichidvongsa",
+  "Shareeka Meadows",
+  "Jerry Reinhardt",
+  "Luana Briley",
+  "Al Tenllado",
+  "Rick Channell",
+  "Dewey Maroney",
+  "Deborah Kelley",
+  "Tyler Hickman",
+  "Jeff Vaughan"
+ ],
+ "svps": [
+  "Johanna Blankush",
+  "Bryan Wheeler",
+  "Brian Hartshorn"
+ ],
+ "vendorMdse": {
+  "COLGATE PALMOLIVE": {
+   "buyer": "Jenny ONeill",
+   "dmm": "Rick Channell",
+   "svp": "Bryan Wheeler"
+  },
+  "SPLASH HOME": {
+   "buyer": "Cyndi Mount",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "CREATIVE DESIGN LTD": {
+   "buyer": "Katelyn Bobo",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "SHINE ARTS (XIAMEN) INC": {
+   "buyer": "Katelyn Bobo",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "PROCTER & GAMBLE-EDI": {
+   "buyer": "Holly Camma",
+   "dmm": "Shareeka Meadows",
+   "svp": "Johanna Blankush"
+  },
+  "BELSTROM INC": {
+   "buyer": "Eric Hedberg",
+   "dmm": "Jerry Reinhardt",
+   "svp": "Johanna Blankush"
+  },
+  "LUV N CARE": {
+   "buyer": "Holly Camma",
+   "dmm": "Shareeka Meadows",
+   "svp": "Johanna Blankush"
+  },
+  "INTERNATIONAL HOUSEHOLD": {
+   "buyer": "Jennifer Macagba",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "JAZWARES LLC": {
+   "buyer": "Nick Galletti",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "CE NORTH AMERICA LLC": {
+   "buyer": "Buyer1",
+   "dmm": "",
+   "svp": ""
+  },
+  "LA DOUBLE 7 INC": {
+   "buyer": "Meagan Standifer",
+   "dmm": "Shareeka Meadows",
+   "svp": "Johanna Blankush"
+  },
+  "FOSHAN SHUNDE YIDE PLASTICS CO": {
+   "buyer": "Reagan Stotz",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "ANHEUSER-BUSCH": {
+   "buyer": "kbxxxx",
+   "dmm": "",
+   "svp": ""
+  },
+  "BRAVO SPORTS": {
+   "buyer": "Nick Galletti",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "BUTLER HOME PRODUCTS": {
+   "buyer": "Rebecca Fair",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "MAYTEX MILLS INC": {
+   "buyer": "Rebecca Fair",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "PERFETTI VAN MELLE USA INC": {
+   "buyer": "Sudarshan",
+   "dmm": "",
+   "svp": ""
+  },
+  "BANSCO ENTERPRISE LIMITED": {
+   "buyer": "Amy Gillis",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "REGAL HEALTH FOOD INTERNATIONA": {
+   "buyer": "Joe Miller",
+   "dmm": "Deborah Kelley",
+   "svp": "Johanna Blankush"
+  },
+  "JEL SERT CO SCF": {
+   "buyer": "Heather Emch",
+   "dmm": "",
+   "svp": ""
+  },
+  "MAKESELLER GROUP INC": {
+   "buyer": "Rebecca Fair",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "LAMPLIGHT FARMS INC": {
+   "buyer": "Eric Hedberg",
+   "dmm": "Jerry Reinhardt",
+   "svp": "Johanna Blankush"
+  },
+  "AT&T MOBILITY II LLC": {
+   "buyer": "Lauren Mutchler",
+   "dmm": "Luana Briley",
+   "svp": "Johanna Blankush"
+  },
+  "HORMEL FOODS CORP": {
+   "buyer": "Bill Pollard",
+   "dmm": "Dewey Maroney",
+   "svp": "Brian Hartshorn"
+  },
+  "HARTZ MOUNTAIN CORPORATION": {
+   "buyer": "Kristen Heinz",
+   "dmm": "Al Tenllado",
+   "svp": ""
+  },
+  "BEIERSDORF": {
+   "buyer": "Nicole Carver",
+   "dmm": "Rick Channell",
+   "svp": "Bryan Wheeler"
+  },
+  "YANKEE CANDLE COMPANY INC": {
+   "buyer": "Dave Mast",
+   "dmm": "Luana Briley",
+   "svp": "Johanna Blankush"
+  },
+  "RECKITT BENCKISER": {
+   "buyer": "Lauren Bowers",
+   "dmm": "",
+   "svp": ""
+  },
+  "ALLIANCE SALES & MARKETING": {
+   "buyer": "Amy Gillis",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "AMERIGAS SBT": {
+   "buyer": "Eric Hedberg",
+   "dmm": "Jerry Reinhardt",
+   "svp": "Johanna Blankush"
+  },
+  "E T BROWNE": {
+   "buyer": "Nicole Carver",
+   "dmm": "Rick Channell",
+   "svp": "Bryan Wheeler"
+  },
+  "REALS GROUP LIMITED": {
+   "buyer": "Sudarshan",
+   "dmm": "",
+   "svp": ""
+  },
+  "A D SUTTON & SONS": {
+   "buyer": "kbanks",
+   "dmm": "",
+   "svp": ""
+  },
+  "HARBOR HOME LIMITED": {
+   "buyer": "Rebecca Fair",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "HEMISPHERE TRADING OF NY LLC": {
+   "buyer": "Jennifer Macagba",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "SUKI IND & TRADING DEV LTD": {
+   "buyer": "lscoggin",
+   "dmm": "",
+   "svp": ""
+  },
+  "CHURCH & DWIGHT CO INC": {
+   "buyer": "Jenny ONeill",
+   "dmm": "Rick Channell",
+   "svp": "Bryan Wheeler"
+  },
+  "GENERAL MILLS": {
+   "buyer": "lscoggin",
+   "dmm": "",
+   "svp": ""
+  },
+  "KRAFT HEINZ FOODS COMPANY": {
+   "buyer": "Sudarshan",
+   "dmm": "",
+   "svp": ""
+  },
+  "MEGAPRIMA PTE LTD": {
+   "buyer": "Amy Gillis",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "SHANDONG GLASSWARE CORPORATION": {
+   "buyer": "Amy Gillis",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "GEMINI HOME PTE LTD": {
+   "buyer": "Cyndi Mount",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "IKEDDI IMPORTS LLC": {
+   "buyer": "Holly Camma",
+   "dmm": "Shareeka Meadows",
+   "svp": "Johanna Blankush"
+  },
+  "INKOLOGY LLC": {
+   "buyer": "Holly Camma",
+   "dmm": "Shareeka Meadows",
+   "svp": "Johanna Blankush"
+  },
+  "SUNNY DAYS ENTERTAINMENT LLC": {
+   "buyer": "Nick Galletti",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "UNILEVER": {
+   "buyer": "kbanks",
+   "dmm": "",
+   "svp": ""
+  },
+  "TAIZHOU HUANGYAN HAIYAO": {
+   "buyer": "Katelyn Bobo",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "WPP ACQUISITION LLC": {
+   "buyer": "Holly Camma",
+   "dmm": "Shareeka Meadows",
+   "svp": "Johanna Blankush"
+  },
+  "DOUMAK": {
+   "buyer": "Sathiyapriya Munuswamy",
+   "dmm": "",
+   "svp": ""
+  },
+  "COKEM INTERNATIONAL LTD": {
+   "buyer": "Eric Hedberg",
+   "dmm": "Jerry Reinhardt",
+   "svp": "Johanna Blankush"
+  },
+  "COLLECTIVE SOLES": {
+   "buyer": "Meagan Standifer",
+   "dmm": "Shareeka Meadows",
+   "svp": "Johanna Blankush"
+  },
+  "CRYSTAL ART GALLERY": {
+   "buyer": "Katelyn Bobo",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "UMA GLASS WORKS PVT LTD": {
+   "buyer": "Amy Gillis",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "ZEST GARDEN LIMITED": {
+   "buyer": "Amy Gillis",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "3M COMPANY": {
+   "buyer": "Dave Mast",
+   "dmm": "Luana Briley",
+   "svp": "Johanna Blankush"
+  },
+  "GOURMET HOME PRODUCTS LLC": {
+   "buyer": "Jennifer Macagba",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "BRUMIS IMPORTS INC": {
+   "buyer": "Amy Gillis",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "MYSTIC APPAREL LLC": {
+   "buyer": "Holly Camma",
+   "dmm": "Shareeka Meadows",
+   "svp": "Johanna Blankush"
+  },
+  "ITW GLOBAL BRANDS": {
+   "buyer": "Dave Mast",
+   "dmm": "Luana Briley",
+   "svp": "Johanna Blankush"
+  },
+  "ZIBO ANTO GLASS INDUSTRY CO": {
+   "buyer": "Rebecca Fair",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "TYSON FOODS INC": {
+   "buyer": "kbanks",
+   "dmm": "",
+   "svp": ""
+  },
+  "CLOROX SALES COMPANY": {
+   "buyer": "Eric Hedberg",
+   "dmm": "Jerry Reinhardt",
+   "svp": "Johanna Blankush"
+  },
+  "AJINOMOTO FOODS NORTH AMERICA": {
+   "buyer": "kbanks",
+   "dmm": "",
+   "svp": ""
+  },
+  "HANESBRANDS INC SCF": {
+   "buyer": "Meagan Standifer",
+   "dmm": "Shareeka Meadows",
+   "svp": "Johanna Blankush"
+  },
+  "DECO DE TREND": {
+   "buyer": "Katelyn Bobo",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "FISHER-PRICE BRANDS": {
+   "buyer": "Nick Galletti",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "SHURTAPE TECHNOLOGIES LLC": {
+   "buyer": "kbanks",
+   "dmm": "",
+   "svp": ""
+  },
+  "CONAGRA FOODS": {
+   "buyer": "Will Miller",
+   "dmm": "Tyler Hickman",
+   "svp": "Brian Hartshorn"
+  },
+  "LMNT ACCESSORIES LLC": {
+   "buyer": "lscoggin",
+   "dmm": "",
+   "svp": ""
+  },
+  "BIMBO BAKERIES USA INC": {
+   "buyer": "kbanks",
+   "dmm": "",
+   "svp": ""
+  },
+  "RUBBERMAID INCORPORATED": {
+   "buyer": "kbanks",
+   "dmm": "",
+   "svp": ""
+  },
+  "JIFFY FOIL CORPORATION SCF": {
+   "buyer": "Rebecca Fair",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "AMERICAN FOODS GROUP LLC": {
+   "buyer": "kbanks",
+   "dmm": "",
+   "svp": ""
+  },
+  "NINGBO PARAMONT IMP & EXP CO": {
+   "buyer": "kbanks",
+   "dmm": "",
+   "svp": ""
+  },
+  "DUMAS HOME CO LTD": {
+   "buyer": "Sudarshan",
+   "dmm": "",
+   "svp": ""
+  },
+  "MAINSTREAM INTERNATIONAL INC": {
+   "buyer": "Reagan Stotz",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "EXMART INTERNATIONAL PVT LTD": {
+   "buyer": "Amy Gillis",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "FIRST QUALITY CONSUMER PRODUCT": {
+   "buyer": "Jenny ONeill",
+   "dmm": "Rick Channell",
+   "svp": "Bryan Wheeler"
+  },
+  "VALVOLINE INC": {
+   "buyer": "Dave Mast",
+   "dmm": "Luana Briley",
+   "svp": "Johanna Blankush"
+  },
+  "RED DEVIL INC": {
+   "buyer": "Dave Mast",
+   "dmm": "Luana Briley",
+   "svp": "Johanna Blankush"
+  },
+  "RK & COMPANY": {
+   "buyer": "Meagan Standifer",
+   "dmm": "Shareeka Meadows",
+   "svp": "Johanna Blankush"
+  },
+  "AMERICAN BEVERAGE CORPORATION": {
+   "buyer": "Heather Emch",
+   "dmm": "",
+   "svp": ""
+  },
+  "NINGBO GUANGBO IMPORT & EXPORT": {
+   "buyer": "Jennifer Macagba",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "BIG EASY BLENDS LLC": {
+   "buyer": "Heather Emch",
+   "dmm": "",
+   "svp": ""
+  },
+  "GINGKO INTERNATIONAL COMPANY": {
+   "buyer": "lscoggin",
+   "dmm": "",
+   "svp": ""
+  },
+  "C & L INDUSTRIAL LIMITED": {
+   "buyer": "Rebecca Fair",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "FERRELLGAS LP DBA BLUE RHINO": {
+   "buyer": "Eric Hedberg",
+   "dmm": "Jerry Reinhardt",
+   "svp": "Johanna Blankush"
+  },
+  "CRAYOLA": {
+   "buyer": "kbanks",
+   "dmm": "",
+   "svp": ""
+  },
+  "SMITHFIELD FRESH MEATS SALES": {
+   "buyer": "Bill Pollard",
+   "dmm": "Dewey Maroney",
+   "svp": "Brian Hartshorn"
+  },
+  "BIC CORPORATION": {
+   "buyer": "Dave Mast",
+   "dmm": "Luana Briley",
+   "svp": "Johanna Blankush"
+  },
+  "GLOBAL TWO GLOBAL TRADING": {
+   "buyer": "Katelyn Bobo",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "M YAHYA M YOUSUF BARI": {
+   "buyer": "Rebecca Fair",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "MATTEL BRANDS": {
+   "buyer": "Nick Galletti",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "ALLURA IMPORTS INC": {
+   "buyer": "Holly Camma",
+   "dmm": "Shareeka Meadows",
+   "svp": "Johanna Blankush"
+  },
+  "PEM AMERICA HK CO LTD": {
+   "buyer": "Rebecca Fair",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "SINGSONG INTERNATIONAL TRADE": {
+   "buyer": "Amy Gillis",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "STREAMFLOW POLYWEAVE PVT LTD": {
+   "buyer": "Reagan Stotz",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "XIAMEN C&D LIGHT INDUSTRY CO": {
+   "buyer": "Meagan Standifer",
+   "dmm": "Shareeka Meadows",
+   "svp": "Johanna Blankush"
+  },
+  "UNITED INDUSTRIES CORP SCF": {
+   "buyer": "Eric Hedberg",
+   "dmm": "Jerry Reinhardt",
+   "svp": "Johanna Blankush"
+  },
+  "ALFRED NICKLES BAKERY INC": {
+   "buyer": "Sudarshan",
+   "dmm": "",
+   "svp": ""
+  },
+  "MONDELEZ GLOBAL LLC NABISCO": {
+   "buyer": "Jennifer Dilts",
+   "dmm": "Jeff Vaughan",
+   "svp": "Brian Hartshorn"
+  },
+  "REYNOLDS CONSUMER PRODUCTS": {
+   "buyer": "Jeff Cawiezell",
+   "dmm": "Al Tenllado",
+   "svp": ""
+  },
+  "ROYAL OAK SALES INC": {
+   "buyer": "Eric Hedberg",
+   "dmm": "Jerry Reinhardt",
+   "svp": "Johanna Blankush"
+  },
+  "FLP LLC": {
+   "buyer": "xxxx",
+   "dmm": "",
+   "svp": ""
+  },
+  "DR PEPPER SNAPPLE GROUP": {
+   "buyer": "Heather Emch",
+   "dmm": "",
+   "svp": ""
+  },
+  "ENERGIZER LLC": {
+   "buyer": "Dave Mast",
+   "dmm": "Luana Briley",
+   "svp": "Johanna Blankush"
+  },
+  "PLANTATION PRODUCTS INC": {
+   "buyer": "Eric Hedberg",
+   "dmm": "Jerry Reinhardt",
+   "svp": "Johanna Blankush"
+  },
+  "FERRARA CANDY COMPANY": {
+   "buyer": "kbanks@dollargeneral.com",
+   "dmm": "",
+   "svp": ""
+  },
+  "DIAL CORP": {
+   "buyer": "kbanks",
+   "dmm": "",
+   "svp": ""
+  },
+  "PARIS ASIA LTD": {
+   "buyer": "Holly Camma",
+   "dmm": "Shareeka Meadows",
+   "svp": "Johanna Blankush"
+  },
+  "BILL RAWLS LLC": {
+   "buyer": "Katelyn Bobo",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "JUST PLAY HK LTD": {
+   "buyer": "Eric Hedberg",
+   "dmm": "Jerry Reinhardt",
+   "svp": "Johanna Blankush"
+  },
+  "IG DESIGN GROUP AMERICAS INC": {
+   "buyer": "Katelyn Bobo",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "THIRSTYSTONE RESOURCES": {
+   "buyer": "Rebecca Fair",
+   "dmm": "Pooh Vichidvongsa",
+   "svp": ""
+  },
+  "VAN HAUSER LLC": {
+   "buyer": "Dave Mast",
+   "dmm": "Luana Briley",
+   "svp": "Johanna Blankush"
+  },
+  "TWINCO ROMAX": {
+   "buyer": "Dave Mast",
+   "dmm": "Luana Briley",
+   "svp": "Johanna Blankush"
+  }
+ },
+ "vendorEarnings2025": {
+  "PEPSICO BEVERAGE SALES LLC": -252436747.41,
+  "COCA COLA BOTTLERS": -174116932.62,
+  "DR PEPPER SNAPPLE GROUP": -135928832.15,
+  "PROCTER & GAMBLE-EDI": -131093326.43,
+  "ROLLING FRITO LAY SALES LP": -92758662.01,
+  "GENERAL MILLS": -81989686.91,
+  "KRAFT HEINZ FOODS COMPANY": -80269399.26,
+  "UNILEVER": -59247449.48,
+  "DFA DAIRY BRANDS CORPORATE LLC": -54301558.53,
+  "RED BULL NORTH AMERICA INC": -51850820.3,
+  "HERSHEY CHOCOLATE USA-EDI": -51437378.35,
+  "NESTLE": -50437378.29,
+  "J M SMUCKER LLC": -48526256.46,
+  "NESTLE PURINA PETCARE COMPANY": -48092130.93,
+  "MARS PETCARE US INC": -44239516.12,
+  "MONSTER ENERGY COMPANY": -43951246.71,
+  "DREYERS GRAND ICE CREAM INC": -42801536.24,
+  "INTERACTIVE COMMUNICATIONS INT": -42613954.71,
+  "JTI LIGGETT LLC": -38305103.76,
+  "MARS WRIGLEY CONFECTIONERY US": -37135851.57,
+  "POST HOLDINGS INC": -34083582.24,
+  "CONAGRA FOODS": -33191829.16,
+  "COLGATE PALMOLIVE": -31692000.86,
+  "MONDELEZ GLOBAL LLC NABISCO": -31256794.96,
+  "KIMBERLY CLARK CORPORATION": -30976471.57,
+  "KELLANOVA": -29782213.72,
+  "CLOROX SALES COMPANY": -28806183.98,
+  "CHURCH & DWIGHT CO INC": -28643433.3,
+  "DIAL CORP": -28440090.16,
+  "EMERSON HEALTHCARE LLC": -27916308.27,
+  "SMITHFIELD PACKAGED MEATS": -25454679.5,
+  "S C JOHNSON & SON-EDI": -25393785.7,
+  "KENVUE BRANDS LLC": -24447303.45,
+  "DANONE US INC": -22359048.14,
+  "RECKITT BENCKISER": -21870152.13,
+  "ITG BRANDS LLC": -21042412.77,
+  "HANESBRANDS LLC": -20817936.02,
+  "ENERGIZER LLC": -20598414.85,
+  "GEORGIA PACIFIC CONSUMER PROD": -19416667.59,
+  "HOSTESS BRANDS INC": -19406860.8
+ }
+}

@@ -180,20 +180,95 @@ const REBATE_TYPES: Array<{
   { code: 'R-DMGDC', source: Source.R, merchType: MerchType.DMGDC, description: 'Receipts damages DC' },
 ];
 
-const USERS: Array<{
-  email: string;
-  name: string;
-  analystCode: string;
-  role: UserRole;
-}> = [
-  { email: 'lane.b@dollargeneral.com', name: 'Lane B.', analystCode: 'LB', role: UserRole.AP_ANALYST },
-  { email: 'mark.k@dollargeneral.com', name: 'Mark K.', analystCode: 'MK', role: UserRole.AP_MANAGER },
-  { email: 'j.alvarez@dollargeneral.com', name: 'J. Alvarez', analystCode: 'JA', role: UserRole.BUYER },
-  { email: 'robin.w@dollargeneral.com', name: 'Robin W.', analystCode: 'RW', role: UserRole.BUYER_DELEGATE },
-  { email: 'dana.m@dollargeneral.com', name: 'Dana M.', analystCode: 'DM', role: UserRole.DMM },
-  { email: 'glen.r@dollargeneral.com', name: 'Glen R.', analystCode: 'GR', role: UserRole.GMM },
-  { email: 'audit@dollargeneral.com', name: 'Read-Only Auditor', analystCode: 'EX', role: UserRole.READ_ONLY },
-];
+// ─── Real identities (committed fixture, extracted from Ken's data on the
+// P: share — RebateProgramExtact / UnapprovedExtract / VRS_Vendors). The seed
+// depends on the fixture, NOT the share, so the demo box stays buildable.
+// Provenance + rationale: memory project_no_login_seat_switcher / docs/20.
+import { readFileSync } from 'node:fs';
+
+interface RealIdentities {
+  apUsers: { userid: string; weight: number }[];
+  buyers: string[];
+  dmms: string[];
+  svps: string[];
+  vendorMdse: Record<string, { buyer: string; dmm: string; svp: string }>;
+  vendorEarnings2025: Record<string, number>;
+}
+const REAL: RealIdentities = JSON.parse(
+  readFileSync(new URL('./fixtures/real-identities.json', import.meta.url), 'utf-8'),
+);
+
+// kbanks = Ken Banks (TPG author/consultant, not a DG operator seat);
+// "load est" = a load process. Neither is a DG persona — filter them.
+const NOT_DG_PERSONA = new Set(['kbanks', 'load est']);
+
+const slug = (s: string) =>
+  s.trim().toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.|\.$/g, '');
+
+// Deterministic unique short codes (schema @@unique on analystCode/email).
+const usedCodes = new Set<string>();
+const usedEmails = new Set<string>();
+function mkCode(seedStr: string): string {
+  const base = seedStr.replace(/[^a-zA-Z]/g, '').toUpperCase();
+  let c = (base.slice(0, 2) || 'XX');
+  let n = 1;
+  while (usedCodes.has(c)) c = (base.slice(0, 1) || 'X') + (n++);
+  usedCodes.add(c);
+  return c;
+}
+function mkEmail(local: string): string {
+  let e = `${local}@dollargeneral.com`;
+  let n = 1;
+  while (usedEmails.has(e)) e = `${local}${n++}@dollargeneral.com`;
+  usedEmails.add(e);
+  return e;
+}
+
+type SeedUser = { email: string; name: string; analystCode: string; role: UserRole };
+const USERS: SeedUser[] = [];
+
+// AP side — real userids from RebateProgramExtact, by program-create volume.
+// Ken (corroborated by docs/17 image062 security export): only Lane & Amy
+// (lscoggin, areidl) hold VRS_ADMIN → estate/manager tier; the rest analysts.
+const apReal = REAL.apUsers.filter((u) => !NOT_DG_PERSONA.has(u.userid));
+const AP_MANAGER_IDS = new Set(['lscoggin', 'areidl']);
+for (const u of apReal) {
+  USERS.push({
+    email: mkEmail(u.userid),
+    name: u.userid, // the real VRS login handle — what the system records
+    analystCode: mkCode(u.userid),
+    role: AP_MANAGER_IDS.has(u.userid) ? UserRole.AP_MANAGER : UserRole.AP_ANALYST,
+  });
+}
+
+// MDSE side — real Buyers / DMMs / SVPs from UnapprovedExtract.
+const buyersReal = REAL.buyers.filter((b) => !NOT_DG_PERSONA.has(b)).slice(0, 8);
+buyersReal.forEach((b, i) => {
+  USERS.push({
+    email: mkEmail(slug(b)),
+    name: b,
+    analystCode: mkCode(b),
+    // Last one is the delegate seat (UnapprovedExtract shows "(Delegate)"
+    // statuses but no delegate-name column — designate one real buyer).
+    role: i === buyersReal.length - 1 ? UserRole.BUYER_DELEGATE : UserRole.BUYER,
+  });
+});
+for (const d of REAL.dmms.slice(0, 6)) {
+  USERS.push({ email: mkEmail(slug(d)), name: d, analystCode: mkCode(d), role: UserRole.DMM });
+}
+// Prototype UserRole has no SVP. SVP is the real above-DMM escalation tier
+// (Ken), so it fills the GMM "further escalation" slot — real names, modeled.
+for (const s of REAL.svps.filter(Boolean).slice(0, 3)) {
+  USERS.push({ email: mkEmail(slug(s)), name: s, analystCode: mkCode(s), role: UserRole.GMM });
+}
+// Generic finance/audit seat (no real read-only identity in the data; a role,
+// not a person — not a misrepresentation).
+USERS.push({
+  email: mkEmail('audit'),
+  name: 'Finance / Audit (read-only)',
+  analystCode: mkCode('EX'),
+  role: UserRole.READ_ONLY,
+});
 
 // ─── Fiscal calendar — 12 periods, 4-5-4 (Ken round 3) ──────────────────────
 // FY2025 anchored at 2025-02-02 (DG fiscal-year start convention). Week pattern
@@ -312,13 +387,65 @@ async function main() {
   console.log('› users');
   await prisma.user.createMany({ data: USERS });
   const users = await prisma.user.findMany();
-  const userByCode = new Map(users.map((u) => [u.analystCode!, u]));
-  const apAnalyst = userByCode.get('LB')!;
-  const apManager = userByCode.get('MK')!;
-  const buyer = userByCode.get('JA')!;
-  const buyerDelegate = userByCode.get('RW')!;
-  const dmm = userByCode.get('DM')!;
-  const gmm = userByCode.get('GR')!;
+  const byName = new Map(users.map((u) => [u.name, u]));
+  const byRole = (r: UserRole) => users.filter((u) => u.role === r);
+
+  // Representative singletons for audit fields that just need *a* valid user.
+  const apManager = byRole(UserRole.AP_MANAGER)[0]!;
+  const apAnalyst = byRole(UserRole.AP_ANALYST)[0]!;
+  const buyer = byRole(UserRole.BUYER)[0]!;
+  const buyerDelegate = byRole(UserRole.BUYER_DELEGATE)[0] ?? buyer;
+  const dmm = byRole(UserRole.DMM)[0]!;
+  const gmm = byRole(UserRole.GMM)[0]!;
+
+  // AP_ANALYST → program ownership, weighted by each analyst's real
+  // program-create volume (RebateProgramExtact). Makes the analyst seat-scope
+  // real and uneven, like production.
+  const analystPool = byRole(UserRole.AP_ANALYST);
+  const analystWeights = analystPool.map(
+    (u) => REAL.apUsers.find((r) => r.userid === u.name)?.weight ?? 1,
+  );
+  const analystCum: number[] = [];
+  analystWeights.reduce((acc, w, i) => (analystCum[i] = acc + w), 0);
+  const analystTotal = analystCum[analystCum.length - 1] ?? 1;
+  const pickAnalyst = () => {
+    const x = rng() * analystTotal;
+    const i = analystCum.findIndex((c) => x < c);
+    return analystPool[i === -1 ? analystPool.length - 1 : i]!;
+  };
+
+  // vendor → real Buyer / DMM / SVP(GMM) from UnapprovedExtract; round-robin
+  // the real pools for vendors not present in that extract.
+  const buyerPool = [...byRole(UserRole.BUYER), ...byRole(UserRole.BUYER_DELEGATE)];
+  const dmmPool = byRole(UserRole.DMM);
+  let buyerRR = 0;
+  let dmmRR = 0;
+  const mdseFor = (vendorName: string) =>
+    REAL.vendorMdse[vendorName.trim().toUpperCase()];
+  const buyerForVendor = (vendorName: string) => {
+    const m = mdseFor(vendorName);
+    const u = m && byName.get(m.buyer);
+    return u ?? buyerPool[buyerRR++ % buyerPool.length]!;
+  };
+  const dmmForVendor = (vendorName: string) => {
+    const m = mdseFor(vendorName);
+    const u = m && byName.get(m.dmm);
+    return u ?? dmmPool[dmmRR++ % dmmPool.length]!;
+  };
+  const gmmForVendor = (vendorName: string) => {
+    const m = mdseFor(vendorName);
+    return (m && m.svp && byName.get(m.svp)) || gmm;
+  };
+
+  // Real per-vendor 2025 earnings magnitude (VRS_Vendors) → receipt scale, so
+  // big real vendors are big bubbles. Vendors absent from the file scale 1×.
+  const earnAbs = Object.values(REAL.vendorEarnings2025).map(Math.abs).sort((a, b) => a - b);
+  const earnMedian = earnAbs[Math.floor(earnAbs.length / 2)] || 1;
+  const vendorScaleByName = (vendorName: string) => {
+    const e = REAL.vendorEarnings2025[vendorName.trim().toUpperCase()];
+    if (e == null) return 1;
+    return Math.min(12, Math.max(0.2, Math.abs(e) / earnMedian));
+  };
 
   // Vendors — vendorNumber (legacy Int alias) + apNumber (VARCHAR9) + ipNumber (NUMBER5)
   console.log('› vendors');
@@ -342,6 +469,7 @@ async function main() {
   const largeVendors = vendors.slice(0, 5);
   const midVendors = vendors.slice(5, 20);
   const smallVendors = vendors.slice(20);
+  const vendorNameById = new Map(vendors.map((v) => [v.id, v.name]));
 
   // ─── Bubble color fate assignment ────────────────────────────────────────
   const shuffled = [...vendors].sort(() => rng() - 0.5);
@@ -372,13 +500,13 @@ async function main() {
   const randomProgramType = () => pick(programTypes);
 
   // Real approval-chain audit consistent with estimatedValue vs thresholds.
-  const chainFor = (estimatedValue: number) => {
+  const chainFor = (estimatedValue: number, vendorName: string) => {
     const throughDmm = estimatedValue >= DMM_THRESHOLD;
     const throughGmm = estimatedValue >= GMM_THRESHOLD;
     return {
-      dmmApprovedBy: throughDmm ? dmm.id : null,
+      dmmApprovedBy: throughDmm ? dmmForVendor(vendorName).id : null,
       dmmApprovedAt: throughDmm ? new Date('2024-12-10') : null,
-      gmmApprovedBy: throughGmm ? gmm.id : null,
+      gmmApprovedBy: throughGmm ? gmmForVendor(vendorName).id : null,
       gmmApprovedAt: throughGmm ? new Date('2024-12-15') : null,
     };
   };
@@ -388,7 +516,7 @@ async function main() {
     const rt = randomRebateType();
     const pt = randomProgramType();
     const estimatedValue = decBetween(50_000, 2_500_000);
-    const chain = chainFor(estimatedValue);
+    const chain = chainFor(estimatedValue, v.name);
     const a = await prisma.agreement.create({
       data: {
         agmtId: nextAgmtId(),
@@ -396,7 +524,7 @@ async function main() {
         merchType: rt.merchType,
         source: rt.source,
         description: `Q${intBetween(1, 4)} ${rt.merchType} program with ${v.name.split(' ').slice(0, 2).join(' ')}`,
-        buyerId: buyer.id,
+        buyerId: buyerForVendor(v.name).id,
         programTypeId: pt.id,
         estimatedValue,
         startDate: new Date('2025-06-01'),
@@ -431,7 +559,7 @@ async function main() {
         merchType: rt.merchType,
         source: rt.source,
         description: 'AGR-DEMO-001 — full chain demo (HBA tier renegotiation)',
-        buyerId: buyer.id,
+        buyerId: buyerForVendor(v.name).id,
         programTypeId: pt.id,
         estimatedValue: 4_750_000,
         startDate: new Date('2025-07-01'),
@@ -459,7 +587,7 @@ async function main() {
     const rt = randomRebateType();
     const pt = randomProgramType();
     const estimatedValue = decBetween(25_000, 8_000_000);
-    const chain = chainFor(estimatedValue);
+    const chain = chainFor(estimatedValue, v.name);
     const a = await prisma.agreement.create({
       data: {
         agmtId: nextAgmtId(),
@@ -467,7 +595,7 @@ async function main() {
         merchType: rt.merchType,
         source: rt.source,
         description: `${rt.merchType} program for ${v.name.split(' ')[0]}`,
-        buyerId: pick([buyer.id, buyerDelegate.id]),
+        buyerId: buyerForVendor(v.name).id,
         programTypeId: pt.id,
         estimatedValue,
         startDate: new Date('2025-02-02'),
@@ -504,7 +632,7 @@ async function main() {
         merchType: rt.merchType,
         source: rt.source,
         description: `Draft: ${rt.merchType} for ${v.name.split(' ')[0]}`,
-        buyerId: pick([buyer.id, buyerDelegate.id]),
+        buyerId: buyerForVendor(v.name).id,
         programTypeId: pt.id,
         estimatedValue: decBetween(15_000, 1_500_000),
         startDate: new Date('2026-02-01'),
@@ -533,7 +661,7 @@ async function main() {
         merchType: rt.merchType,
         source: rt.source,
         description: `${status} agreement`,
-        buyerId: buyer.id,
+        buyerId: buyerForVendor(v.name).id,
         programTypeId: pt.id,
         estimatedValue: decBetween(20_000, 1_000_000),
         startDate: new Date('2024-02-01'),
@@ -582,7 +710,7 @@ async function main() {
         rebateTypeCode: rt.code,
         programTypeId: ag.programTypeId,
         source: rt.source,
-        analystId: apAnalyst.id,
+        analystId: pickAnalyst().id,
         agreementId: ag.id,
         startDate: rebateStart,
         endDate: rebateEnd,
@@ -619,7 +747,7 @@ async function main() {
         rebateTypeCode: rt.code,
         programTypeId: pt.id,
         source: rt.source,
-        analystId: apAnalyst.id,
+        analystId: pickAnalyst().id,
         startDate: rebateStart,
         endDate: rebateEnd,
         extractBeginDate: extractBegin,
@@ -737,7 +865,12 @@ async function main() {
 
   for (const rvd of seededVendorDepts) {
     for (const fp of FISCAL_PERIODS) {
-      const receiptAmount = decBetween(50_000, 2_000_000);
+      const receiptAmount = Number(
+        (
+          decBetween(50_000, 2_000_000) *
+          vendorScaleByName(vendorNameById.get(rvd.vendorId) ?? '')
+        ).toFixed(2),
+      );
       const tierLevel = intBetween(1, 3);
       const rateApplied = Number((0.015 + 0.005 * (tierLevel - 1) + rng() * 0.003).toFixed(6));
       const pmu = Number((receiptAmount * rateApplied).toFixed(2));
