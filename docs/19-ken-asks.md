@@ -35,6 +35,13 @@ We have tier *flags* on `REBATE_PROGRAM` (`tier_type/_thresh_type/_calc_type`) b
 ### K9 — Agreement / coverage extract (MDSE side), if extractable.
 To let Vera say "the *agreement* lapsed and was never renewed" from agreement records rather than inferring from program `closed_date` + continued activity. Likely hard (separate MDSE side, per Ken). Ask whether any agreement-to-program coverage extract is feasible; if not, we proxy from program lifecycle and move on. Lowest priority of the Vera asks.
 
+### K10 — Real escalation chain: GMM vs SVP. **(data-flagged, accumulated 2026-05-16)**
+**Data tension.** We model the MDSE approval chain as Buyer → DMM → **GMM** (build plan; prototype `UserRole` has GMM, no SVP). But the real `UnapprovedExtract.csv` exposes **SVP and DMM columns and no GMM** (e.g. SVP Bryan Wheeler / Johanna Blankush over DMM Pooh Vichidvongsa over Buyer Jenny ONeill). Yet the real Parameters form (`docs/17` image053) literally names a **"GMM Agreement Threshold"** ($1M) — so "GMM" is a real parameter label while "SVP" is the real column on the agreement extract. These don't obviously reconcile. **Ask Ken:** what is the actual escalation hierarchy above DMM — is it GMM, SVP, both (and in what order), or are GMM and SVP the same tier under different labels? Where does the >$1M "GMM threshold" approval actually land — on an SVP? This is load-bearing for faithful MDSE seat-scoping and the approval-chain demo beat. Supersedes/absorbs the older open SVP item (`docs/05` A.13). *(The lopsided GMM distribution we saw in the seed was a separate seed-fallback artifact, since fixed — not the basis of this question.)*
+
+---
+
+> **Accumulator note:** §1 is the running list of genuine questions for Ken. New ones get appended K-numbered, tagged `(data-flagged …)` when surfaced by a real-conditions data review (per memory `feedback_data_reflects_actual_conditions`). Do not start parallel lists elsewhere; do not add items that Ken's delivered data already answers.
+
 ---
 
 ## 1a. Deprioritized — NOT demo-critical: legacy form spec

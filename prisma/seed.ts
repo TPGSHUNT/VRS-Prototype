@@ -418,23 +418,40 @@ async function main() {
   // the real pools for vendors not present in that extract.
   const buyerPool = [...byRole(UserRole.BUYER), ...byRole(UserRole.BUYER_DELEGATE)];
   const dmmPool = byRole(UserRole.DMM);
+  const gmmPool = byRole(UserRole.GMM); // real SVPs modeled as the escalation tier
   let buyerRR = 0;
   let dmmRR = 0;
+  let gmmRR = 0;
   const mdseFor = (vendorName: string) =>
     REAL.vendorMdse[vendorName.trim().toUpperCase()];
+  // Only accept a name-matched user if it actually holds the expected MDSE role
+  // — squelches real-data noise where an extract "Buyer" string is an AP login
+  // (e.g. lscoggin) that would otherwise leak across roles. Otherwise round-robin
+  // the real pool so the spread reflects plausible reality, not a singleton dump.
+  const inPool = (
+    u: (typeof users)[number] | undefined | false,
+    pool: typeof users,
+  ) => (u && pool.some((p) => p.id === u.id) ? u : undefined);
   const buyerForVendor = (vendorName: string) => {
     const m = mdseFor(vendorName);
-    const u = m && byName.get(m.buyer);
-    return u ?? buyerPool[buyerRR++ % buyerPool.length]!;
+    return (
+      inPool(m && byName.get(m.buyer), buyerPool) ??
+      buyerPool[buyerRR++ % buyerPool.length]!
+    );
   };
   const dmmForVendor = (vendorName: string) => {
     const m = mdseFor(vendorName);
-    const u = m && byName.get(m.dmm);
-    return u ?? dmmPool[dmmRR++ % dmmPool.length]!;
+    return (
+      inPool(m && byName.get(m.dmm), dmmPool) ??
+      dmmPool[dmmRR++ % dmmPool.length]!
+    );
   };
   const gmmForVendor = (vendorName: string) => {
     const m = mdseFor(vendorName);
-    return (m && m.svp && byName.get(m.svp)) || gmm;
+    return (
+      inPool(m && m.svp ? byName.get(m.svp) : undefined, gmmPool) ??
+      gmmPool[gmmRR++ % gmmPool.length]!
+    );
   };
 
   // Real per-vendor 2025 earnings magnitude (VRS_Vendors) → receipt scale, so
