@@ -65,11 +65,25 @@ The purest "uncaptured" (purchase volume with *no* rebate program at all) needs 
 | P1.2 | Bubble **click** → opens P1.1; **right-click** → context menu (Open / Run report / Ask Vera / Approve) | P0 |
 | P1.3 | **Left slider — actions shell**: filter panel first (always-available), framework reused by later actions | P0 |
 | P1.4 | **Lasso / box select** + selection actions (side panel / explode / filter-to-these) | P0 |
-| P1.5 | Bubble axis fixes: drop `estimatedValue` default, add **Merch Type × Earnings** preset, name-aggregation | P0 |
+| P1.5 | Bubble axis fixes: drop `estimatedValue` default, add **Merch Type × Earnings** preset, name-aggregation (use `Vendor.apNumber`→name), and **fix the false `($, log)` axis labels** — the scale is rank-percentile, not log; don't claim log in a demo | P0 |
 | P1.6 | Slider mechanics per design language: dim+blur field, Esc/close, configurable widths, multi-open | G2/G3 |
+| P1.7 | **Seat-scoping model** (settled spec below) — estate vs operator default views, soft lens never a cage | G1/G5 |
 
-**Exit criteria:** a viewer can land → scan the field → click a vendor → read a real tabbed record → open a filter that slides over and recomputes the KPI strip, never leaving the surface.
+**Exit criteria:** a viewer can land → see a field **scoped to their seat** → switch seat and watch it visibly re-shape → click a vendor → read a real tabbed record → open a filter that slides over and recomputes the KPI strip, never leaving the surface.
 **Gate:** David approves after P0; P1.1 is the keystone — review it before the rest of P1 proceeds.
+
+### P1.7 — Seat-scoping model (settled 2026-05-16)
+
+Two tiers, driven by the signed-in seat. **Scope is a soft default lens, never a permission cage** — every scoped seat still carries the lasso + filters and a prominent *"viewing your N of ~2,500 — show all"* control, so the see-the-whole-estate power is never hidden, only defaulted.
+
+- **Estate-wide by default** (the whole field is home): `READ_ONLY` (finance/audit/executive — schema §1.5 exists *for* this), `AP_MANAGER` (oversees all analysts), `VRS_ADMIN`/`VRS_MANAGER` (admin tier), `FPA_SUPERVISOR` (MDSE estate).
+- **Scoped by default** (their slice, one click to "show all"): `AP_ANALYST` → assigned programs (`RebateProgram.analystId`); `BUYER`/`BUYER_DELEGATE` → portfolio (`Agreement.buyerId`; Buyers Dashboard is buyer/delegate-only per Ken #6); `DMM`/`GMM` → approval chain.
+
+**Honest-fidelity caveat:** legacy VRS security is **form-level**, not row-level (Security form Fix 522, `docs/17` — Maintenance/Read-Only/No-Access per *form*). Per-seat *data* scoping is a **design improvement we are introducing**, on-thesis ("work comes to you"), **not** a claim of legacy fidelity. Pitch it as the new frictionless model; do not assert it mirrors their system. No Ken ask needed.
+
+**Demo beat:** the seat switcher must change the *nature* of the surface, not just filter it — an operator seat reads "my work, brought to me"; the finance/exec (or `AP_MANAGER`) seat reveals the entire multi-billion-$ estate to lasso and slice. Drive the lasso-the-estate showpiece from the estate seat; sell focus from a buyer/analyst seat. This operator↔estate flip is a primary felt-contrast moment — coordinate with the seat switcher (memory `project_no_login_seat_switcher`) and the demo run-of-show (P4.3).
+
+Implementation: `getBubbleData()` takes a scope arg derived from the session seat; the seed already carries `analystId`/`buyerId`. Default tab stays role-driven (`permissions.defaultVendorRecordTab`).
 
 ---
 

@@ -5,6 +5,8 @@
 
 > **2026-05-16 amendments (read first):** Three items this file calls "open" or "the biggest gap" are now resolved — see the inline callouts in §3.5, §3.7, §4, §5, §6. New reference docs added: `docs/16-legacy-subsystems.md` (the 603-table real schema vs the 23-model prototype), `docs/17-legacy-forms-image-catalog.md` (legacy Forms screenshots, not stored in-repo by decision), `docs/18-demo-gaps.md`, `docs/19-ken-asks.md`, and `docs/ken/Ken_answers_4_may12.txt` (verbatim post-round-3 Ken answers). `VRS_Analysis_and_Architecture.txt` got a correction banner (its 1010-analytics thesis is contradicted by Ken).
 >
+> **LOGISTICS — the two-laptop framing (§2, §6.5, §7) is STALE.** As of 2026-05-16 David is on the home laptop through the demo; that machine is the demo box. Cross-laptop git-as-transport is retired — ignore "commit so it travels" / "must travel between laptops." Weigh local-state changes by demo-day risk on this one machine instead. (memory `project_single_demo_machine`.)
+>
 > **STRATEGIC — §3.6 below is STALE.** The demo thesis is **a completely new frictionless way to see the system**, *not* Oracle-Forms conversion. DG's, Ken's, and Khari's perspective/expectations (incl. "fully working AI-converted form, not a mock") are **moribund and explicitly not the bar** — that mental model is what the demo aims to displace. Disregard the "demo audience is IT / load-bearing claim is form-conversion" framing in §3.6 and in `15-handoff-12-may-2026.html` §A. Authoritative: `docs/18-demo-gaps.md` §0. (David, 2026-05-16.)
 
 ---

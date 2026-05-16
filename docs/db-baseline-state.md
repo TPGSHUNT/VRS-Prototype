@@ -86,9 +86,12 @@ UNION ALL SELECT 'VENDOR sample', string_agg(name,' | ') FROM (SELECT name FROM 
 
 Expected: migration `20260516132320_phase0_baseline`, FiscalPeriod 12, CalculateResult 5652, Vendor 50, CALC periods `1..12`, final sum `146283589`, legacy sum `-146283589`, FP closed `1..11`, Agmt id `370900..372754`, beverage vendor sample.
 
-## To make this travel
+## Single-machine note (2026-05-16)
 
-```
-git add prisma/ docs/ web/src/lib/glossary.ts && git commit -m "Phase 0: 12/4-5-4 calendar, earnings sign, dual identity, baseline"
-```
-The Claude memory dir is machine-local and does not travel via git — the decisions are captured in docs (`11/18/19/20`, this file) instead.
+The two-laptop premise behind this file is **retired**: David is on the home
+laptop through the demo, and that machine is the demo box (see memory
+`project_single_demo_machine`). This fingerprint is no longer "cross-machine
+verification" — keep it only as a **self sanity-check**: after any reset/reseed,
+diff the verification query against the baseline to confirm the DB is the
+expected Phase-0 state before building or demoing on it. Commit/push remains
+worthwhile as backup + history, not as a transport mechanism.
