@@ -1,4 +1,40 @@
-﻿
+﻿================================================================================
+CORRECTION BANNER — added 2026-05-16. DO NOT DELETE THIS DOCUMENT.
+This is a TPG-authored strategic/positioning doc (April 2026). It is retained for
+provenance and pitch language, but its central architectural thesis has been
+FACTUALLY CONTRADICTED by Ken's round-3 (8 May) and follow-on answers. Read this
+banner before relying on anything below.
+
+OUTDATED / FALSE as written:
+  * "1010 as a first-class data source", §3.1 principle 3, §3.4 entire "1010
+    Analytics Layer", §3.6 "1010 data ingest read-replica", Message 2.
+    -> Ken (round 3): 1010 CANNOT be accessed or queried from VRS. Separate DB,
+       owned by another IT group, write-mostly VRS->1010, shell-script load only,
+       Tendo banned, 1010 rumored for retirement. The read-replica + materialized-
+       view analytics pillar rests on a false premise. Vera's substrate is
+       VRS-resident calc data only. Post-retirement, 1010 likely lands in DG's
+       BI/warehouse — that, not the legacy 1010 boundary, is any future target.
+  * "MDSE side has an unused FPA forecasting module ... replace with 1010-derived
+    forecast" (§2.4, §3.4.2 Forecast vs Actual).
+    -> FPA forecast is a LIVE ~53-table subsystem (see docs/16). FPA the dept
+       abandoned ownership, but the module is in active use and drives the
+       DMM/GMM approval Forecast thresholds. Not "unused".
+  * Fiscal calendar: doc implies nothing; for the record DG is 12 periods / 4-5-4
+    (Ken, round 3), not the 13 / 4-4-5 the schema docs assumed.
+  * Roles table (§3.7): superseded by the 15-group reality in
+    docs/ken/DG_Roles_flat.csv + the VRS_ADMIN->MANAGER->SUPERVISOR->APP_USER
+    hierarchy (see Ken_answers_4_may12 in this folder).
+  * "Opcon had to do with E&C scheduling" nuance: Opcon schedules batch but had
+    "nothing to do with" the audit userid fields (Ken, round 3).
+
+STILL VALID: the friction inventory (§2.3–2.6), the workflow-first/state-visible
+design philosophy, the phased-delivery shape, and the pitch-positioning section
+(§4) — except Message 2, which must be reframed away from "1010 analytics".
+
+Corrected source-of-truth: docs/11-handoff.md, docs/16-legacy-subsystems.md,
+docs/17-legacy-forms-image-catalog.md, and the primary captures in this folder.
+================================================================================
+
 
 VENDOR REBATE SYSTEM
 Current State Analysis & Frictionless Replacement Architecture

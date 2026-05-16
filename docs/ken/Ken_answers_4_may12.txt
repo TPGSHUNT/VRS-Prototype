@@ -1,0 +1,86 @@
+Ken Banks — verbatim answers, round 4 (post-round-3).
+Captured 2026-05-16 from Outlook (sender kbanks@tpg-partners.com; the "Ken-VRS"
+folder is local-only and does not resolve server-side — query by sender).
+Source emails: "RE: A little follow-up" 2026-05-12 13:06 (attachment
+MDSE_Side_Users.docx, not yet saved) and "1010 Analytic tool" 2026-05-12 20:24.
+Parameter values at the bottom are transcribed from the legacy "Parameters
+(Fix 638)" Form screenshots embedded in the 8/11 May "RE: Outstanding Questions"
+emails (catalogued in docs/17-legacy-forms-image-catalog.md).
+
+This file continues the Ken_answers_1/2/3 series, which stop at round 3
+(8 May, also mirrored in Ken_answers_3.txt). Round 1–3 content is NOT repeated.
+
+================================================================================
+RE: A little follow-up  (Ken, 2026-05-12 13:06; replying to David's 6 questions)
+================================================================================
+
+#1 — The setting on Tobacco is intentional.
+[Context: analyst Tobacco access being read-only is by design, not a bug.]
+
+#2 — Here is the Hierarchy for the AP Dept in terms of diminishing access:
+     VRS_ADMIN -> VRS_MANAGER -> VRS_SUPERVISOPR -> VRS_APP_USER
+     It's not a formal hierarchy in the sense that you can determine it using
+     just the data, but this is how it is used. Note that almost everyone does
+     the job of an analyst but some have more authority in the system. In terms
+     of your chart, the first 3 fall under the Manager (your usage) role.
+
+#3 — VRS_MKTING, VRS_PRICING as well as VRS_DAMAGES allow limited access to
+     certain pieces within VRS. These are used by departments other than AP or
+     MDSE. Pricing uses the MDSE side. They create TPR Agreements and pull
+     Prices out of VRS for the TPR Agreements. Marketing has access to the AD
+     Coop Subsystem on the MDSE Side (1 person uses this). Damages is a new
+     Group and opens up access to one button on one of the Damages forms (1
+     person uses this).
+
+#4 — MDSE_VENDOR_CONTACTS is a reference to a set of tables and a Form that
+     maintenances them. These contain both the Vendor and the List of Portal
+     User IDs and is used by the Portal to back into the Vendor using Userid
+     used to log in. The Security Dept has access to this form via this Group.
+
+#5 — FPA (Forecast and planning) — the head of that Dept at the time is who
+     designed the MDSE side. They originally were supposed to oversee and be
+     the experts and administrators on the MDSE side. The woman that designed
+     it left the company the week it went live. Less than two years later the
+     FPA Dept abandoned the system but is stuck supporting it. So now, generally
+     there is usually at least one person assigned as FPA_SUPERVIOR in their
+     group to support and Administer the MDSE side.
+     [Resolves the handoff's "FPA-encoded-vs-operating" fork: design per current
+      use, not the original FPA spec. The MDSE side has no real owner.]
+
+#6 — None. Only Buyers and their delegates have access to the Buyers Dashboard.
+     If AP has access to this information it would be through some report either
+     internal (Oracle Report) or external (Web Focus).
+
+[Attachment on this email: MDSE_Side_Users.docx (707 KB) — NOT yet saved to
+ disk. Re-pullable via the MCP from the 2026-05-12 13:06 email.]
+
+================================================================================
+1010 Analytic tool  (Ken, 2026-05-12 20:24)
+================================================================================
+
+Lane said there are a couple of departments that use a tool called Alteryx
+along with 1010. As for AP, they just use the 1010 interface and write their
+own queries.
+
+[Then a generic vendor description of Alteryx — data prep/blend, automation,
+ predictive/geospatial, low-code canvas. Not DG-specific; omitted.]
+
+Significance: confirms there is no governed analytics layer over 1010 today —
+AP hand-writes 1010 queries; a couple of departments use Alteryx ad hoc. This
+further undercuts the retired VRS_Analysis_and_Architecture.txt thesis of a
+clean 1010 analytics integration.
+
+================================================================================
+Parameter values (transcribed from legacy Parameters / Fix 638 Form screenshots)
+================================================================================
+
+MDSE_THRESHOLD  seq 1  "DMM Agreement Threshold"  =  250000
+MDSE_THRESHOLD  seq 2  "GMM Agreement Threshold"  = 1000000
+DMM_APPROVE_TPR seq 0                              = No
+
+Interpretation (consistent with Ken round 3): an Agreement whose Forecast
+exceeds $250,000 routes to Pending DMM Approval; exceeding $1,000,000 then
+routes to Pending GMM Approval after DMM. DMM-approval-of-all-TPRs is currently
+disabled (DMM_APPROVE_TPR = No). Check-paying vendors not on the exclusion
+Parameter list also force DMM approval. These thresholds were previously
+unknown / synthesized — this resolves docs/05 item A.5.
