@@ -1,15 +1,25 @@
 // Landing surface — the bubble field is THE work surface (per /docs/06-design-language.md §1.1).
 
+import Link from 'next/link';
 import { auth } from '../../../auth';
 import { redirect } from 'next/navigation';
 import { getBubbleData } from '@/lib/bubble-data';
 import { WorkSurface } from '@/components/bubble-field/WorkSurface';
 
-export default async function BubbleFieldLanding() {
+export default async function BubbleFieldLanding({
+  searchParams,
+}: {
+  searchParams: Promise<{ scope?: string }>;
+}) {
   const session = await auth();
   if (!session?.user) redirect('/login');
 
-  const bubbles = await getBubbleData();
+  const showAll = (await searchParams).scope === 'all';
+  const { bubbles, scope } = await getBubbleData({
+    userId: session.user.id,
+    role: session.user.role,
+    showAll,
+  });
 
   const totalEarnings = bubbles.reduce((s, b) => s + b.metrics.annualEarnings, 0);
   const queuePending = bubbles.filter((b) => b.queuePending).length;
@@ -42,6 +52,47 @@ export default async function BubbleFieldLanding() {
             accent="green"
           />
         </div>
+
+        {scope.tier === 'operator' && (
+          <div className="mt-3 flex items-center gap-3 text-xs text-gray-500">
+            {scope.showingAll ? (
+              <>
+                <span>
+                  Estate view · all{' '}
+                  <span className="font-semibold text-gray-700">
+                    {scope.totalCount.toLocaleString()}
+                  </span>{' '}
+                  vendors ·{' '}
+                  <span className="text-gray-400">
+                    your {scope.scopedCount.toLocaleString()}
+                  </span>
+                </span>
+                <Link
+                  href="/"
+                  className="rounded border border-gray-300 px-2 py-0.5 font-medium text-blue-600 hover:bg-blue-50"
+                >
+                  Show only mine
+                </Link>
+              </>
+            ) : (
+              <>
+                <span>
+                  Your view ·{' '}
+                  <span className="font-semibold text-gray-700">
+                    {scope.scopedCount.toLocaleString()}
+                  </span>{' '}
+                  of {scope.totalCount.toLocaleString()} vendors
+                </span>
+                <Link
+                  href="/?scope=all"
+                  className="rounded border border-gray-300 px-2 py-0.5 font-medium text-blue-600 hover:bg-blue-50"
+                >
+                  Show all
+                </Link>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Bubble field viewport — quadrant layout, axis-selectable via toolbar */}

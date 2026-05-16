@@ -131,7 +131,16 @@ export function VendorRecordSlider({
                 <TabsContent value="overview">
                   <OverviewTab record={record} />
                 </TabsContent>
-                {TAB_ORDER.filter((t) => t.id !== 'overview').map((t) => (
+                <TabsContent value="calculations">
+                  <CalculationsTab rows={record.calculations} />
+                </TabsContent>
+                <TabsContent value="agreements">
+                  <AgreementsTab rows={record.agreements} />
+                </TabsContent>
+                {TAB_ORDER.filter(
+                  (t) =>
+                    !['overview', 'calculations', 'agreements'].includes(t.id),
+                ).map((t) => (
                   <TabsContent key={t.id} value={t.id}>
                     <Placeholder label={t.label} />
                   </TabsContent>
@@ -227,6 +236,151 @@ function Component({ label, value }: { label: string; value: number }) {
       <div className="mt-0.5 font-semibold text-gray-900">
         {formatEarningsShort(value)}
       </div>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const s = status.toUpperCase();
+  const tone =
+    s.includes('REJECT') || s.includes('CANCEL') || s.includes('EXPIRE')
+      ? 'bg-red-100 text-red-800'
+      : s.includes('PENDING') || s === 'OPEN' || s.includes('REVIEW')
+        ? 'bg-amber-100 text-amber-800'
+        : s.includes('FINAL') || s === 'ASSIGNED' || s === 'APPROVED'
+          ? 'bg-green-100 text-green-800'
+          : 'bg-gray-100 text-gray-700';
+  return (
+    <span
+      className={`inline-block rounded px-1.5 py-0.5 text-[11px] font-medium ${tone}`}
+    >
+      {status.replace(/_/g, ' ')}
+    </span>
+  );
+}
+
+function CalculationsTab({
+  rows,
+}: {
+  rows: VendorRecord['calculations'];
+}) {
+  if (rows.length === 0)
+    return <Empty msg="No calculation rows for this vendor." />;
+  return (
+    <div>
+      <div className="mb-2 text-xs text-gray-500">
+        {rows.length === 500
+          ? 'Showing 500 most-recent calculation rows'
+          : `${rows.length} calculation rows`}{' '}
+        · most recent first
+      </div>
+      <div className="overflow-hidden rounded-lg border border-gray-200">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+            <tr>
+              <Th>Program</Th>
+              <Th>Dept</Th>
+              <Th>Period</Th>
+              <Th>Status</Th>
+              <Th className="text-right">Earned</Th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {rows.map((r, i) => (
+              <tr key={i} className="hover:bg-gray-50">
+                <Td>{r.program}</Td>
+                <Td>{r.dept}</Td>
+                <Td>
+                  FY{r.year}·P{String(r.period).padStart(2, '0')}
+                </Td>
+                <Td>
+                  <StatusBadge status={r.status} />
+                </Td>
+                <Td className="text-right tabular-nums">
+                  {formatEarningsShort(r.finalEarnings)}
+                </Td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function AgreementsTab({ rows }: { rows: VendorRecord['agreements'] }) {
+  if (rows.length === 0)
+    return <Empty msg="No agreements for this vendor." />;
+  return (
+    <div className="overflow-hidden rounded-lg border border-gray-200">
+      <table className="w-full text-sm">
+        <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+          <tr>
+            <Th>Agmt&nbsp;#</Th>
+            <Th>Description</Th>
+            <Th>Type</Th>
+            <Th>Status</Th>
+            <Th className="text-right">Est. value</Th>
+            <Th>Term</Th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {rows.map((a) => (
+            <tr key={a.agmtId} className="hover:bg-gray-50">
+              <Td className="tabular-nums">{a.agmtId}</Td>
+              <Td className="max-w-[220px] truncate" title={a.description}>
+                {a.description}
+              </Td>
+              <Td className="whitespace-nowrap text-xs text-gray-600">
+                {a.merchType} · {a.source}
+              </Td>
+              <Td>
+                <StatusBadge status={a.status} />
+              </Td>
+              <Td className="text-right tabular-nums">
+                ${fmt(a.estimatedValue)}
+              </Td>
+              <Td className="whitespace-nowrap text-xs text-gray-500">
+                {a.startDate} → {a.endDate}
+              </Td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Th({
+  children,
+  className = '',
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <th className={`px-3 py-2 font-medium ${className}`}>{children}</th>;
+}
+
+function Td({
+  children,
+  className = '',
+  title,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  title?: string;
+}) {
+  return (
+    <td className={`px-3 py-2 text-gray-800 ${className}`} title={title}>
+      {children}
+    </td>
+  );
+}
+
+function Empty({ msg }: { msg: string }) {
+  return (
+    <div className="flex h-48 items-center justify-center text-sm text-gray-400">
+      {msg}
     </div>
   );
 }

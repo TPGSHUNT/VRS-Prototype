@@ -33,6 +33,25 @@ export interface VendorRecord {
     contractValue: number;
     openInvoices: number;
   };
+  calculations: Array<{
+    program: number;
+    dept: string;
+    year: number;
+    period: number;
+    status: string;
+    finalEarnings: number; // normalized positive
+    finalEarningsLegacy: number; // legacy sign
+  }>;
+  agreements: Array<{
+    agmtId: number;
+    description: string;
+    merchType: string;
+    source: string;
+    status: string;
+    estimatedValue: number;
+    startDate: string;
+    endDate: string;
+  }>;
   // Tab counts so headers are real even before each tab's body is built.
   counts: {
     programs: number;
@@ -60,16 +79,31 @@ export async function getVendorRecord(
   const v = await prisma.vendor.findUnique({
     where: { id: vendorId },
     include: {
-      agreements: { select: { status: true, estimatedValue: true } },
+      agreements: {
+        select: {
+          agmtId: true,
+          description: true,
+          merchType: true,
+          source: true,
+          status: true,
+          estimatedValue: true,
+          startDate: true,
+          endDate: true,
+        },
+      },
       analyticsSummaries: { select: { transactionVolume: true } },
       rebateVendors: {
         include: {
-          rebateProgram: { select: { active: true } },
+          rebateProgram: { select: { active: true, programNumber: true } },
           invoices: { where: { status: { not: 'PAID' } }, select: { id: true } },
           rebateVendorDepts: {
-            include: {
+            select: {
+              departmentCode: true,
               calculateResults: {
                 select: {
+                  fiscalPeriod: true,
+                  fiscalYear: true,
+                  status: true,
                   pmuEarnings: true,
                   marginEarnings: true,
                   advcoopEarnings: true,
@@ -92,6 +126,36 @@ export async function getVendorRecord(
     rv.rebateVendorDepts.flatMap((rvd) => rvd.calculateResults),
   );
   const invoices = v.rebateVendors.flatMap((rv) => rv.invoices);
+
+  const calculations = v.rebateVendors
+    .flatMap((rv) =>
+      rv.rebateVendorDepts.flatMap((rvd) =>
+        rvd.calculateResults.map((c) => ({
+          program: rv.rebateProgram.programNumber,
+          dept: rvd.departmentCode,
+          year: c.fiscalYear,
+          period: c.fiscalPeriod,
+          status: String(c.status),
+          finalEarnings: num(c.finalEarnings),
+          finalEarningsLegacy: num(c.finalEarningsLegacy),
+        })),
+      ),
+    )
+    .sort((a, b) => b.year - a.year || b.period - a.period)
+    .slice(0, 500);
+
+  const agreements = v.agreements
+    .map((a) => ({
+      agmtId: a.agmtId,
+      description: a.description,
+      merchType: String(a.merchType),
+      source: String(a.source),
+      status: String(a.status),
+      estimatedValue: num(a.estimatedValue),
+      startDate: a.startDate.toISOString().slice(0, 10),
+      endDate: a.endDate.toISOString().slice(0, 10),
+    }))
+    .sort((a, b) => a.status.localeCompare(b.status));
 
   const components = calcs.reduce(
     (a, c) => ({
@@ -128,6 +192,8 @@ export async function getVendorRecord(
         .reduce((s, a) => s + num(a.estimatedValue), 0),
       openInvoices: invoices.length,
     },
+    calculations,
+    agreements,
     counts: {
       programs: v.rebateVendors.filter((rv) => rv.rebateProgram.active).length,
       calculations: calcs.length,
