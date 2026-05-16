@@ -61,7 +61,24 @@ export function BubbleField({ vendors, xMetric, yMetric, sizeMetric, onSelect }:
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [nodes, setNodes] = useState<BubbleNode[]>([]);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{
+    x: number;
+    y: number;
+    id: string;
+    name: string;
+    queuePending: boolean;
+  } | null>(null);
   const simRef = useRef<Simulation<BubbleNode, undefined> | null>(null);
+
+  // Close the context menu on Escape.
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setCtxMenu(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [ctxMenu]);
 
   // Staged entrance: watermarks read bright on first paint, then bubbles fade
   // in over them while the watermarks dim to their resting opacity. Triggers
@@ -345,6 +362,16 @@ export function BubbleField({ vendors, xMetric, yMetric, sizeMetric, onSelect }:
                 onMouseEnter={() => setHoveredId(node.id)}
                 onMouseLeave={() => setHoveredId(null)}
                 onClick={() => onSelect?.(node.id)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setCtxMenu({
+                    x: e.clientX,
+                    y: e.clientY,
+                    id: node.id,
+                    name: node.name,
+                    queuePending: node.queuePending,
+                  });
+                }}
                 style={{
                   filter: isHovered ? 'drop-shadow(0 6px 16px rgba(0,0,0,0.3))' : 'none',
                   transform: isHovered ? 'scale(1.12)' : 'scale(1)',
@@ -414,7 +441,80 @@ export function BubbleField({ vendors, xMetric, yMetric, sizeMetric, onSelect }:
           Pending AP approval
         </div>
       </div>
+
+      {/* Right-click context menu (P1.2). Open is live; the rest are honest
+          "later" entries — disabled until their phase lands. */}
+      {ctxMenu && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setCtxMenu(null)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setCtxMenu(null);
+            }}
+          />
+          <div
+            role="menu"
+            className="fixed z-50 min-w-[200px] rounded-lg border border-gray-200 bg-white py-1 shadow-xl text-sm"
+            style={{
+              left: Math.min(ctxMenu.x, window.innerWidth - 220),
+              top: Math.min(ctxMenu.y, window.innerHeight - 180),
+            }}
+          >
+            <div className="truncate px-3 py-1.5 text-xs font-medium text-gray-500 border-b border-gray-100">
+              {ctxMenu.name}
+            </div>
+            <CtxItem
+              onClick={() => {
+                onSelect?.(ctxMenu.id);
+                setCtxMenu(null);
+              }}
+            >
+              Open record
+            </CtxItem>
+            <CtxItem soon="Phase 3">Run report</CtxItem>
+            <CtxItem soon="Phase 2">Ask Vera</CtxItem>
+            {ctxMenu.queuePending && (
+              <CtxItem soon="soon">Approve in queue</CtxItem>
+            )}
+          </div>
+        </>
+      )}
     </div>
+  );
+}
+
+function CtxItem({
+  children,
+  onClick,
+  soon,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  soon?: string;
+}) {
+  const disabled = !!soon;
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      disabled={disabled}
+      onClick={onClick}
+      className={
+        'flex w-full items-center justify-between gap-4 px-3 py-1.5 text-left ' +
+        (disabled
+          ? 'cursor-not-allowed text-gray-400'
+          : 'text-gray-800 hover:bg-blue-50 hover:text-blue-700')
+      }
+    >
+      <span>{children}</span>
+      {soon && (
+        <span className="rounded bg-gray-100 px-1.5 text-[10px] uppercase tracking-wide text-gray-400">
+          {soon}
+        </span>
+      )}
+    </button>
   );
 }
 
