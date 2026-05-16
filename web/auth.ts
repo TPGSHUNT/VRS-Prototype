@@ -14,6 +14,26 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   // `npm run dev` (see web/package.json) so every server restart invalidates
   // all sessions → you always land on the role selector. Prod uses Entra ID.
   session: { strategy: 'jwt', maxAge: 60 * 30 },
+  // The AUTH_SECRET rotation (above) means a browser holding a cookie from a
+  // prior `npm run dev` can't be decrypted on restart — that's intentional
+  // (forces the role selector). Auth.js logs it as a full stack trace though;
+  // swallow that one expected case so the demo console stays clean. Anything
+  // else still logs.
+  logger: {
+    error(err: unknown) {
+      const e = err as { name?: string; message?: string };
+      const m = `${e?.name ?? ''} ${e?.message ?? err}`;
+      if (
+        m.includes('no matching decryption secret') ||
+        m.includes('JWTSessionError') ||
+        m.includes('decryption operation failed')
+      ) {
+        return; // expected: stale cookie vs rotated AUTH_SECRET
+      }
+      console.error('[auth]', err);
+    },
+    warn() {},
+  },
   providers: [
     Credentials({
       name: 'role-sim',
