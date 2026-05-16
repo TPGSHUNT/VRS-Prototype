@@ -46,7 +46,7 @@ export default async function BubbleFieldLanding() {
 
       {/* Bubble field viewport — quadrant layout, axis-selectable via toolbar */}
       <div className="flex-1 relative bg-gradient-to-br from-gray-50/80 via-white to-gray-50/60">
-        <WorkSurface vendors={bubbles} />
+        <WorkSurface vendors={bubbles} role={session.user.role} />
       </div>
     </div>
   );

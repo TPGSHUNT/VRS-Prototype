@@ -4,13 +4,22 @@
 // Holds X / Y / size metric selection state. Selectors update the bubble layout live.
 
 import { useState } from 'react';
+import type { UserRole } from '@vrs/db';
 import { BubbleField } from './BubbleField';
+import { VendorRecordSlider } from '@/components/vendor-record/VendorRecordSlider';
 import { METRIC_KEYS, METRIC_LABELS, type BubbleVendor, type MetricKey } from '@/lib/bubble-data';
 
-export function WorkSurface({ vendors }: { vendors: BubbleVendor[] }) {
+export function WorkSurface({
+  vendors,
+  role,
+}: {
+  vendors: BubbleVendor[];
+  role: UserRole;
+}) {
   const [xMetric, setXMetric] = useState<MetricKey>('contractValue');
   const [yMetric, setYMetric] = useState<MetricKey>('annualEarnings');
   const [sizeMetric, setSizeMetric] = useState<MetricKey>('grossVolume');
+  const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
 
   return (
     <>
@@ -19,6 +28,13 @@ export function WorkSurface({ vendors }: { vendors: BubbleVendor[] }) {
         xMetric={xMetric}
         yMetric={yMetric}
         sizeMetric={sizeMetric}
+        onSelect={setSelectedVendorId}
+      />
+
+      <VendorRecordSlider
+        vendorId={selectedVendorId}
+        role={role}
+        onClose={() => setSelectedVendorId(null)}
       />
 
       {/* Floating toolbar — bottom-anchored, pointer-events on so dropdowns work */}

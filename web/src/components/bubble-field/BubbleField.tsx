@@ -53,9 +53,10 @@ interface BubbleFieldProps {
   xMetric: MetricKey;
   yMetric: MetricKey;
   sizeMetric: MetricKey;
+  onSelect?: (vendorId: string) => void;
 }
 
-export function BubbleField({ vendors, xMetric, yMetric, sizeMetric }: BubbleFieldProps) {
+export function BubbleField({ vendors, xMetric, yMetric, sizeMetric, onSelect }: BubbleFieldProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [nodes, setNodes] = useState<BubbleNode[]>([]);
@@ -343,6 +344,7 @@ export function BubbleField({ vendors, xMetric, yMetric, sizeMetric }: BubbleFie
                 opacity={isHovered ? 1 : 0.85}
                 onMouseEnter={() => setHoveredId(node.id)}
                 onMouseLeave={() => setHoveredId(null)}
+                onClick={() => onSelect?.(node.id)}
                 style={{
                   filter: isHovered ? 'drop-shadow(0 6px 16px rgba(0,0,0,0.3))' : 'none',
                   transform: isHovered ? 'scale(1.12)' : 'scale(1)',
