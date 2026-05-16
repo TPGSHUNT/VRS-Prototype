@@ -143,11 +143,14 @@ enum NotificationType {
 }
 
 // ─── 1. FISCAL PERIOD ────────────────────────────────────────────────────────
-// 4-4-5 calendar — 13 periods/year, periods do not align with calendar months.
+// 4-5-4 calendar — 12 periods/year (Ken-confirmed, round 3: "12 Periods in a Year.
+// Uses a 4 5 4 strategy. 4 weeks in Period 1, 5 weeks in Period 2, 4 weeks in
+// period 3 (Quarter end)"). Periods do not align with calendar months. Nothing
+// special at year-end. fiscalPeriod is 1..12. (Was wrongly 4-4-5/13 — Phase 0 D1.)
 
 model FiscalPeriod {
   id           String    @id @default(uuid())
-  fiscalPeriod Int
+  fiscalPeriod Int // 1..12
   fiscalYear   Int
   periodStart  DateTime  @db.Date
   periodEnd    DateTime  @db.Date
@@ -187,11 +190,21 @@ model RebateType {
 }
 
 // ─── 4. VENDOR ───────────────────────────────────────────────────────────────
-// vendorNumber is the AP # — plain integer in source data (e.g. 262529, 1179).
+// Dual identity (Ken, follow-on): a vendor has an AP-side number and an
+// MDSE-side IP (Island Pacific) number, 1:1.
+//   - apNumber : canonical AP-side, VARCHAR(9) digits-only in Lawson. String to
+//                preserve width/leading zeros. This is the source-of-truth key.
+//   - ipNumber : NUMBER(5) Island Pacific, the MDSE-side identity.
+//   - vendorNumber : retained legacy integer alias (== apNumber as Int) so the
+//                    existing seed/bubble keep working; seed populates all three
+//                    consistently. Aggregate the bubble field by NAME, not number
+//                    (one "vendor" often spans multiple AP#s — 15-handoff P1).
 
 model Vendor {
   id                 String             @id @default(uuid())
   vendorNumber       Int                @unique
+  apNumber           String?            @unique // VARCHAR(9) digits-only, canonical AP-side
+  ipNumber           Int? // NUMBER(5) Island Pacific, MDSE-side
   name               String
   active             Boolean            @default(true)
   rebateVendors      RebateVendor[]
@@ -278,37 +291,48 @@ model Agreement {
 // ─── 8. REBATE PROGRAM ───────────────────────────────────────────────────────
 
 model RebateProgram {
-  id             String         @id @default(uuid())
-  // Display Rebate ID — plain integer in source data (e.g. 71922, 6064, 57098)
-  programNumber  Int            @unique
-  description    String
-  rebateTypeCode String
-  rebateType     RebateType     @relation(fields: [rebateTypeCode], references: [code])
-  programTypeId  String
-  programType    ProgramType    @relation(fields: [programTypeId], references: [id])
+  id               String      @id @default(uuid())
+  // Display Rebate ID — REBATE_ID is an Oracle NUMBER(10) sequence; VRS is the
+  // system of record. P0.4: seed must generate sequence-shaped values (large,
+  // monotonic — e.g. 71922, 6064, 57098), NOT 1..N. Same applies to
+  // Vendor.vendorNumber and Agreement.agmtId.
+  programNumber    Int         @unique
+  description      String
+  rebateTypeCode   String
+  rebateType       RebateType  @relation(fields: [rebateTypeCode], references: [code])
+  programTypeId    String
+  programType      ProgramType @relation(fields: [programTypeId], references: [id])
   // Denormalized from RebateType.source for query convenience.
   // Service layer (createRebateProgram) always derives this from rebateType.source.
-  source         Source
-  analystId      String
-  analyst        User           @relation("ProgramAnalyst", fields: [analystId], references: [id])
-  agreementId    String?
-  agreement      Agreement?     @relation(fields: [agreementId], references: [id])
-  startDate      DateTime       @db.Date
-  endDate        DateTime       @db.Date
-  active         Boolean        @default(true)
-  notes          String?
+  source           Source
+  analystId        String
+  analyst          User        @relation("ProgramAnalyst", fields: [analystId], references: [id])
+  agreementId      String?
+  agreement        Agreement?  @relation(fields: [agreementId], references: [id])
+  // Two date ranges per rebate (K2 — confirmed present in real REBATE_PROGRAM as
+  // rebate_beg/end_date + extract_beg/end_date). startDate/endDate = the Rebate
+  // range. extractBeginDate/extractEndDate = the Extract range, which typically
+  // starts EARLIER than the Rebate range so PMU and Margin can both compute in
+  // the first active period (single-pair model breaks Margin). Nullable until
+  // real ingest / Ken semantic confirm (K2 downgraded to a confirm).
+  startDate        DateTime    @db.Date
+  endDate          DateTime    @db.Date
+  extractBeginDate DateTime?   @db.Date
+  extractEndDate   DateTime?   @db.Date
+  active           Boolean     @default(true)
+  notes            String?
 
   // Fields aligning with the Rebate Program Extract output (Ken's sample, Sprint 3).
   // Single-letter codes — meanings TBD with Ken (see /docs/05-info-needed-from-ken.md).
-  payType       String? // C | D | G | M | T | W
-  frequency     String? // P (period)
-  altApNumber   Int?
-  payApNumber   Int?
-  earnType      String? // M
-  sbtType       String? // N
-  pctOfCost     Decimal? @db.Decimal(8, 4) // e.g. 0.0050 = 0.5000%
-  pctLevel      String? // "Dept" or null
-  closedAt      DateTime?
+  payType     String? // C | D | G | M | T | W
+  frequency   String? // P (period)
+  altApNumber Int?
+  payApNumber Int?
+  earnType    String? // M
+  sbtType     String? // N
+  pctOfCost   Decimal?  @db.Decimal(8, 4) // e.g. 0.0050 = 0.5000%
+  pctLevel    String? // "Dept" or null
+  closedAt    DateTime?
 
   rebateVendors RebateVendor[]
   rebateTiers   RebateTier[]
@@ -364,6 +388,9 @@ model RebateVendorDept {
   departmentCode String
   departmentName String
   classCode      String       @default("-1")
+  // Real REBATE_VENDOR_DEPT carries ip_vendor_num (the MDSE-side IP identity at
+  // the dept grain). Nullable; populated on real ingest. See Vendor.ipNumber.
+  ipVendorNum    Int?
   active         Boolean      @default(true)
 
   calculateResults CalculateResult[]
@@ -396,6 +423,14 @@ model CalculateResult {
   tierLevel   Int?
   rateApplied Decimal? @db.Decimal(8, 6)
 
+  // EARNINGS SIGN ORIENTATION (Decision ①, resolved 2026-05-16):
+  // All *Earnings fields here are NORMALIZED to positive = value to DG (earned).
+  // Legacy/source VRS stores these NEGATIVE (vendor owes DG; e.g. Period
+  // Accounting Summary shows ~-$949M for 2026). On real-data ingest (P3.1) the
+  // sign is flipped here and the original legacy-signed total is preserved in
+  // finalEarningsLegacy below for audit + Vera cite-the-row grounding.
+  // Never display a naked signed number — always labeled "$X earned"/"$Y owed"
+  // (glossary module, P0.8). An "Accounting view" drill renders the legacy sign.
   // Earnings components (shown on Vendors & Depts tab)
   pmuEarnings       Decimal @default(0) @db.Decimal(15, 2)
   marginEarnings    Decimal @default(0) @db.Decimal(15, 2)
@@ -409,17 +444,21 @@ model CalculateResult {
   adjustmentAmount Decimal @default(0) @db.Decimal(15, 2)
   adjustmentReason String?
 
-  finalEarnings Decimal @default(0) @db.Decimal(15, 2) // totalEarnings + adjustmentAmount
+  finalEarnings       Decimal  @default(0) @db.Decimal(15, 2) // totalEarnings + adjustmentAmount (normalized positive)
+  // Raw legacy-signed final earnings as it exists in source VRS (negative =
+  // vendor owes DG). Null for synthetic seed rows; populated on real ingest.
+  // Audit anchor + the value the "Accounting view" drill shows verbatim.
+  finalEarningsLegacy Decimal? @db.Decimal(15, 2)
 
   status CalculateResultStatus @default(OPEN)
 
   // Audit
-  runAt        DateTime?
-  reviewedAt   DateTime?
-  reviewedBy   String?
-  approvedAt   DateTime?
-  approvedBy   String?
-  finalizedAt  DateTime?
+  runAt       DateTime?
+  reviewedAt  DateTime?
+  reviewedBy  String?
+  approvedAt  DateTime?
+  approvedBy  String?
+  finalizedAt DateTime?
 
   batchItems  BatchItem[]
   adjustments CalculateResultAdjustment[]
@@ -612,9 +651,9 @@ model Notification {
 // seeded with synthesized values in the prototype.
 
 model AnalyticsSummary {
-  id             String  @id @default(uuid())
+  id             String @id @default(uuid())
   vendorId       String
-  vendor         Vendor  @relation(fields: [vendorId], references: [id])
+  vendor         Vendor @relation(fields: [vendorId], references: [id])
   departmentCode String
   source         Source
   fiscalPeriod   Int

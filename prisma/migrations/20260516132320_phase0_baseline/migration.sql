@@ -2,7 +2,7 @@
 CREATE TYPE "Source" AS ENUM ('R', 'S', 'D', 'B', 'F', 'C', 'N', 'E', 'Q', 'T');
 
 -- CreateEnum
-CREATE TYPE "MerchType" AS ENUM ('COTRKT', 'ADVCOOP', 'NSA', 'SCAN', 'TPR', 'S5S5', 'PREPAID');
+CREATE TYPE "MerchType" AS ENUM ('ADVCOOP', 'BOPIS', 'CLPSTP', 'COMMISSN', 'COMMTG', 'COTRKT', 'CPRPR', 'CSTINCAF', 'DGMEDIAN', 'DGRACING', 'DMGDC', 'ENDCAP', 'EXCLUSIV', 'FIXTURES', 'FREIGHT', 'FRONTEND', 'LABRFUND', 'MILKICE', 'MKTSTORE', 'MRKDWNC', 'MRKDWNNC', 'NEWITEM', 'NSA', 'OTHER', 'PLCALLOW', 'POSTAUDT', 'PREPAID', 'PRIVBRND', 'RECALL', 'S5S5', 'SCAN', 'SCNBK', 'SIDEWING', 'SUPCHAIN', 'TPR', 'VOLCOKE', 'VOLGRWTH', 'VOLPEPSI', 'VOLUME');
 
 -- CreateEnum
 CREATE TYPE "AgreementStatus" AS ENUM ('SUBMITTED_BY_VENDOR', 'PRE_NEGOTIATION', 'PENDING_DMM_APPROVAL', 'PENDING_GMM_APPROVAL', 'PENDING_AP_APPROVAL', 'ASSIGNED', 'EXPIRED', 'REJECTED', 'CANCELLED');
@@ -43,13 +43,13 @@ CREATE TABLE "FiscalPeriod" (
 );
 
 -- CreateTable
-CREATE TABLE "RebateCategory" (
+CREATE TABLE "ProgramType" (
     "id" TEXT NOT NULL,
     "code" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "active" BOOLEAN NOT NULL DEFAULT true,
 
-    CONSTRAINT "RebateCategory_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "ProgramType_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -67,7 +67,9 @@ CREATE TABLE "RebateType" (
 -- CreateTable
 CREATE TABLE "Vendor" (
     "id" TEXT NOT NULL,
-    "vendorNumber" TEXT NOT NULL,
+    "vendorNumber" INTEGER NOT NULL,
+    "apNumber" TEXT,
+    "ipNumber" INTEGER,
     "name" TEXT NOT NULL,
     "active" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -108,13 +110,14 @@ CREATE TABLE "VendorPortalUser" (
 -- CreateTable
 CREATE TABLE "Agreement" (
     "id" TEXT NOT NULL,
+    "agmtId" SERIAL NOT NULL,
     "vendorId" TEXT NOT NULL,
     "merchType" "MerchType" NOT NULL,
     "source" "Source" NOT NULL,
     "description" TEXT NOT NULL,
     "buyerId" TEXT NOT NULL,
     "delegateId" TEXT,
-    "categoryId" TEXT NOT NULL,
+    "programTypeId" TEXT NOT NULL,
     "estimatedValue" DECIMAL(15,2) NOT NULL,
     "startDate" DATE NOT NULL,
     "endDate" DATE NOT NULL,
@@ -139,17 +142,28 @@ CREATE TABLE "Agreement" (
 -- CreateTable
 CREATE TABLE "RebateProgram" (
     "id" TEXT NOT NULL,
-    "programNumber" TEXT NOT NULL,
+    "programNumber" INTEGER NOT NULL,
     "description" TEXT NOT NULL,
     "rebateTypeCode" TEXT NOT NULL,
-    "categoryId" TEXT NOT NULL,
+    "programTypeId" TEXT NOT NULL,
     "source" "Source" NOT NULL,
     "analystId" TEXT NOT NULL,
     "agreementId" TEXT,
     "startDate" DATE NOT NULL,
     "endDate" DATE NOT NULL,
+    "extractBeginDate" DATE,
+    "extractEndDate" DATE,
     "active" BOOLEAN NOT NULL DEFAULT true,
     "notes" TEXT,
+    "payType" TEXT,
+    "frequency" TEXT,
+    "altApNumber" INTEGER,
+    "payApNumber" INTEGER,
+    "earnType" TEXT,
+    "sbtType" TEXT,
+    "pctOfCost" DECIMAL(8,4),
+    "pctLevel" TEXT,
+    "closedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -188,6 +202,7 @@ CREATE TABLE "RebateVendorDept" (
     "departmentCode" TEXT NOT NULL,
     "departmentName" TEXT NOT NULL,
     "classCode" TEXT NOT NULL DEFAULT '-1',
+    "ipVendorNum" INTEGER,
     "active" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -215,6 +230,7 @@ CREATE TABLE "CalculateResult" (
     "adjustmentAmount" DECIMAL(15,2) NOT NULL DEFAULT 0,
     "adjustmentReason" TEXT,
     "finalEarnings" DECIMAL(15,2) NOT NULL DEFAULT 0,
+    "finalEarningsLegacy" DECIMAL(15,2),
     "status" "CalculateResultStatus" NOT NULL DEFAULT 'OPEN',
     "runAt" TIMESTAMP(3),
     "reviewedAt" TIMESTAMP(3),
@@ -400,10 +416,13 @@ CREATE TABLE "AnalyticsSummary" (
 CREATE UNIQUE INDEX "FiscalPeriod_fiscalPeriod_fiscalYear_key" ON "FiscalPeriod"("fiscalPeriod", "fiscalYear");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "RebateCategory_code_key" ON "RebateCategory"("code");
+CREATE UNIQUE INDEX "ProgramType_code_key" ON "ProgramType"("code");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Vendor_vendorNumber_key" ON "Vendor"("vendorNumber");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Vendor_apNumber_key" ON "Vendor"("apNumber");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
@@ -413,6 +432,9 @@ CREATE UNIQUE INDEX "User_analystCode_key" ON "User"("analystCode");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "VendorPortalUser_email_key" ON "VendorPortalUser"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Agreement_agmtId_key" ON "Agreement"("agmtId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "RebateProgram_programNumber_key" ON "RebateProgram"("programNumber");
@@ -460,13 +482,13 @@ ALTER TABLE "Agreement" ADD CONSTRAINT "Agreement_vendorId_fkey" FOREIGN KEY ("v
 ALTER TABLE "Agreement" ADD CONSTRAINT "Agreement_buyerId_fkey" FOREIGN KEY ("buyerId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Agreement" ADD CONSTRAINT "Agreement_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "RebateCategory"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Agreement" ADD CONSTRAINT "Agreement_programTypeId_fkey" FOREIGN KEY ("programTypeId") REFERENCES "ProgramType"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "RebateProgram" ADD CONSTRAINT "RebateProgram_rebateTypeCode_fkey" FOREIGN KEY ("rebateTypeCode") REFERENCES "RebateType"("code") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "RebateProgram" ADD CONSTRAINT "RebateProgram_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "RebateCategory"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "RebateProgram" ADD CONSTRAINT "RebateProgram_programTypeId_fkey" FOREIGN KEY ("programTypeId") REFERENCES "ProgramType"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "RebateProgram" ADD CONSTRAINT "RebateProgram_analystId_fkey" FOREIGN KEY ("analystId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

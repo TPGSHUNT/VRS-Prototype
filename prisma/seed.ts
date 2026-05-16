@@ -1,10 +1,16 @@
 // VRS prototype seed script
 // Runs against local Postgres. Idempotent — wipes data first.
-// Counts and bubble-color distribution match docs/04-schema-addendum.md §3 + §4.
-// MerchType / ProgramType / vendor numbering aligned with Ken's CSV samples.
+// Counts/distribution follow docs/04 §3-4; Phase 0 (docs/20) reworked:
+//   - 12-period / 4-5-4 fiscal calendar (P01–P11 closed, P12 open)  [P0.1]
+//   - earnings normalized positive + finalEarningsLegacy = legacy negative [P0.2]
+//   - Vendor.apNumber/ipNumber, RebateVendorDept.ipVendorNum            [P0.3]
+//   - sequence-shaped agmtId                                            [P0.4]
+//   - RebateProgram extract date pair                                   [P0.5]
+//   - real DMM/GMM approval thresholds, readable Frequency domain       [P0.6]
 //
-// Pending Ken inputs (placeholders below): full department code list, real GL accounts,
-// fiscal calendar dates, approval thresholds, NSA subsystem details.
+// Still synthetic single-year FY2025. Real multi-year ingest is Phase 3.
+// Known-not-modeled (deliberate, see docs/16/19): Category bloat (~2,029 real),
+// the real 10-transaction-per-AcctType AcctControlMaster structure.
 
 import {
   prisma,
@@ -93,7 +99,7 @@ const SYNTHESIZED_VENDOR_NAMES = [
 ];
 const VENDOR_NAMES = [...REAL_VENDOR_NAMES, ...SYNTHESIZED_VENDOR_NAMES];
 
-// Department codes — placeholder until Ken provides full list (see request item A.1).
+// Department codes — placeholder until Ken provides full list (request item A.1).
 // Real codes are 3-digit numeric (Ken's extract shows 100, 210, etc.).
 const DEPARTMENTS: Array<{ code: string; name: string }> = [
   { code: '100', name: 'Beverages' },
@@ -111,8 +117,6 @@ const DEPARTMENTS: Array<{ code: string; name: string }> = [
 ];
 
 // ProgramType — values from ActVrs_Plan.csv (Ken's roll-up sample).
-// Replaces the original RebateCategory's HBA/GROCERY/etc. groupings, which were
-// a fiction; real DG VRS doesn't use that taxonomy at the program level.
 const PROGRAM_TYPES: Array<{ code: string; name: string }> = [
   { code: 'ADV_COOP', name: 'Advertising Coop' },
   { code: 'CLIP_STRIP', name: 'Clip Strip' },
@@ -152,9 +156,7 @@ const PROGRAM_TYPES: Array<{ code: string; name: string }> = [
   { code: 'NEW_STORE', name: 'New Store Allowance' },
 ];
 
-// RebateType compound codes — keeping the Source-MerchType bridge structure
-// per schema docs until Ken clarifies whether real DG codes are unitary or compound.
-// (See /docs/05-info-needed-from-ken.md — deferred clarification.)
+// RebateType compound codes — Source-MerchType bridge per schema docs.
 const REBATE_TYPES: Array<{
   code: string;
   source: Source;
@@ -193,20 +195,60 @@ const USERS: Array<{
   { email: 'audit@dollargeneral.com', name: 'Read-Only Auditor', analystCode: 'EX', role: UserRole.READ_ONLY },
 ];
 
-// Placeholder fiscal calendar — Ken to confirm actual DG dates (request item A.4)
-const FISCAL_PERIODS = [
-  { fiscalPeriod: 1, fiscalYear: 2025, periodStart: '2025-02-02', periodEnd: '2025-03-01', isClosed: true },
-  { fiscalPeriod: 2, fiscalYear: 2025, periodStart: '2025-03-02', periodEnd: '2025-03-29', isClosed: true },
-  { fiscalPeriod: 3, fiscalYear: 2025, periodStart: '2025-03-30', periodEnd: '2025-05-03', isClosed: true },
-  { fiscalPeriod: 4, fiscalYear: 2025, periodStart: '2025-05-04', periodEnd: '2025-05-31', isClosed: true },
-  { fiscalPeriod: 5, fiscalYear: 2025, periodStart: '2025-06-01', periodEnd: '2025-06-28', isClosed: false },
-];
+// ─── Fiscal calendar — 12 periods, 4-5-4 (Ken round 3) ──────────────────────
+// FY2025 anchored at 2025-02-02 (DG fiscal-year start convention). Week pattern
+// per quarter: 4-5-4 (P3/P6/P9/P12 are quarter-ends). 52 weeks total.
+// P01–P11 closed, P12 open (demo "current period" for the period-close story).
+const PERIOD_WEEKS = [4, 5, 4, 4, 5, 4, 4, 5, 4, 4, 5, 4];
+const FY = 2025;
+const OPEN_PERIOD = 12; // the single open period
+const LAST_CLOSED_PERIOD = 11; // most-recently-closed = bubble-health reference
 
-// Pay Type / Earn Type / SBT Type codes — values from extract; meanings TBD with Ken.
+const FISCAL_PERIODS = (() => {
+  const out: Array<{
+    fiscalPeriod: number;
+    fiscalYear: number;
+    periodStart: string;
+    periodEnd: string;
+    isClosed: boolean;
+  }> = [];
+  let cursor = new Date(Date.UTC(2025, 1, 2)); // 2025-02-02
+  for (let p = 1; p <= 12; p++) {
+    const start = new Date(cursor);
+    const end = new Date(cursor);
+    end.setUTCDate(end.getUTCDate() + PERIOD_WEEKS[p - 1]! * 7 - 1);
+    out.push({
+      fiscalPeriod: p,
+      fiscalYear: FY,
+      periodStart: start.toISOString().slice(0, 10),
+      periodEnd: end.toISOString().slice(0, 10),
+      isClosed: p <= LAST_CLOSED_PERIOD,
+    });
+    cursor = new Date(end);
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return out;
+})();
+const CLOSED_PERIODS = FISCAL_PERIODS.filter((f) => f.isClosed);
+
+// Approval thresholds — real Parameter values (Ken_answers_4_may12.txt / docs/17).
+// Forecast (here: estimatedValue) ≥ $250K routes through DMM; ≥ $1M then GMM.
+const DMM_THRESHOLD = 250_000;
+const GMM_THRESHOLD = 1_000_000;
+// DMM_APPROVE_TPR = No — TPR agreements do NOT force DMM purely for being TPR
+// (parameter-disabled, Ken round 3). No special handling needed; documented.
+
+// Pay Type codes — values from extract; meanings TBD with Ken (K5).
 const PAY_TYPES = ['C', 'D', 'G', 'M', 'T', 'W'];
-const FREQUENCIES = ['P']; // Period
+// Frequency — readable domain from the legacy form dropdown (docs/17 image087).
+// Exact stored codes pending K5; using labels for demo legibility, weighted to Period.
+const FREQUENCIES = ['Period', 'Period', 'Period', 'Quarter', 'End of Rebate', 'Weekly'];
 const EARN_TYPES = ['M'];
 const SBT_TYPES = ['N'];
+
+// Sequence-shaped Agmt ID (Oracle sequence, not 1..N) — P0.4
+let agmtSeq = intBetween(300_000, 380_000);
+const nextAgmtId = () => (agmtSeq += intBetween(1, 40));
 
 // ─── Wipe ───────────────────────────────────────────────────────────────────
 
@@ -242,7 +284,7 @@ async function main() {
   await wipe();
 
   // Fiscal periods
-  console.log('› fiscal periods');
+  console.log(`› fiscal periods (12, 4-5-4; P01–P${LAST_CLOSED_PERIOD} closed, P${OPEN_PERIOD} open)`);
   for (const fp of FISCAL_PERIODS) {
     await prisma.fiscalPeriod.create({
       data: {
@@ -278,15 +320,23 @@ async function main() {
   const dmm = userByCode.get('DM')!;
   const gmm = userByCode.get('GR')!;
 
-  // Vendors — vendorNumber is plain integer (Int), matches real AP # format
+  // Vendors — vendorNumber (legacy Int alias) + apNumber (VARCHAR9) + ipNumber (NUMBER5)
   console.log('› vendors');
+  const vendorIp = new Map<string, number>();
   const vendors = await Promise.all(
     VENDOR_NAMES.map(async (name, i) => {
-      // AP # range loosely matches Ken's data (1,000–300,000)
-      const vendorNumber = 1000 + i * 6427 + intBetween(0, 50); // spread non-sequentially
-      return prisma.vendor.create({
-        data: { vendorNumber, name },
+      const vendorNumber = 1000 + i * 6427 + intBetween(0, 50); // spread, sequence-ish
+      const ipNumber = intBetween(10_000, 99_999); // NUMBER(5)
+      const v = await prisma.vendor.create({
+        data: {
+          vendorNumber,
+          apNumber: String(vendorNumber).padStart(9, '0'), // VARCHAR(9) digits-only
+          ipNumber,
+          name,
+        },
       });
+      vendorIp.set(v.id, ipNumber);
+      return v;
     }),
   );
   const largeVendors = vendors.slice(0, 5);
@@ -321,26 +371,41 @@ async function main() {
   const randomRebateType = () => pick(REBATE_TYPES);
   const randomProgramType = () => pick(programTypes);
 
+  // Real approval-chain audit consistent with estimatedValue vs thresholds.
+  const chainFor = (estimatedValue: number) => {
+    const throughDmm = estimatedValue >= DMM_THRESHOLD;
+    const throughGmm = estimatedValue >= GMM_THRESHOLD;
+    return {
+      dmmApprovedBy: throughDmm ? dmm.id : null,
+      dmmApprovedAt: throughDmm ? new Date('2024-12-10') : null,
+      gmmApprovedBy: throughGmm ? gmm.id : null,
+      gmmApprovedAt: throughGmm ? new Date('2024-12-15') : null,
+    };
+  };
+
   // 8 PENDING_AP_APPROVAL — drives the bubble pulsing rings
   for (const v of queuePendingVendors) {
     const rt = randomRebateType();
     const pt = randomProgramType();
+    const estimatedValue = decBetween(50_000, 2_500_000);
+    const chain = chainFor(estimatedValue);
     const a = await prisma.agreement.create({
       data: {
+        agmtId: nextAgmtId(),
         vendorId: v.id,
         merchType: rt.merchType,
         source: rt.source,
         description: `Q${intBetween(1, 4)} ${rt.merchType} program with ${v.name.split(' ').slice(0, 2).join(' ')}`,
         buyerId: buyer.id,
         programTypeId: pt.id,
-        estimatedValue: decBetween(50_000, 2_500_000),
+        estimatedValue,
         startDate: new Date('2025-06-01'),
         endDate: new Date('2026-05-31'),
         status: AgreementStatus.PENDING_AP_APPROVAL,
-        dmmApprovedBy: dmm.id,
-        dmmApprovedAt: new Date('2025-05-20'),
-        gmmApprovedBy: gmm.id,
-        gmmApprovedAt: new Date('2025-05-22'),
+        dmmApprovedBy: chain.dmmApprovedBy,
+        dmmApprovedAt: chain.dmmApprovedAt,
+        gmmApprovedBy: chain.gmmApprovedBy,
+        gmmApprovedAt: chain.gmmApprovedAt,
       },
     });
     seededAgreements.push({
@@ -354,13 +419,14 @@ async function main() {
     });
   }
 
-  // 1 demo agreement at PENDING_GMM_APPROVAL — full chain demo
+  // 1 demo agreement at PENDING_GMM_APPROVAL — full chain demo ($4.75M ≥ GMM)
   {
     const v = greenVendors[0]!;
     const rt = REBATE_TYPES.find((x) => x.code === 'R-COTRKT')!;
     const pt = programTypeByCode.get('ADV_COOP')!;
     const a = await prisma.agreement.create({
       data: {
+        agmtId: nextAgmtId(),
         vendorId: v.id,
         merchType: rt.merchType,
         source: rt.source,
@@ -392,22 +458,25 @@ async function main() {
     const v = pick(vendors);
     const rt = randomRebateType();
     const pt = randomProgramType();
+    const estimatedValue = decBetween(25_000, 8_000_000);
+    const chain = chainFor(estimatedValue);
     const a = await prisma.agreement.create({
       data: {
+        agmtId: nextAgmtId(),
         vendorId: v.id,
         merchType: rt.merchType,
         source: rt.source,
         description: `${rt.merchType} program for ${v.name.split(' ')[0]}`,
         buyerId: pick([buyer.id, buyerDelegate.id]),
         programTypeId: pt.id,
-        estimatedValue: decBetween(25_000, 8_000_000),
+        estimatedValue,
         startDate: new Date('2025-02-02'),
         endDate: new Date('2026-01-31'),
         status: AgreementStatus.ASSIGNED,
-        dmmApprovedBy: dmm.id,
-        dmmApprovedAt: new Date('2024-12-10'),
-        gmmApprovedBy: rng() > 0.5 ? gmm.id : null,
-        gmmApprovedAt: rng() > 0.5 ? new Date('2024-12-15') : null,
+        dmmApprovedBy: chain.dmmApprovedBy,
+        dmmApprovedAt: chain.dmmApprovedAt,
+        gmmApprovedBy: chain.gmmApprovedBy,
+        gmmApprovedAt: chain.gmmApprovedAt,
         apApprovedBy: apAnalyst.id,
         apApprovedAt: new Date('2024-12-20'),
       },
@@ -430,6 +499,7 @@ async function main() {
     const pt = randomProgramType();
     await prisma.agreement.create({
       data: {
+        agmtId: nextAgmtId(),
         vendorId: v.id,
         merchType: rt.merchType,
         source: rt.source,
@@ -458,6 +528,7 @@ async function main() {
     const submittedViaPortal = status === AgreementStatus.SUBMITTED_BY_VENDOR;
     await prisma.agreement.create({
       data: {
+        agmtId: nextAgmtId(),
         vendorId: v.id,
         merchType: rt.merchType,
         source: rt.source,
@@ -491,8 +562,14 @@ async function main() {
     (a) => a.status === AgreementStatus.ASSIGNED,
   );
 
-  // Plain integer programNumbers, range 1000-100000
-  let programNumberSeq = intBetween(1000, 5000);
+  // Sequence-shaped programNumber (Oracle NUMBER(10), not 1..N) — P0.4
+  let programNumberSeq = intBetween(5_000, 9_000);
+  // Extract range starts ~5 weeks before the Rebate range (K2): so PMU + Margin
+  // both compute in period 1. Rebate range = startDate/endDate below.
+  const rebateStart = new Date('2025-02-02');
+  const rebateEnd = new Date('2026-01-31');
+  const extractBegin = new Date(rebateStart.getTime() - 35 * 86_400_000);
+  const extractEnd = rebateEnd;
 
   for (let i = 0; i < assignedAgreements.length; i++) {
     const ag = assignedAgreements[i]!;
@@ -507,8 +584,10 @@ async function main() {
         source: rt.source,
         analystId: apAnalyst.id,
         agreementId: ag.id,
-        startDate: new Date('2025-02-02'),
-        endDate: new Date('2026-01-31'),
+        startDate: rebateStart,
+        endDate: rebateEnd,
+        extractBeginDate: extractBegin,
+        extractEndDate: extractEnd,
         payType: pick(PAY_TYPES),
         frequency: pick(FREQUENCIES),
         altApNumber: rng() > 0.7 ? intBetween(1000, 99999) : null,
@@ -541,8 +620,10 @@ async function main() {
         programTypeId: pt.id,
         source: rt.source,
         analystId: apAnalyst.id,
-        startDate: new Date('2025-02-02'),
-        endDate: new Date('2026-01-31'),
+        startDate: rebateStart,
+        endDate: rebateEnd,
+        extractBeginDate: extractBegin,
+        extractEndDate: extractEnd,
         payType: pick(PAY_TYPES),
         frequency: pick(FREQUENCIES),
         altApNumber: rng() > 0.7 ? intBetween(1000, 99999) : null,
@@ -565,7 +646,7 @@ async function main() {
   // ─── Rebate tiers (~300) ──────────────────────────────────────────────
   console.log('› rebate tiers');
   for (const p of seededPrograms) {
-    // Per Ken: NSA programs have NO tiers (have their own subsystem).
+    // Per Ken: NSA programs have NO tiers (own subsystem).
     if (p.merchType === MerchType.NSA) continue;
     const tierCount = intBetween(2, 3);
     let from = 0;
@@ -611,7 +692,6 @@ async function main() {
   }
 
   // ─── Rebate vendor depts (~400) ──────────────────────────────────────
-  // 2-3 depts per rebate_vendor, picked from full DEPARTMENTS list
   console.log('› rebate vendor depts');
   type SeededVendorDept = {
     id: string;
@@ -635,6 +715,7 @@ async function main() {
           rebateVendorId: rv.id,
           departmentCode: d.code,
           departmentName: d.name,
+          ipVendorNum: vendorIp.get(rv.vendorId) ?? null, // MDSE-side IP at dept grain
         },
       });
       seededVendorDepts.push({
@@ -647,11 +728,12 @@ async function main() {
     }
   }
 
-  // ─── Calculate results (~2000) ────────────────────────────────────────
+  // ─── Calculate results (12 periods × depts) ───────────────────────────
   console.log('› calculate results');
 
-  const redVendorIdsWithOpenP04 = new Set(redVendors.slice(0, 2).map((v) => v.id));
-  const amberVendorIdsWithUnfinalizedP04 = new Set(amberVendors.slice(8, 9).map((v) => v.id));
+  // RED/AMBER demo fates land on the most-recently-closed period (P11).
+  const redVendorIdsWithOpenClosed = new Set(redVendors.slice(0, 2).map((v) => v.id));
+  const amberVendorIdsWithUnfinalizedClosed = new Set(amberVendors.slice(8, 9).map((v) => v.id));
 
   for (const rvd of seededVendorDepts) {
     for (const fp of FISCAL_PERIODS) {
@@ -667,17 +749,18 @@ async function main() {
       const final = Number((total + adjustment).toFixed(2));
 
       let status: CalculateResultStatus;
-      if (fp.fiscalPeriod <= 3) {
+      if (fp.fiscalPeriod < LAST_CLOSED_PERIOD) {
         status = CalculateResultStatus.FINALIZED;
-      } else if (fp.fiscalPeriod === 4) {
-        if (redVendorIdsWithOpenP04.has(rvd.vendorId)) {
-          status = CalculateResultStatus.OPEN;
-        } else if (amberVendorIdsWithUnfinalizedP04.has(rvd.vendorId)) {
+      } else if (fp.fiscalPeriod === LAST_CLOSED_PERIOD) {
+        if (redVendorIdsWithOpenClosed.has(rvd.vendorId)) {
+          status = CalculateResultStatus.OPEN; // E&C never run before close → RED
+        } else if (amberVendorIdsWithUnfinalizedClosed.has(rvd.vendorId)) {
           status = pick([CalculateResultStatus.PENDING_REVIEW, CalculateResultStatus.APPROVED]);
         } else {
           status = CalculateResultStatus.FINALIZED;
         }
       } else {
+        // The open period (P12) — normal mix, does not color the bubble.
         status = pick([
           CalculateResultStatus.OPEN,
           CalculateResultStatus.PENDING_REVIEW,
@@ -703,7 +786,10 @@ async function main() {
           otherCoopEarnings: otherCoop,
           totalEarnings: total,
           adjustmentAmount: adjustment,
-          finalEarnings: final,
+          finalEarnings: final, // normalized positive = value to DG
+          // Legacy/source convention is negative (vendor owes DG). Synthetic
+          // shadow so the "Accounting view" drill has real data pre-ingest.
+          finalEarningsLegacy: Number((-final).toFixed(2)),
           status,
           runAt: status === CalculateResultStatus.OPEN ? null : new Date(periodEnd.getTime() + 86400000),
           reviewedAt:
@@ -733,6 +819,13 @@ async function main() {
   }
 
   // ─── acct_control_master ──────────────────────────────────────────────
+  // NOTE: the real structure is a fixed 10-transaction set PER Acct Type
+  // (PMU/Margin/AdvCoop/OtherCoop × Reclass/Accrual + Deductions/Checks →
+  // RSL/GL/AP — docs/17 image067). Our model keys on
+  // (rebateTypeCode, functionType, targetSystem) and cannot represent the
+  // component (PMU vs Margin) dimension, so the real 10-row shape is a
+  // deliberate POST-P0 schema item (docs/16). Seed keeps the combinatorial
+  // approximation with realistic-looking codes.
   console.log('› acct_control_master');
   const ACM_REBATE_TYPES = ['R-COTRKT', 'S-NSA', 'N-ADVCOOP', 'S-SCNBK'];
   const ACM_FUNCTIONS: FunctionType[] = [FunctionType.ACCRUAL, FunctionType.RECLASS, FunctionType.DEDUCTION];
@@ -763,31 +856,31 @@ async function main() {
     acms.map((a) => [`${a.rebateTypeCode}|${a.functionType}|${a.targetSystem}`, a]),
   );
 
-  // ─── Batches and batch items for P04 ──────────────────────────────────
+  // ─── Batches and batch items for the last closed period ───────────────
   console.log('› batches');
-  const finalizedP04Calcs = await prisma.calculateResult.findMany({
-    where: { fiscalPeriod: 4, fiscalYear: 2025, status: CalculateResultStatus.FINALIZED },
+  const finalizedClosedCalcs = await prisma.calculateResult.findMany({
+    where: { fiscalPeriod: LAST_CLOSED_PERIOD, fiscalYear: FY, status: CalculateResultStatus.FINALIZED },
     take: 200,
     include: { rebateVendorDept: { include: { rebateVendor: { include: { rebateProgram: true } } } } },
   });
 
   for (const ts of [TargetSystem.RSL, TargetSystem.AP, TargetSystem.GL]) {
-    const calcs = finalizedP04Calcs.slice(0, 40);
+    const calcs = finalizedClosedCalcs.slice(0, 40);
     if (calcs.length === 0) continue;
     const total = calcs.reduce((s, c) => s + Number(c.finalEarnings), 0);
     const batch = await prisma.batch.create({
       data: {
-        batchNumber: `BCH-2025-${String(800 + ts.charCodeAt(0)).padStart(4, '0')}`,
+        batchNumber: `BCH-${FY}-${String(800 + ts.charCodeAt(0)).padStart(4, '0')}`,
         targetSystem: ts,
         functionType: FunctionType.ACCRUAL,
-        fiscalPeriod: 4,
-        fiscalYear: 2025,
+        fiscalPeriod: LAST_CLOSED_PERIOD,
+        fiscalYear: FY,
         totalAmount: Number(total.toFixed(2)),
         recordCount: calcs.length,
         createdBy: apAnalyst.id,
-        exportedAt: new Date('2025-06-03'),
+        exportedAt: new Date('2025-12-10'),
         exportedBy: apAnalyst.id,
-        finalizedAt: new Date('2025-06-03'),
+        finalizedAt: new Date('2025-12-10'),
         finalizedBy: apManager.id,
       },
     });
@@ -808,13 +901,14 @@ async function main() {
     }
   }
 
-  // ─── Calculate result adjustments ─────────────────────────────────────
+  // ─── Calculate result adjustments (on an earlier finalized period) ────
   console.log('› calculate_result_adjustments');
-  const p03Calcs = await prisma.calculateResult.findMany({
-    where: { fiscalPeriod: 3, fiscalYear: 2025, status: CalculateResultStatus.FINALIZED },
+  const adjPeriod = Math.max(1, LAST_CLOSED_PERIOD - 8); // ~P03
+  const adjCalcs = await prisma.calculateResult.findMany({
+    where: { fiscalPeriod: adjPeriod, fiscalYear: FY, status: CalculateResultStatus.FINALIZED },
     take: 10,
   });
-  for (const c of p03Calcs) {
+  for (const c of adjCalcs) {
     await prisma.calculateResultAdjustment.create({
       data: {
         calculateResultId: c.id,
@@ -841,10 +935,10 @@ async function main() {
       data: {
         rebateVendorId: rv.id,
         checkNumber: `CHK-${String(100000 + i).padStart(6, '0')}`,
-        checkDate: new Date(2025, intBetween(1, 5), intBetween(1, 28)),
+        checkDate: new Date(2025, intBetween(1, 11), intBetween(1, 28)),
         amount: decBetween(5_000, 250_000),
         status: isCleared ? 'CLEARED' : 'PENDING',
-        clearedAt: isCleared ? new Date(2025, intBetween(2, 5), intBetween(1, 28)) : null,
+        clearedAt: isCleared ? new Date(2025, intBetween(2, 11), intBetween(1, 28)) : null,
       },
     });
   }
@@ -855,7 +949,7 @@ async function main() {
       data: {
         rebateVendorId: rv.id,
         deductionNumber: `DED-${String(50000 + i).padStart(6, '0')}`,
-        deductionDate: new Date(2025, intBetween(1, 5), intBetween(1, 28)),
+        deductionDate: new Date(2025, intBetween(1, 11), intBetween(1, 28)),
         amount: decBetween(-15_000, -100),
         reasonCode: pick(['RETURN_CREDIT', 'PRICE_ADJUSTMENT', 'DATA_CORRECTION']),
       },
@@ -872,13 +966,12 @@ async function main() {
   }))[0];
 
   let invoiceIdx = 0;
-  for (const fp of FISCAL_PERIODS) {
-    if (fp.fiscalPeriod === 5) continue;
-    for (let i = 0; i < 75; i++) {
+  for (const fp of CLOSED_PERIODS) {
+    for (let i = 0; i < 30; i++) {
       const rv = pick(allRVs);
       await prisma.invoice.create({
         data: {
-          invoiceNumber: `INV-2025-${String(invoiceIdx++).padStart(5, '0')}`,
+          invoiceNumber: `INV-${FY}-${String(invoiceIdx++).padStart(5, '0')}`,
           rebateVendorId: rv.id,
           invoiceType: pick(['ACCRUAL', 'DEDUCTION']),
           fiscalPeriod: fp.fiscalPeriod,
@@ -895,11 +988,11 @@ async function main() {
   if (overdueRvForRed) {
     await prisma.invoice.create({
       data: {
-        invoiceNumber: `INV-2025-OVERDUE-RED`,
+        invoiceNumber: `INV-${FY}-OVERDUE-RED`,
         rebateVendorId: overdueRvForRed.id,
         invoiceType: 'ACCRUAL',
         fiscalPeriod: 2,
-        fiscalYear: 2025,
+        fiscalYear: FY,
         amount: 47500,
         sentAt: new Date('2025-03-30'),
         dueDate: new Date('2025-04-29'),
@@ -910,23 +1003,26 @@ async function main() {
   if (overdueRvForAmber) {
     await prisma.invoice.create({
       data: {
-        invoiceNumber: `INV-2025-OVERDUE-AMBER`,
+        invoiceNumber: `INV-${FY}-OVERDUE-AMBER`,
         rebateVendorId: overdueRvForAmber.id,
         invoiceType: 'ACCRUAL',
-        fiscalPeriod: 4,
-        fiscalYear: 2025,
+        fiscalPeriod: LAST_CLOSED_PERIOD,
+        fiscalYear: FY,
         amount: 23000,
-        sentAt: new Date('2025-06-01'),
-        dueDate: new Date('2025-07-01'),
+        sentAt: new Date('2025-12-01'),
+        dueDate: new Date('2026-01-01'),
         status: 'OVERDUE',
       },
     });
   }
 
-  // ─── Analytics summaries ──────────────────────────────────────────────
+  // ─── Analytics summaries (last-closed + open period) ──────────────────
   console.log('› analytics summaries');
   const tierAlertVendorIds = new Set(amberVendors.slice(8, 9).map((v) => v.id));
   const anomalyVendorIds = new Set(redVendors.slice(2, 4).map((v) => v.id));
+
+  const closedFp = FISCAL_PERIODS[LAST_CLOSED_PERIOD - 1]!;
+  const openFp = FISCAL_PERIODS[OPEN_PERIOD - 1]!;
 
   const summaryKeys = new Map<string, { vendorId: string; departmentCode: string }>();
   for (const rvd of seededVendorDepts) {
@@ -936,7 +1032,7 @@ async function main() {
     });
   }
   for (const { vendorId, departmentCode } of summaryKeys.values()) {
-    for (const fp of [FISCAL_PERIODS[3]!, FISCAL_PERIODS[4]!]) {
+    for (const fp of [closedFp, openFp]) {
       const transactionVolume = decBetween(100_000, 5_000_000);
       const transactionVolumePy = Number((transactionVolume * (0.85 + rng() * 0.30)).toFixed(2));
       const yoy = Number(((transactionVolume - transactionVolumePy) / transactionVolumePy).toFixed(4));
@@ -988,8 +1084,8 @@ async function main() {
             message: `Sample ${type} notification`,
             seedDemo: true,
           },
-          readAt: isUnread ? null : new Date(2025, intBetween(4, 5), intBetween(1, 28)),
-          createdAt: new Date(2025, intBetween(4, 5), intBetween(1, 28)),
+          readAt: isUnread ? null : new Date(2025, intBetween(9, 11), intBetween(1, 28)),
+          createdAt: new Date(2025, intBetween(9, 11), intBetween(1, 28)),
         },
       });
     }

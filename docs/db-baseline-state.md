@@ -1,88 +1,94 @@
 # DB Baseline State — for cross-machine verification
 
-**Captured:** 2026-05-15 from the travel laptop, local Docker `vrs-postgres` (Postgres 16, port 5435).
-**Purpose:** When picking this up on the home laptop, run the verification query (bottom of this file) against that machine's DB and diff it against the baseline below to determine whether the DB is the untouched synthetic seed or has diverged / been advanced.
+**Captured:** 2026-05-16 from the Phase-0 reseed, local Docker `vrs-postgres` (Postgres 16, port 5435).
+**Supersedes** the 2026-05-15 capture (which was the pre-Phase-0 synthetic seed at migration `20260502010319_init`, 5 periods / 4-4-5 / positive-only earnings).
+**Purpose:** run the verification query (bottom) on another machine and diff against the baseline below to tell whether the DB is the Phase-0 synthetic seed or has diverged / advanced (real-data ingest, demo enrichment, schema change).
 
 ## Provenance note
 
-As of this capture, **no data writes have been made by Claude Code**. This session only started the containers and ran read-only inspection. This is the original synthetic seed produced by `prisma/seed.ts` at migration `20260502010319_init`. Nothing planned (real-data ingest, demo enrichment) has happened yet.
+This is the **Phase-0 synthetic seed** produced by `prisma/seed.ts` at migration **`20260516132320_phase0_baseline`** (the stale `20260502010319_init` was deleted and consolidated into this single clean baseline — docs/20 P0.7). Still 100% synthetic, single fiscal year **FY2025**, now **12 periods / 4-5-4** (P01–P11 closed, P12 open). No real-data ingest, no demo-narrative enrichment.
 
-Row UUIDs are generated per seed run, so identity hashing across machines is meaningless — comparison must be **structural/semantic** (counts + distributions below), not row-level.
+The seed RNG is deterministic (`makeRng(42)`), so **counts, distributions, and numeric ranges are reproducible across machines/runs** — only row UUIDs and `createdAt`/`updatedAt` timestamps differ. Comparison is structural/semantic (below), not row-level.
+
+Earnings sign (Decision ①): `finalEarnings` is **normalized positive** (= value to DG); `finalEarningsLegacy` holds the **legacy-signed** mirror (negative = vendor owes DG). In the synthetic seed `finalEarningsLegacy == -finalEarnings` exactly; on real ingest (Phase 3) that relationship no longer holds (real per-component signs).
 
 ## Baseline fingerprint
 
 | Key | Baseline value |
 |---|---|
-| Migration | `20260502010319_init` applied=true (only one) |
+| Migration | `20260516132320_phase0_baseline` (only one, applied) |
 | Vendor | 50 |
 | User | 7 |
-| RebateProgram | 150 (150 active) |
-| RebateType | 15 |
 | ProgramType | 36 |
+| RebateType | 15 |
 | Agreement | 85 |
-| RebateVendor | 193 |
-| RebateVendorDept | 474 |
-| CalculateResult | 2370 |
+| RebateProgram | 150 |
+| RebateTier | 321 |
+| RebateVendor | 192 |
+| RebateVendorDept | 471 |
+| CalculateResult | 5652 |
 | CalculateResultAdjustment | 10 |
-| RebateTier | 324 |
-| Check | 60 |
-| Deduction | 20 |
-| Invoice | 302 |
+| AcctControlMaster | 28 |
 | Batch | 3 |
 | BatchItem | 120 |
-| AcctControlMaster | 28 |
-| AnalyticsSummary | 562 |
-| FiscalPeriod | 5 |
+| Check | 60 |
+| Deduction | 20 |
+| Invoice | 331 |
+| AnalyticsSummary | 560 |
 | Notification | 90 |
-| ReportJob | 0 |
-| VendorPortalUser | 0 |
-| CALC years | `2025` only |
-| CALC periods | `1,2,3,4,5` |
-| CALC finalEarnings sum / min / max | 59,731,269 / -419 / 71,373 |
-| CALC status dist | OPEN:149 PENDING_REVIEW:124 REVIEWED:109 APPROVED:124 FINALIZED:1864 |
-| FiscalPeriod closed flags | 2025 P1–P4 closed, P5 open |
-| Users | Dana M./DMM/DM · Glen R./GMM/GR · J. Alvarez/BUYER/JA · Lane B./AP_ANALYST/LB · Mark K./AP_MANAGER/MK · Read-Only Auditor/READ_ONLY/EX · Robin W./BUYER_DELEGATE/RW |
-| Agreement status dist | SUBMITTED_BY_VENDOR:6 PRE_NEGOTIATION:10 PENDING_GMM_APPROVAL:1 PENDING_AP_APPROVAL:8 ASSIGNED:50 EXPIRED:5 REJECTED:3 CANCELLED:2 |
-| Agreement notes populated | 0 / 85 |
-| Agreement endDate range | 2025-01-31 .. 2027-01-31 |
-| Analytics anomaly / tier / PYvol-not-null | 5 / 7 / 562 |
-| Vendor number range | 1045 .. 315962 |
-| Vendor sample names (first 5 by num) | PEPSICO BEVERAGE SALES LLC \| COCA COLA BOTTLERS \| DR PEPPER SNAPPLE GROUP \| PROCTER & GAMBLE-EDI \| ROLLING FRITO LAY SALES LP |
+| FiscalPeriod | 12 |
+| CALC periods present | `1..12` |
+| CALC finalEarnings sum / min / max | 146,283,589 / -1,560 / 71,892 |
+| CALC finalEarningsLegacy sum | -146,283,589 (exact mirror of finalEarnings) |
+| CALC status dist | APPROVED:119 FINALIZED:5155 OPEN:136 PENDING_REVIEW:111 REVIEWED:131 |
+| FiscalPeriod closed | P1–P11 closed; **P12 open** |
+| Vendor number range | 1041 .. 315965 |
+| Vendor.apNumber | 9-digit zero-padded (e.g. `000001041`); all 50 set |
+| Vendor.ipNumber | NUMBER(5); all 50 set |
+| RebateVendorDept.ipVendorNum | set on 471 / 471 |
+| RebateProgram extract dates | 150/150 set; extractBegin (`2024-12-29`) < rebate start (`2025-02-02`) |
+| Agreement.agmtId range | 370900 .. 372754 (sequence-shaped, not 1..N) |
+| Agreement status dist | ASSIGNED:50 CANCELLED:2 EXPIRED:5 PENDING_AP_APPROVAL:8 PENDING_GMM_APPROVAL:1 PRE_NEGOTIATION:10 REJECTED:3 SUBMITTED_BY_VENDOR:6 |
+| Vendor sample (first 5 by num) | PEPSICO BEVERAGE SALES LLC \| COCA COLA BOTTLERS \| DR PEPPER SNAPPLE GROUP \| PROCTER & GAMBLE-EDI \| ROLLING FRITO LAY SALES LP |
 
 ## Interpretation guide (what divergence means)
 
 | Observation on the other machine | Conclusion |
 |---|---|
-| All values match baseline exactly | Untouched synthetic seed. Safe to treat as the known starting point. |
-| Counts match but UUIDs differ | Normal — same seed re-run. Still the baseline structurally. |
-| `CALC years` includes 2024 and/or 2026, CalculateResult >> 2370 | Real-data ingest has run. **Not** the baseline. |
-| Vendor count >> 50, or names not the synthetic beverage set | Real-data ingest or vendor enrichment has run. |
-| `Agreement notes populated` > 0 | Demo enrichment (planted Vera narratives) has run. |
-| `finalEarnings min` strongly negative across many rows | Real legacy sign convention present (real data ingested) — synthetic seed is mostly positive. |
-| Migration list has entries beyond `20260502010319_init` | Schema has been advanced (Prisma migrate run). Reconcile schema before trusting data. |
-| Any count differs by a small amount with same migration | Manual/ad-hoc writes occurred. Investigate before building on it. |
+| All values match exactly | Phase-0 synthetic seed, untouched. Safe known starting point. |
+| Counts match, UUIDs differ | Normal — same deterministic seed re-run. Still the baseline. |
+| Migration is `20260502010319_init` / FiscalPeriod = 5 / CALC periods `1..5` | **Pre-Phase-0** DB. Run the Phase-0 migrate + reseed before building on it. |
+| FiscalPeriod ≠ 12, or periods not `1..12`, or P12 not open | Not the Phase-0 baseline — calendar diverged. Investigate. |
+| `finalEarningsLegacy` all NULL | Pre-Phase-0 seed (field didn't exist) or a custom load. Not baseline. |
+| `finalEarningsLegacy` sum ≠ -(finalEarnings sum) | Real-data ingest has run (real per-component signs) — **not** synthetic. |
+| CALC periods include years ≠ 2025, CalculateResult ≫ 5652 | Real multi-year ingest (Phase 3) has run. Not baseline. |
+| Vendor ≫ 50 or names not the synthetic beverage set | Real-data / vendor enrichment has run. |
+| `Agreement notes` populated, or planted narratives | Demo enrichment (Vera narratives) has run. |
+| Migration list beyond `20260516132320_phase0_baseline` | Schema advanced. Reconcile schema before trusting data. |
+| Small count delta, same migration | Manual/ad-hoc writes. Investigate before building on it. |
 
 ## Verification query (run on the other machine)
 
 ```
 docker exec vrs-postgres psql -U vrs -d vrs -t -A -F'|' -c "
-SELECT 'MIGRATION', migration_name||' applied='||(finished_at IS NOT NULL) FROM _prisma_migrations
-UNION ALL SELECT 'COUNT Vendor', count(*)::text FROM \"Vendor\"
+SELECT 'MIGRATION', migration_name FROM _prisma_migrations WHERE finished_at IS NOT NULL
+UNION ALL SELECT 'COUNT FiscalPeriod', count(*)::text FROM \"FiscalPeriod\"
 UNION ALL SELECT 'COUNT CalculateResult', count(*)::text FROM \"CalculateResult\"
-UNION ALL SELECT 'COUNT Agreement', count(*)::text FROM \"Agreement\"
-UNION ALL SELECT 'CALC years', string_agg(DISTINCT \"fiscalYear\"::text, ',' ORDER BY \"fiscalYear\"::text) FROM \"CalculateResult\"
-UNION ALL SELECT 'CALC finalEarnings sum/min/max', round(sum(\"finalEarnings\"))||' / '||round(min(\"finalEarnings\"))||' / '||round(max(\"finalEarnings\")) FROM \"CalculateResult\"
-UNION ALL SELECT 'AGMT notes populated', count(*) FILTER (WHERE notes IS NOT NULL AND notes<>'')||' / '||count(*) FROM \"Agreement\"
-UNION ALL SELECT 'VENDOR sample names', string_agg(name,' | ') FROM (SELECT name FROM \"Vendor\" ORDER BY \"vendorNumber\" LIMIT 5) q
+UNION ALL SELECT 'COUNT Vendor', count(*)::text FROM \"Vendor\"
+UNION ALL SELECT 'CALC periods', string_agg(DISTINCT \"fiscalPeriod\"::text, ',' ORDER BY \"fiscalPeriod\"::text) FROM \"CalculateResult\"
+UNION ALL SELECT 'CALC final sum/min/max', round(sum(\"finalEarnings\"))||' / '||round(min(\"finalEarnings\"))||' / '||round(max(\"finalEarnings\")) FROM \"CalculateResult\"
+UNION ALL SELECT 'CALC legacy sum', round(sum(\"finalEarningsLegacy\"))::text FROM \"CalculateResult\"
+UNION ALL SELECT 'FP closed', string_agg(\"fiscalPeriod\"::text, ',' ORDER BY \"fiscalPeriod\") FILTER (WHERE \"isClosed\") FROM \"FiscalPeriod\"
+UNION ALL SELECT 'Agmt id range', min(\"agmtId\")||'..'||max(\"agmtId\") FROM \"Agreement\"
+UNION ALL SELECT 'VENDOR sample', string_agg(name,' | ') FROM (SELECT name FROM \"Vendor\" ORDER BY \"vendorNumber\" LIMIT 5) q
 ;"
 ```
 
-For the full fingerprint, re-run the comprehensive query from the session that produced this file (all 23 table counts + every discriminator above).
+Expected: migration `20260516132320_phase0_baseline`, FiscalPeriod 12, CalculateResult 5652, Vendor 50, CALC periods `1..12`, final sum `146283589`, legacy sum `-146283589`, FP closed `1..11`, Agmt id `370900..372754`, beverage vendor sample.
 
 ## To make this travel
 
-This file must be committed so the home laptop sees it:
-
 ```
-git add docs/db-baseline-state.md && git commit -m "Add DB baseline-state manifest for cross-machine verification"
+git add prisma/ docs/ web/src/lib/glossary.ts && git commit -m "Phase 0: 12/4-5-4 calendar, earnings sign, dual identity, baseline"
 ```
+The Claude memory dir is machine-local and does not travel via git — the decisions are captured in docs (`11/18/19/20`, this file) instead.

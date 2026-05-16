@@ -42,7 +42,7 @@ The purest "uncaptured" (purchase volume with *no* rebate program at all) needs 
 |---|---|---|---|
 | P0.0 | Locate & read the modified-Next guide | constraint 1 | Blocks all app code, not data work |
 | P0.1 | Schema rewrite: **12-period / 4-5-4** | D1 | `FiscalPeriod`, `CalculateResult.fiscalPeriod`, `Batch`, all period logic + bubble-health closed/open derivation. Ken-confirmed; no wait. |
-| P0.2 | Earnings **sign** decision + implementation | D1 | **Decision point ①** — normalize-on-ingest (recommended; store positive, render owed/earned) vs honor legacy negative. Fix `bubble-data.ts:141` sum, KPI strip, axis semantics. |
+| P0.2 | Earnings **sign** — **DECIDED 2026-05-16 (Decision ①, see below)** | D1 | Normalize internally to positive (value-to-DG); **never display a naked signed number** — always labeled ("$X earned" / "$Y owed to DG"); preserve the legacy-signed value in a shadow column **and** an "Accounting view" drill that matches their Period Accounting Summary. Fix `bubble-data.ts:141` sum, KPI strip, axis semantics accordingly. Demo posture: if they balk at the visual treatment, assure them it's trivially configurable and adjust to their preference. |
 | P0.3 | Vendor dual identity: add **AP #** (VARCHAR9) + **IP #** (NUMBER5); aggregate by **name** | D3 | Bubble + everywhere vendor is keyed |
 | P0.4 | Sequence-shaped IDs for surfaced identifiers (REBATE_ID etc.) | D3 | Keep UUID PKs internally; display sequence-style |
 | P0.5 | Schema seams for pending Ken answers | K2/K7 | Add nullable Extract Begin/End alongside Rebate dates (K2); put the "active" predicate behind one query helper (K7) so the answer is a one-line change |
@@ -138,7 +138,7 @@ Two co-equal critical paths after P0: **(work-surface)** P0 → P1 → P2.1 peri
 
 ## Decision points needing David
 
-1. **Earnings sign** — normalize-on-ingest (recommended) vs honor legacy negative. Blocks P0.2 + P3.1.
+1. ~~**Earnings sign**~~ **RESOLVED 2026-05-16 (David):** normalize internally to positive; never show a naked signed number (always labeled "$X earned" / "$Y owed to DG"); keep legacy-signed value in a shadow column + an "Accounting view" drill matching their Period Accounting Summary. If they balk at the visual treatment, assure them it's trivially configurable and change it to taste. Phase 0 cleared to start.
 2. **Demo centerpiece** — confirm period-close as the hero friction-elimination moment (vs Vera, vs bubble-lasso). Shapes P2 + P4.3.
 3. **Real-data home/governance** — where the real DG financial data is allowed to live before P3 ingest leaves the local container.
 4. **Build ownership/timeline** — who implements (and is there a demo date)? Lets a schedule be overlaid on these phases.
