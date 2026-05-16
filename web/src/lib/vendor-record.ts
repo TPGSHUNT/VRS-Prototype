@@ -71,6 +71,28 @@ export interface VendorRecord {
     dueDate: string;
     paid: boolean;
   }>;
+  // 1010-derived intelligence (AnalyticsSummary). The felt-contrast surface:
+  // pace / YoY / tier-proximity / anomalies the legacy system can't show.
+  intelligence: {
+    volume: number;
+    volumePy: number;
+    yoyPct: number; // overall (volume - volumePy)/volumePy
+    anomalies: number;
+    tierAlerts: number;
+    rows: Array<{
+      dept: string;
+      source: string;
+      year: number;
+      period: number;
+      volume: number;
+      yoyPct: number;
+      pacePct: number | null;
+      tier: number | null;
+      tierAlert: boolean;
+      anomaly: boolean;
+      anomalyReason: string | null;
+    }>;
+  };
   // Tab counts so headers are real even before each tab's body is built.
   counts: {
     programs: number;
@@ -110,7 +132,22 @@ export async function getVendorRecord(
           endDate: true,
         },
       },
-      analyticsSummaries: { select: { transactionVolume: true } },
+      analyticsSummaries: {
+        select: {
+          departmentCode: true,
+          source: true,
+          fiscalPeriod: true,
+          fiscalYear: true,
+          transactionVolume: true,
+          transactionVolumePy: true,
+          yoyVariancePct: true,
+          currentTier: true,
+          paceToTargetPct: true,
+          tierAlert: true,
+          anomalyFlag: true,
+          anomalyReason: true,
+        },
+      },
       rebateVendors: {
         include: {
           rebateProgram: {
@@ -228,6 +265,38 @@ export async function getVendorRecord(
     }))
     .sort((a, b) => a.status.localeCompare(b.status));
 
+  const asum = v.analyticsSummaries;
+  const iVolume = asum.reduce((s, a) => s + num(a.transactionVolume), 0);
+  const iVolumePy = asum.reduce((s, a) => s + num(a.transactionVolumePy), 0);
+  const intelligence = {
+    volume: iVolume,
+    volumePy: iVolumePy,
+    yoyPct: iVolumePy ? (iVolume - iVolumePy) / iVolumePy : 0,
+    anomalies: asum.filter((a) => a.anomalyFlag).length,
+    tierAlerts: asum.filter((a) => a.tierAlert).length,
+    rows: asum
+      .map((a) => ({
+        dept: a.departmentCode,
+        source: String(a.source),
+        year: a.fiscalYear,
+        period: a.fiscalPeriod,
+        volume: num(a.transactionVolume),
+        yoyPct: num(a.yoyVariancePct),
+        pacePct: a.paceToTargetPct == null ? null : num(a.paceToTargetPct),
+        tier: a.currentTier ?? null,
+        tierAlert: a.tierAlert,
+        anomaly: a.anomalyFlag,
+        anomalyReason: a.anomalyReason ?? null,
+      }))
+      .sort(
+        (a, b) =>
+          Number(b.anomaly) - Number(a.anomaly) ||
+          Number(b.tierAlert) - Number(a.tierAlert) ||
+          b.volume - a.volume,
+      )
+      .slice(0, 100),
+  };
+
   const components = calcs.reduce(
     (a, c) => ({
       pmu: a.pmu + num(c.pmuEarnings),
@@ -267,6 +336,7 @@ export async function getVendorRecord(
     agreements,
     programs,
     invoices,
+    intelligence,
     counts: {
       programs: programs.length,
       calculations: calcs.length,

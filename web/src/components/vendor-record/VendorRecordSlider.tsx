@@ -143,6 +143,9 @@ export function VendorRecordSlider({
                 <TabsContent value="invoices">
                   <InvoicesTab rows={record.invoices} />
                 </TabsContent>
+                <TabsContent value="intelligence">
+                  <IntelligenceTab data={record.intelligence} />
+                </TabsContent>
                 {TAB_ORDER.filter(
                   (t) =>
                     ![
@@ -151,6 +154,7 @@ export function VendorRecordSlider({
                       'agreements',
                       'programs',
                       'invoices',
+                      'intelligence',
                     ].includes(t.id),
                 ).map((t) => (
                   <TabsContent key={t.id} value={t.id}>
@@ -359,6 +363,109 @@ function AgreementsTab({ rows }: { rows: VendorRecord['agreements'] }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function pct(n: number): string {
+  return `${(n * 100).toFixed(1)}%`;
+}
+
+function IntelligenceTab({ data }: { data: VendorRecord['intelligence'] }) {
+  if (data.rows.length === 0)
+    return <Empty msg="No 1010 analytics for this vendor." />;
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <Kpi label="Commercial volume" value={`$${fmt(data.volume)}`} />
+        <Kpi
+          label="YoY vs prior year"
+          value={`${data.yoyPct >= 0 ? '+' : ''}${pct(data.yoyPct)}`}
+        />
+        <Kpi label="Anomalies" value={String(data.anomalies)} />
+        <Kpi label="Tier alerts" value={String(data.tierAlerts)} />
+      </div>
+
+      <p className="text-xs text-gray-500">
+        Derived from 1010 transaction intelligence — pace-to-target, YoY
+        variance, tier proximity and anomalies the legacy VRS cannot surface.
+      </p>
+
+      <div className="overflow-hidden rounded-lg border border-gray-200">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+            <tr>
+              <Th>Dept</Th>
+              <Th>Src</Th>
+              <Th>Period</Th>
+              <Th className="text-right">Volume</Th>
+              <Th className="text-right">YoY</Th>
+              <Th>Pace to target</Th>
+              <Th>Flags</Th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {data.rows.map((r, i) => (
+              <tr key={i} className="hover:bg-gray-50">
+                <Td>{r.dept}</Td>
+                <Td className="text-xs text-gray-600">{r.source}</Td>
+                <Td>
+                  FY{r.year}·P{String(r.period).padStart(2, '0')}
+                </Td>
+                <Td className="text-right tabular-nums">${fmt(r.volume)}</Td>
+                <Td
+                  className={`text-right tabular-nums ${
+                    r.yoyPct < 0 ? 'text-red-600' : 'text-green-700'
+                  }`}
+                >
+                  {r.yoyPct >= 0 ? '+' : ''}
+                  {pct(r.yoyPct)}
+                </Td>
+                <Td>
+                  {r.pacePct == null ? (
+                    <span className="text-gray-400">—</span>
+                  ) : (
+                    <PaceBar v={r.pacePct} />
+                  )}
+                </Td>
+                <Td>
+                  <div className="flex flex-wrap gap-1">
+                    {r.anomaly && (
+                      <span
+                        className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-800"
+                        title={r.anomalyReason ?? undefined}
+                      >
+                        anomaly
+                      </span>
+                    )}
+                    {r.tierAlert && (
+                      <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">
+                        tier {r.tier ?? ''}
+                      </span>
+                    )}
+                  </div>
+                </Td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function PaceBar({ v }: { v: number }) {
+  const tone =
+    v < 0.75 ? 'bg-red-500' : v < 0.95 ? 'bg-amber-500' : 'bg-green-500';
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-1.5 w-20 overflow-hidden rounded-full bg-gray-200">
+        <div
+          className={`h-full ${tone}`}
+          style={{ width: `${Math.min(100, Math.max(4, v * 100))}%` }}
+        />
+      </div>
+      <span className="tabular-nums text-xs text-gray-600">{pct(v)}</span>
     </div>
   );
 }
