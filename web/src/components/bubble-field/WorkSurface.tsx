@@ -7,7 +7,13 @@ import { useState } from 'react';
 import type { UserRole } from '@vrs/db';
 import { BubbleField } from './BubbleField';
 import { VendorRecordSlider } from '@/components/vendor-record/VendorRecordSlider';
-import { METRIC_KEYS, METRIC_LABELS, type BubbleVendor, type MetricKey } from '@/lib/bubble-data';
+import {
+  METRIC_KEYS,
+  METRIC_LABELS,
+  METRIC_PENDING,
+  type BubbleVendor,
+  type MetricKey,
+} from '@/lib/bubble-data';
 
 export function WorkSurface({
   vendors,
@@ -16,9 +22,12 @@ export function WorkSurface({
   vendors: BubbleVendor[];
   role: UserRole;
 }) {
-  const [xMetric, setXMetric] = useState<MetricKey>('contractValue');
-  const [yMetric, setYMetric] = useState<MetricKey>('annualEarnings');
-  const [sizeMetric, setSizeMetric] = useState<MetricKey>('grossVolume');
+  // Defaults (docs/21): real-signal, non-collinear, instantly populated on
+  // real data. X = program breadth, Y = this-FY earnings, size = lifetime
+  // materiality; colour carries attention. Not the old collinear "bigness".
+  const [xMetric, setXMetric] = useState<MetricKey>('activePrograms');
+  const [yMetric, setYMetric] = useState<MetricKey>('earningsFY');
+  const [sizeMetric, setSizeMetric] = useState<MetricKey>('earningsLTD');
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
 
   return (
@@ -43,7 +52,8 @@ export function WorkSurface({
         <MetricSelector label="Y" value={yMetric} onChange={setYMetric} />
         <MetricSelector label="Size" value={sizeMetric} onChange={setSizeMetric} />
         <div className="ml-auto text-xs text-gray-500 hidden md:block">
-          {vendors.length} vendors · log scale · cross-hairs at median
+          {vendors.length.toLocaleString()} vendors · deterministic · by rank ·
+          median-centered
         </div>
       </div>
     </>
@@ -74,6 +84,15 @@ function MetricSelector({
             {METRIC_LABELS[k]}
           </option>
         ))}
+        {/* Designed but not yet computable — shown disabled+labeled so the
+            intent is visible without faking data (docs/21 §7). */}
+        <optgroup label="Awaiting Ken extract">
+          {METRIC_PENDING.map((p) => (
+            <option key={p.label} disabled value="">
+              {p.label} — awaiting {p.awaiting}
+            </option>
+          ))}
+        </optgroup>
       </select>
     </label>
   );

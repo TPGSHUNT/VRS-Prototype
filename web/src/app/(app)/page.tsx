@@ -21,7 +21,7 @@ export default async function BubbleFieldLanding({
     showAll,
   });
 
-  const totalEarnings = bubbles.reduce((s, b) => s + b.metrics.annualEarnings, 0);
+  const totalEarnings = bubbles.reduce((s, b) => s + b.metrics.earningsFY, 0);
   const queuePending = bubbles.filter((b) => b.queuePending).length;
   const healthCounts = {
     red: bubbles.filter((b) => b.health === 'RED').length,

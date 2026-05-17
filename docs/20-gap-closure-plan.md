@@ -1,7 +1,7 @@
 # Gap-Closure Plan
 
 **Date:** 2026-05-16
-**Closes:** the gaps in `docs/18-demo-gaps.md`, measured against the thesis in `docs/18` §0 / memory `project_demo_thesis` — the bar is a *felt contrast*: after using the prototype, the legacy system should feel slow, awkward, clunky.
+**Closes:** the demo gaps, measured against the thesis (memory `project_demo_thesis`, `docs/21` §0) — the bar is a *felt contrast*: after using the prototype, the legacy system should feel slow, awkward, clunky.
 **Status:** This is a **plan, not authorization.** Per working norms, nothing here is started until David greens the relevant phase. No demo date is assumed — sequencing is dependency-ordered, not calendar-dated; give a date and a schedule can be overlaid.
 
 ---
@@ -10,7 +10,7 @@
 
 1. **Modified Next.js.** `web/AGENTS.md`: this is not stock Next — read the local guide under `node_modules/next/dist/docs/` *before* writing app code. (Exact path not yet located on this machine — Step P0.0 is to find it; do not write app code until it's read.)
 2. **Design language is binding.** `docs/06-design-language.md` — left=actions / right=data sliders, no top nav, 200ms transitions, bubble field is the only home. Build to it, not around it.
-3. **Glossary discipline.** Rebate Program ≠ Agreement ≠ Contract, everywhere (15-handoff P2). Bake into a shared label module so it can't drift.
+3. **Glossary discipline.** Rebate Program ≠ Agreement ≠ Contract, everywhere (legacy terminology requirement). Bake into a shared label module so it can't drift.
 4. **Ken-ask coupling.** K2/K7 (`docs/19`) are out for answer and touch the schema. The schema work is structured so their answers *slot in* rather than block — see Phase 0.
 5. **Ask before code/commits.** Each phase below has an explicit gate. Observations ≠ directives.
 
@@ -47,7 +47,7 @@ The purest "uncaptured" (purchase volume with *no* rebate program at all) needs 
 | P0.4 | Sequence-shaped IDs for surfaced identifiers (REBATE_ID etc.) | D3 | Keep UUID PKs internally; display sequence-style |
 | P0.5 | Schema seams for pending Ken answers | K2/K7 | Add nullable Extract Begin/End alongside Rebate dates (K2); put the "active" predicate behind one query helper (K7) so the answer is a one-line change |
 | P0.6 | Reference realism in seed | D4 | Real approval thresholds ($250K/$1M, `DMM_APPROVE_TPR=No`), real Source/Frequency domains, ~real Category bloat sample. **AcctControlMaster: load the real matrix** from `VRS_DATA_ROUND_4.xlsx` (2,842 rows, 203 rebate_types, RSL/GL/AP routing — `docs/19` K3 RESOLVED) instead of a shaped stand-in; also seeds the authoritative `rebate_type`/`acct_type` domain. |
-| P0.7 | Migration + **real reload** (no reseed) | — | Real-data path only (`real_ingest.py` + `db:load-acm`); `docs/db-baseline-state.md` synthetic fingerprint is retired (2026-05-17) |
+| P0.7 | Migration + **real reload** (no reseed) | — | Real-data path only (`real_ingest.py` + `db:load-acm`); the synthetic baseline is retired (2026-05-17) |
 | P0.8 | Shared glossary/label module | G7 | Used by every later surface |
 
 **Exit criteria:** after `npm run db:migrate`, `python prisma/ingest/real_ingest.py` + `npm run db:load-acm` yield a 12/4-5-4, correctly-signed, dual-identity **real** dataset; bubble field still renders against it. *(2026-05-17: synthetic seed retired — no `db:seed`/`db:reset`; real-data path only. Memory `project_no_synthetic_data`.)*
@@ -96,7 +96,7 @@ Implementation: `getBubbleData()` takes a scope arg derived from the session sea
 | P2.1 | **Period-close workflow** as a left-slider guided checklist with persistent state + blockers | P1 | The strongest single proof of friction-elimination; pick this as the demo's centerpiece moment |
 | P2.2 | **Ask Vera** drawer — shell + two-tier interaction + tool contract + hallucination guardrails (deny-by-default, cite-or-refuse) | P1/G4 | Real answers wait on Phase 3 data; build the surface + contract now |
 | P2.3 | **Seat switcher** (NOT a login — decision 2026-05-16). **RE-SEQUENCED 2026-05-17: build this FIRST — it is a prerequisite of the `docs/21` bubble-index model (per-seat defaults have no delivery vehicle without it).** Named personas w/ real role/group semantics, persistent in header for live seat-hopping, "Signed in via SSO — like production" caption; + Delegate indicator + FPA Supervisor seat | P1/G5 | Rationale: real VRS has no login screen (SSO-only, Ken) — no-login is more faithful *and* on-thesis. Replaces the scaffold-looking enum grid. Personas are the real DG people with real roles (TPG built/maintains VRS; confirm the featured few with Ken/David — trivial, not a data-pull). May-12 answers resolved the role modeling. |
-| P2.4 | Shell behavior corrections (audit log all-roles; AP-stage→APA; Review/Approve/Finalize APM+Admin only; Batch-on-Demand APA; reports AP/MDSE split; renewal alerts on APA tagged "enhancement") | P1 | From 15-handoff P1 |
+| P2.4 | Shell behavior corrections (audit log all-roles; AP-stage→APA; Review/Approve/Finalize APM+Admin only; Batch-on-Demand APA; reports AP/MDSE split; renewal alerts on APA tagged "enhancement") | P1 | Legacy role-matrix requirement |
 | P2.5 | Notification click-through routing per `06 §1.3` | P1 | Bell exists; targets don't |
 | P2.6 | Agreement status timeline (visual progression, no "Move Forward" hunt) | P1 | |
 
@@ -167,6 +167,18 @@ false-log subtitle fix ──► independent, do anytime
 Net: P2.3 moves from "Phase 2" ordering to *immediately actionable*; the
 P1.5-successor index work follows it rather than preceding it.
 
+**Build status (2026-05-17):** Seat switcher (P2.3) **built** (in-header,
+SSO-shim entry — replaces the role grid). Bubble-index substrate **built**:
+metric-vocabulary swap + attention-driven health + **deterministic
+no-sim/no-collision** `BubbleField` + real non-collinear defaults
+(`docs/21` §8). **Remaining:** analyst-clustered aggregation/triage-encoding
+for the Manager seat, the user-drawn exploder, per-seat default wiring, and
+D1/D2/K8-dependent metrics. The "mass of green that never loads" is resolved
+by the no-sim rewrite + real size/position differentiation. **Pan & zoom
+built** (2026-05-17). **Next: the attention-detector model** (`docs/21` §8.3
+item 1) — computable YoY-collapse / earnings-cliff / lapsed-with-activity
+problem signal, no Ken dependency; then Manager analyst aggregation.
+
 ## Decision points needing David
 
 1. ~~**Earnings sign**~~ **RESOLVED 2026-05-16 (David):** normalize internally to positive; never show a naked signed number (always labeled "$X earned" / "$Y owed to DG"); keep legacy-signed value in a shadow column + an "Accounting view" drill matching their Period Accounting Summary. If they balk at the visual treatment, assure them it's trivially configurable and change it to taste. Phase 0 cleared to start.
@@ -183,4 +195,4 @@ P1.5-successor index work follows it rather than preceding it.
 
 ## Explicitly NOT in this plan
 
-Oracle-Forms conversion / a "working converted form." Per `docs/18` §0 and memory `project_demo_thesis`, that serves the moribund expectation the demo exists to displace. It is off the critical path and not scheduled here. If ever wanted as a *contrast vignette*, it is a Phase 4 aside at most and must not pull P0–P3 effort or Ken-asks forward.
+Oracle-Forms conversion / a "working converted form." Per memory `project_demo_thesis`, that serves the moribund expectation the demo exists to displace. It is off the critical path and not scheduled here. If ever wanted as a *contrast vignette*, it is a Phase 4 aside at most and must not pull P0–P3 effort or Ken-asks forward.

@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react';
 import { NotificationBell } from './notification-bell';
-import { UserMenu } from './user-menu';
+import { SeatSwitcher } from './SeatSwitcher';
 
 export function Header() {
   const { data: session, status } = useSession();
@@ -22,7 +22,12 @@ export function Header() {
             {status === 'authenticated' && user && (
               <>
                 <NotificationBell userId={user.id} />
-                <UserMenu name={user.name} role={user.role} analystCode={user.analystCode} />
+                <SeatSwitcher
+                  name={user.name}
+                  role={user.role}
+                  analystCode={user.analystCode}
+                  email={user.email}
+                />
               </>
             )}
           </div>

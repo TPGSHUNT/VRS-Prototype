@@ -1,17 +1,14 @@
 'use client';
 
-// Vendor bubble field — D3 force simulation with positional forces toward
-// quadrant targets driven by the selected X / Y / size metrics.
-// Phase 2a: rendering only. No clicks, no slider, no filters yet.
+// Vendor bubble field — DETERMINISTIC layout (docs/21, decided 2026-05-17).
+// No force simulation, no collision: position is a pure computed pass from
+// the selected metrics, so it renders instantly at any N and never "dances".
+// Bubbles MAY overlap — co-located bubbles mean co-located data, which is
+// truthful; a user-drawn exploder (later) is the only thing that separates
+// them, on demand. Position = rank-percentile on X/Y (median-centered);
+// size = sqrt(value) so area is proportional; colour = attention health.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  forceCollide,
-  forceSimulation,
-  forceX,
-  forceY,
-  type Simulation,
-} from 'd3-force';
 import {
   METRIC_FORMAT,
   METRIC_LABELS,
@@ -19,18 +16,12 @@ import {
   type MetricKey,
 } from '@/lib/bubble-data';
 
-interface BubbleNode extends BubbleVendor {
+type BubbleHealthShort = BubbleVendor['health'];
+
+interface PositionedNode extends BubbleVendor {
   radius: number;
-  targetX: number;
-  targetY: number;
-  // d3-force injects:
-  x?: number;
-  y?: number;
-  vx?: number;
-  vy?: number;
-  fx?: number | null;
-  fy?: number | null;
-  index?: number;
+  x: number;
+  y: number;
 }
 
 const HEALTH_FILL: Record<BubbleHealthShort, string> = {
@@ -38,15 +29,23 @@ const HEALTH_FILL: Record<BubbleHealthShort, string> = {
   AMBER: 'rgb(245, 158, 11)',
   RED: 'rgb(239, 68, 68)',
 };
-type BubbleHealthShort = BubbleVendor['health'];
-
 const HALO_STROKE = 'rgb(59, 130, 246)';
 
-const MIN_RADIUS = 22;
-const MAX_RADIUS = 60;
-// Padding reserves space for axis labels (left/bottom), the floating toolbar
-// (bottom — ~60px), and the health legend (top-right — ~150x90px).
+const MIN_RADIUS = 6;
+const MAX_RADIUS = 54;
+// Below this radius the inner name label is dropped (unreadable + keeps the
+// DOM light when the estate has thousands of bubbles). Full name on hover.
+const LABEL_MIN_RADIUS = 17;
 const PADDING = { left: 70, right: 170, top: 110, bottom: 110 };
+
+function fmtSuffix(k: MetricKey): string {
+  const f = METRIC_FORMAT[k];
+  return f === 'money'
+    ? '($ · by rank)'
+    : f === 'percent'
+      ? '(% · by rank)'
+      : '(count · by rank)';
+}
 
 interface BubbleFieldProps {
   vendors: BubbleVendor[];
@@ -56,10 +55,15 @@ interface BubbleFieldProps {
   onSelect?: (vendorId: string) => void;
 }
 
-export function BubbleField({ vendors, xMetric, yMetric, sizeMetric, onSelect }: BubbleFieldProps) {
+export function BubbleField({
+  vendors,
+  xMetric,
+  yMetric,
+  sizeMetric,
+  onSelect,
+}: BubbleFieldProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
-  const [nodes, setNodes] = useState<BubbleNode[]>([]);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [ctxMenu, setCtxMenu] = useState<{
     x: number;
@@ -68,9 +72,74 @@ export function BubbleField({ vendors, xMetric, yMetric, sizeMetric, onSelect }:
     name: string;
     queuePending: boolean;
   } | null>(null);
-  const simRef = useRef<Simulation<BubbleNode, undefined> | null>(null);
 
-  // Close the context menu on Escape.
+  // Pan + zoom viewport (k = scale, tx/ty = translate in screen px). Applied
+  // to the plot group only; axis labels + legend stay fixed. Hand-rolled —
+  // AppShell is overflow-hidden so wheel never scrolls the page.
+  const [vp, setVp] = useState({ k: 1, tx: 0, ty: 0 });
+  const panRef = useRef<{
+    startX: number;
+    startY: number;
+    tx: number;
+    ty: number;
+  } | null>(null);
+  const MIN_K = 0.4;
+  const MAX_K = 8;
+  const clampK = (k: number) => Math.min(MAX_K, Math.max(MIN_K, k));
+
+  function onWheel(e: React.WheelEvent) {
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+    setVp((p) => {
+      const k2 = clampK(p.k * (e.deltaY < 0 ? 1.15 : 1 / 1.15));
+      const ratio = k2 / p.k;
+      return {
+        k: k2,
+        tx: px - ratio * (px - p.tx),
+        ty: py - ratio * (py - p.ty),
+      };
+    });
+  }
+  function onPanDown(e: React.PointerEvent) {
+    // Only the background rect starts a pan (bubbles handle their own events).
+    if ((e.target as Element).getAttribute('data-bg') !== '1') return;
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    panRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      tx: vp.tx,
+      ty: vp.ty,
+    };
+  }
+  function onPanMove(e: React.PointerEvent) {
+    const s = panRef.current;
+    if (!s) return;
+    setVp((p) => ({
+      ...p,
+      tx: s.tx + (e.clientX - s.startX),
+      ty: s.ty + (e.clientY - s.startY),
+    }));
+  }
+  function onPanUp() {
+    panRef.current = null;
+  }
+  const zoomBy = (f: number) =>
+    setVp((p) => {
+      const k2 = clampK(p.k * f);
+      const cx = size.width / 2;
+      const cy = size.height / 2;
+      const ratio = k2 / p.k;
+      return {
+        k: k2,
+        tx: cx - ratio * (cx - p.tx),
+        ty: cy - ratio * (cy - p.ty),
+      };
+    });
+  const resetView = () => setVp({ k: 1, tx: 0, ty: 0 });
+
   useEffect(() => {
     if (!ctxMenu) return;
     const onKey = (e: KeyboardEvent) => {
@@ -80,16 +149,13 @@ export function BubbleField({ vendors, xMetric, yMetric, sizeMetric, onSelect }:
     return () => window.removeEventListener('keydown', onKey);
   }, [ctxMenu]);
 
-  // Staged entrance: watermarks read bright on first paint, then bubbles fade
-  // in over them while the watermarks dim to their resting opacity. Triggers
-  // once on mount — axis changes don't re-run it.
+  // Entrance: read the empty quadrant frame first, then bubbles fade in.
   const [entered, setEntered] = useState(false);
   useEffect(() => {
-    const t = setTimeout(() => setEntered(true), 550);
+    const t = setTimeout(() => setEntered(true), 450);
     return () => clearTimeout(t);
   }, []);
 
-  // Track container size
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -102,109 +168,59 @@ export function BubbleField({ vendors, xMetric, yMetric, sizeMetric, onSelect }:
     return () => ro.disconnect();
   }, []);
 
-  // Position by rank/percentile (0..1) so the median lands at the chart's
-  // visual center regardless of how skewed the underlying values are. This
-  // also keeps bubbles spread across the whole viewport instead of bunched
-  // along the diagonal when X and Y metrics correlate.
-  // Size uses sqrt(value / max) so bubble *area* is proportional to vendor value.
-  const { xCenter, yCenter, posX, posY, sizeFor } = useMemo(() => {
+  // Deterministic layout. Rank-percentile on each axis so the median lands
+  // at the visual centre regardless of skew and the field uses the whole
+  // viewport. No simulation, no collide — overlaps are allowed and meaningful.
+  const { xCenter, yCenter, nodes } = useMemo(() => {
     if (!size.width || !size.height || vendors.length === 0) {
-      return {
-        xCenter: 0,
-        yCenter: 0,
-        posX: () => 0,
-        posY: () => 0,
-        sizeFor: () => MIN_RADIUS,
-      };
+      return { xCenter: 0, yCenter: 0, nodes: [] as PositionedNode[] };
     }
-
     const innerWidth = size.width - PADDING.left - PADDING.right;
     const innerHeight = size.height - PADDING.top - PADDING.bottom;
     const xCenter = PADDING.left + innerWidth / 2;
     const yCenter = PADDING.top + innerHeight / 2;
 
-    const buildRanks = (key: MetricKey) => {
-      const sorted = [...vendors].sort((a, b) => a.metrics[key] - b.metrics[key]);
-      const ranks = new Map<string, number>();
-      sorted.forEach((v, i) => {
-        ranks.set(v.id, (i + 0.5) / sorted.length);
-      });
-      return ranks;
+    const ranks = (key: MetricKey) => {
+      const sorted = [...vendors].sort(
+        (a, b) => a.metrics[key] - b.metrics[key],
+      );
+      const m = new Map<string, number>();
+      sorted.forEach((v, i) => m.set(v.id, (i + 0.5) / sorted.length));
+      return m;
     };
-
-    const xRanks = buildRanks(xMetric);
-    const yRanks = buildRanks(yMetric);
-
-    const posX = (v: BubbleVendor) =>
-      PADDING.left + (xRanks.get(v.id) ?? 0.5) * innerWidth;
-    // Y-axis is inverted: rank 1 (largest) at top.
-    const posY = (v: BubbleVendor) =>
-      PADDING.top + (1 - (yRanks.get(v.id) ?? 0.5)) * innerHeight;
+    const xR = ranks(xMetric);
+    const yR = ranks(yMetric);
 
     const sizeMax = Math.max(
       ...vendors.map((v) => Math.max(v.metrics[sizeMetric], 0)),
       1,
     );
-    const sizeFor = (v: BubbleVendor) => {
-      const val = Math.max(v.metrics[sizeMetric], 0);
-      const t = Math.sqrt(val / sizeMax);
-      return MIN_RADIUS + t * (MAX_RADIUS - MIN_RADIUS);
-    };
 
-    return { xCenter, yCenter, posX, posY, sizeFor };
+    const nodes: PositionedNode[] = vendors.map((v) => {
+      const t = Math.sqrt(Math.max(v.metrics[sizeMetric], 0) / sizeMax);
+      return {
+        ...v,
+        radius: MIN_RADIUS + t * (MAX_RADIUS - MIN_RADIUS),
+        x: PADDING.left + (xR.get(v.id) ?? 0.5) * innerWidth,
+        // Y inverted: rank 1 (largest) at top.
+        y: PADDING.top + (1 - (yR.get(v.id) ?? 0.5)) * innerHeight,
+      };
+    });
+    // Largest first so big bubbles paint under small ones (small stay
+    // clickable on top); hovered node is lifted at render time.
+    nodes.sort((a, b) => b.radius - a.radius);
+    return { xCenter, yCenter, nodes };
   }, [vendors, xMetric, yMetric, sizeMetric, size.width, size.height]);
 
-  // Build / rebuild simulation when vendors, size, or metrics change
-  useEffect(() => {
-    if (!size.width || !size.height || vendors.length === 0) return;
-
-    const initial: BubbleNode[] = vendors.map((v) => ({
-      ...v,
-      radius: sizeFor(v),
-      targetX: posX(v),
-      targetY: posY(v),
-      x: posX(v) + (Math.random() - 0.5) * 10,
-      y: posY(v) + (Math.random() - 0.5) * 10,
-    }));
-
-    const sim = forceSimulation<BubbleNode>(initial)
-      .force(
-        'x',
-        forceX<BubbleNode>((d) => d.targetX).strength(0.45),
-      )
-      .force(
-        'y',
-        forceY<BubbleNode>((d) => d.targetY).strength(0.45),
-      )
-      .force(
-        'collide',
-        forceCollide<BubbleNode>().radius((d) => d.radius + 4).strength(0.85),
-      )
-      .alphaDecay(0.025)
-      .velocityDecay(0.45);
-
-    const minX = PADDING.left;
-    const maxX = size.width - PADDING.right;
-    const minY = PADDING.top;
-    const maxY = size.height - PADDING.bottom;
-
-    sim.on('tick', () => {
-      for (const n of sim.nodes()) {
-        if (n.x !== undefined) n.x = Math.max(minX + n.radius, Math.min(maxX - n.radius, n.x));
-        if (n.y !== undefined) n.y = Math.max(minY + n.radius, Math.min(maxY - n.radius, n.y));
-      }
-      setNodes(sim.nodes().slice());
-    });
-
-    simRef.current = sim;
-    return () => {
-      sim.stop();
-      simRef.current = null;
-    };
-  }, [vendors, size.width, size.height, xMetric, yMetric, sizeMetric, posX, posY, sizeFor]);
-
   return (
-    <div ref={containerRef} className="absolute inset-0 overflow-hidden">
+    <div
+      ref={containerRef}
+      className="absolute inset-0 overflow-hidden"
+      onWheel={onWheel}
+      onPointerMove={onPanMove}
+      onPointerUp={onPanUp}
+      onPointerLeave={onPanUp}
+    >
       <svg width="100%" height="100%" className="block">
         <style>{`
           @keyframes vrs-halo-pulse {
@@ -218,69 +234,92 @@ export function BubbleField({ vendors, xMetric, yMetric, sizeMetric, onSelect }:
           }
         `}</style>
 
-        {/* Quadrant watermarks — large faded labels behind bubbles. */}
-        {size.width > 0 && (() => {
-          const xLabel = METRIC_LABELS[xMetric];
-          const yLabel = METRIC_LABELS[yMetric];
-          const innerLeft = PADDING.left;
-          const innerRight = size.width - PADDING.right;
-          const innerTop = PADDING.top;
-          const innerBottom = size.height - PADDING.bottom;
-          const tlX = (innerLeft + xCenter) / 2;
-          const trX = (xCenter + innerRight) / 2;
-          const topY = (innerTop + yCenter) / 2;
-          const botY = (yCenter + innerBottom) / 2;
+        {/* Pan surface — clicking empty space + dragging pans; bubbles
+            handle their own pointer events and never start a pan. */}
+        <rect
+          data-bg="1"
+          x={0}
+          y={0}
+          width="100%"
+          height="100%"
+          fill="transparent"
+          onPointerDown={onPanDown}
+          style={{ cursor: 'grab' }}
+        />
 
-          const titleStyle: React.CSSProperties = {
-            fontSize: 13,
-            fontWeight: 700,
-            letterSpacing: '0.18em',
-            textTransform: 'uppercase',
-          };
-          const subStyle: React.CSSProperties = {
-            fontSize: 10,
-            fontWeight: 500,
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
-          };
+        {/* Quadrant watermarks (fixed — ambient context, not zoomed) */}
+        {size.width > 0 &&
+          (() => {
+            const xLabel = METRIC_LABELS[xMetric];
+            const yLabel = METRIC_LABELS[yMetric];
+            const innerLeft = PADDING.left;
+            const innerRight = size.width - PADDING.right;
+            const innerTop = PADDING.top;
+            const innerBottom = size.height - PADDING.bottom;
+            const tlX = (innerLeft + xCenter) / 2;
+            const trX = (xCenter + innerRight) / 2;
+            const topY = (innerTop + yCenter) / 2;
+            const botY = (yCenter + innerBottom) / 2;
+            const titleStyle: React.CSSProperties = {
+              fontSize: 13,
+              fontWeight: 700,
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
+            };
+            const subStyle: React.CSSProperties = {
+              fontSize: 10,
+              fontWeight: 500,
+              letterSpacing: '0.12em',
+              textTransform: 'uppercase',
+            };
+            const Watermark = ({
+              x,
+              y,
+              yWord,
+              xWord,
+            }: {
+              x: number;
+              y: number;
+              yWord: 'High' | 'Low';
+              xWord: 'High' | 'Low';
+            }) => (
+              <g transform={`translate(${x},${y})`} pointerEvents="none">
+                <text
+                  textAnchor="middle"
+                  className="fill-gray-300"
+                  style={titleStyle}
+                >
+                  {yWord} {yLabel}
+                </text>
+                <text
+                  textAnchor="middle"
+                  y={18}
+                  className="fill-gray-300"
+                  style={subStyle}
+                >
+                  {xWord} {xLabel}
+                </text>
+              </g>
+            );
+            return (
+              <g
+                style={{
+                  opacity: entered ? 0.45 : 1,
+                  transition: 'opacity 700ms ease',
+                }}
+              >
+                <Watermark x={tlX} y={topY} yWord="High" xWord="Low" />
+                <Watermark x={trX} y={topY} yWord="High" xWord="High" />
+                <Watermark x={tlX} y={botY} yWord="Low" xWord="Low" />
+                <Watermark x={trX} y={botY} yWord="Low" xWord="High" />
+              </g>
+            );
+          })()}
 
-          const Watermark = ({
-            x,
-            y,
-            yWord,
-            xWord,
-          }: {
-            x: number;
-            y: number;
-            yWord: 'High' | 'Low';
-            xWord: 'High' | 'Low';
-          }) => (
-            <g transform={`translate(${x},${y})`} pointerEvents="none">
-              <text textAnchor="middle" className="fill-gray-300" style={titleStyle}>
-                {yWord} {yLabel}
-              </text>
-              <text textAnchor="middle" y={18} className="fill-gray-300" style={subStyle}>
-                {xWord} {xLabel}
-              </text>
-            </g>
-          );
-
-          return (
-            <g
-              style={{
-                opacity: entered ? 0.45 : 1,
-                transition: 'opacity 700ms ease',
-              }}
-            >
-              <Watermark x={tlX} y={topY} yWord="High" xWord="Low" />
-              <Watermark x={trX} y={topY} yWord="High" xWord="High" />
-              <Watermark x={tlX} y={botY} yWord="Low" xWord="Low" />
-              <Watermark x={trX} y={botY} yWord="Low" xWord="High" />
-            </g>
-          );
-        })()}
-
-        {/* Quadrant cross-hairs at chart center (median lands at center under rank scaling) */}
+        {/* Plot group — pan/zoom transform applies here (crosshairs move
+            with the data so the median reference stays meaningful). */}
+        <g transform={`translate(${vp.tx},${vp.ty}) scale(${vp.k})`}>
+        {/* Crosshairs at chart centre (median lands here under rank scaling) */}
         {size.width > 0 && (
           <>
             <line
@@ -303,8 +342,9 @@ export function BubbleField({ vendors, xMetric, yMetric, sizeMetric, onSelect }:
             />
           </>
         )}
+        </g>
 
-        {/* Axis labels */}
+        {/* Axis labels (fixed — frame the field, not zoomed) */}
         {size.width > 0 && (
           <>
             <text
@@ -312,138 +352,189 @@ export function BubbleField({ vendors, xMetric, yMetric, sizeMetric, onSelect }:
               y={size.height - 18}
               textAnchor="middle"
               className="fill-gray-600"
-              style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase' }}
+              style={{
+                fontSize: 11,
+                fontWeight: 500,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+              }}
             >
-              X · {METRIC_LABELS[xMetric]} {METRIC_FORMAT[xMetric] === 'money' ? '($ · by rank)' : '(count · by rank)'} →
+              X · {METRIC_LABELS[xMetric]} {fmtSuffix(xMetric)} →
             </text>
             <text
               transform={`translate(20, ${size.height / 2}) rotate(-90)`}
               textAnchor="middle"
               className="fill-gray-600"
-              style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase' }}
+              style={{
+                fontSize: 11,
+                fontWeight: 500,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+              }}
             >
-              Y · {METRIC_LABELS[yMetric]} {METRIC_FORMAT[yMetric] === 'money' ? '($ · by rank)' : '(count · by rank)'} →
+              Y · {METRIC_LABELS[yMetric]} {fmtSuffix(yMetric)} →
             </text>
           </>
         )}
 
-        {/* Bubbles — wrapped in a group that fades + scales in once `entered`
-            flips, so the user reads the empty quadrant frame first. */}
+        {/* Bubbles — static, deterministic, overlap allowed. Pan/zoom
+            transform mirrors the crosshair group. */}
+        <g transform={`translate(${vp.tx},${vp.ty}) scale(${vp.k})`}>
         <g
           style={{
             opacity: entered ? 1 : 0,
-            transform: entered ? 'scale(1)' : 'scale(0.94)',
-            transformOrigin: 'center',
-            transformBox: 'fill-box',
-            transition: 'opacity 650ms ease, transform 650ms ease',
+            transition: 'opacity 550ms ease',
           }}
         >
-        {nodes.map((node) => {
-          const isHovered = hoveredId === node.id;
-          const fill = HEALTH_FILL[node.health];
-          const cx = node.x ?? 0;
-          const cy = node.y ?? 0;
-          return (
-            <g key={node.id} transform={`translate(${cx},${cy})`}>
-              {node.queuePending && (
-                <circle
-                  r={node.radius + 8}
-                  fill="none"
-                  stroke={HALO_STROKE}
-                  strokeWidth={2.5}
-                  className="vrs-halo"
-                  pointerEvents="none"
-                />
-              )}
-              <circle
-                r={node.radius}
-                fill={fill}
-                opacity={isHovered ? 1 : 0.85}
-                onMouseEnter={() => setHoveredId(node.id)}
-                onMouseLeave={() => setHoveredId(null)}
-                onClick={() => onSelect?.(node.id)}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setCtxMenu({
-                    x: e.clientX,
-                    y: e.clientY,
-                    id: node.id,
-                    name: node.name,
-                    queuePending: node.queuePending,
-                  });
-                }}
-                style={{
-                  filter: isHovered ? 'drop-shadow(0 6px 16px rgba(0,0,0,0.3))' : 'none',
-                  transform: isHovered ? 'scale(1.12)' : 'scale(1)',
-                  transformOrigin: 'center',
-                  transformBox: 'fill-box',
-                  transition: 'transform 200ms ease, filter 200ms ease, opacity 200ms ease',
-                  cursor: 'pointer',
-                }}
-              />
-              <text
-                textAnchor="middle"
-                dominantBaseline="middle"
-                pointerEvents="none"
-                fill="white"
-                style={{
-                  fontSize: Math.max(9, Math.min(node.radius / 4.2, 13)),
-                  fontWeight: 600,
-                  letterSpacing: '0.01em',
-                  userSelect: 'none',
-                }}
+          {nodes.map((node) => {
+            const isHovered = hoveredId === node.id;
+            const showLabel = node.radius >= LABEL_MIN_RADIUS;
+            return (
+              <g
+                key={node.id}
+                transform={`translate(${node.x},${node.y})`}
+                style={isHovered ? { isolation: 'isolate' } : undefined}
               >
-                {compactName(node.name)}
-              </text>
-              {isHovered && (
-                <text
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  y={node.radius + 16}
-                  pointerEvents="none"
-                  className="fill-gray-900"
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    paintOrder: 'stroke',
-                    stroke: 'white',
-                    strokeWidth: 4,
-                    strokeLinecap: 'round',
-                    strokeLinejoin: 'round',
+                {node.queuePending && (
+                  <circle
+                    r={node.radius + 8}
+                    fill="none"
+                    stroke={HALO_STROKE}
+                    strokeWidth={2.5}
+                    className="vrs-halo"
+                    pointerEvents="none"
+                  />
+                )}
+                <circle
+                  r={node.radius}
+                  fill={HEALTH_FILL[node.health]}
+                  opacity={isHovered ? 1 : 0.78}
+                  onMouseEnter={() => setHoveredId(node.id)}
+                  onMouseLeave={() => setHoveredId(null)}
+                  onClick={() => onSelect?.(node.id)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setCtxMenu({
+                      x: e.clientX,
+                      y: e.clientY,
+                      id: node.id,
+                      name: node.name,
+                      queuePending: node.queuePending,
+                    });
                   }}
-                >
-                  {node.name}
-                </text>
-              )}
-            </g>
-          );
-        })}
+                  style={{
+                    filter: isHovered
+                      ? 'drop-shadow(0 6px 16px rgba(0,0,0,0.3))'
+                      : 'none',
+                    transform: isHovered ? 'scale(1.12)' : 'scale(1)',
+                    transformOrigin: 'center',
+                    transformBox: 'fill-box',
+                    transition:
+                      'transform 200ms ease, filter 200ms ease, opacity 200ms ease',
+                    cursor: 'pointer',
+                  }}
+                />
+                {showLabel && (
+                  <text
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    pointerEvents="none"
+                    fill="white"
+                    style={{
+                      fontSize: Math.max(9, Math.min(node.radius / 4.2, 13)),
+                      fontWeight: 600,
+                      letterSpacing: '0.01em',
+                      userSelect: 'none',
+                    }}
+                  >
+                    {compactName(node.name)}
+                  </text>
+                )}
+                {isHovered && (
+                  <text
+                    textAnchor="middle"
+                    dominantBaseline="middle"
+                    y={node.radius + 16}
+                    pointerEvents="none"
+                    className="fill-gray-900"
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      paintOrder: 'stroke',
+                      stroke: 'white',
+                      strokeWidth: 4,
+                      strokeLinecap: 'round',
+                      strokeLinejoin: 'round',
+                    }}
+                  >
+                    {node.name}
+                  </text>
+                )}
+              </g>
+            );
+          })}
         </g>
-
+        </g>
       </svg>
 
       {/* Health legend */}
       <div className="absolute top-3 right-3 bg-white/85 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-xs">
-        <div className="font-medium text-gray-700 mb-1.5">Health</div>
-        <div className="flex items-center gap-3">
+        <div className="font-medium text-gray-700 mb-1.5">Attention</div>
+        <div className="flex flex-col gap-1">
           <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-green-500" /> Green
+            <span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Behind on a
+            closed period
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Amber
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />{' '}
+            Post-final adjustment
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Red
+            <span className="w-2.5 h-2.5 rounded-full bg-green-500" /> Clear
           </span>
-        </div>
-        <div className="mt-1.5 flex items-center gap-1.5 text-gray-600">
-          <span className="w-2.5 h-2.5 rounded-full border-2 border-blue-500 inline-block" />
-          Pending AP approval
+          <span className="flex items-center gap-1.5 text-gray-600">
+            <span className="w-2.5 h-2.5 rounded-full border-2 border-blue-500 inline-block" />
+            Pending AP approval
+          </span>
         </div>
       </div>
 
-      {/* Right-click context menu (P1.2). Open is live; the rest are honest
-          "later" entries — disabled until their phase lands. */}
+      {/* Zoom controls (pan = drag empty space; wheel = zoom to cursor) */}
+      <div className="absolute top-3 left-3 flex flex-col gap-1">
+        <div className="flex flex-col rounded-lg border border-gray-200 bg-white/85 backdrop-blur-sm shadow-sm overflow-hidden">
+          <button
+            type="button"
+            aria-label="Zoom in"
+            onClick={() => zoomBy(1.3)}
+            className="px-2.5 py-1.5 text-gray-700 hover:bg-gray-100 text-sm font-semibold border-b border-gray-200"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            aria-label="Zoom out"
+            onClick={() => zoomBy(1 / 1.3)}
+            className="px-2.5 py-1.5 text-gray-700 hover:bg-gray-100 text-sm font-semibold border-b border-gray-200"
+          >
+            −
+          </button>
+          <button
+            type="button"
+            aria-label="Reset view"
+            onClick={resetView}
+            className="px-2.5 py-1 text-[10px] uppercase tracking-wide text-gray-500 hover:bg-gray-100"
+          >
+            {vp.k === 1 && vp.tx === 0 && vp.ty === 0
+              ? 'Fit'
+              : `${vp.k.toFixed(1)}×`}
+          </button>
+        </div>
+        <span className="text-[10px] text-gray-400 max-w-[120px] leading-tight">
+          drag to pan · scroll to zoom
+        </span>
+      </div>
+
+      {/* Right-click context menu (P1.2) */}
       {ctxMenu && (
         <>
           <div
@@ -520,7 +611,10 @@ function CtxItem({
 
 function compactName(raw: string): string {
   const cleaned = raw
-    .replace(/\b(LLC|INC|CORP|CO|EDI|CORPORATE|COMPANY|US|USA|NORTH AMERICA|GLOBAL)\b/g, '')
+    .replace(
+      /\b(LLC|INC|CORP|CO|EDI|CORPORATE|COMPANY|US|USA|NORTH AMERICA|GLOBAL)\b/g,
+      '',
+    )
     .replace(/[\.\-]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();

@@ -152,3 +152,71 @@ D1 + D2 + K8 are the three that convert Performance/Opportunity from
 proxy/stub to real. Requested via the round-5 data ask
 (`docs/ken/Ken_data_request_round5.txt`; David routes — engineering does not
 contact Ken directly).
+
+---
+
+## 8. Refinements + build status (2026-05-17)
+
+Settled in discussion with David and **partially built**:
+
+### 8.1 No collision, no force simulation (built)
+Collision-avoidance was never wanted — **bubbles may overlap; co-located
+bubbles mean co-located data, which is truthful.** The only reason the old
+`BubbleField` ran a D3 force simulation was to resolve collisions; with that
+removed, **layout is a pure deterministic computed pass** (rank-percentile on
+X/Y, median-centered; sqrt-area size). It renders instantly at any N and
+never "dances." A future **user-drawn exploder** is the only thing that ever
+separates an overlapping cluster, on demand and locally. (This deleted the
+entire sim/`forceCollide`/tick path — the real cause of the "mass that never
+loads" at 2,573 vendors.)
+
+### 8.2 Triage-*encoding* vs triage-*filtering* (the layer distinction)
+"Triage-first" is the organizing principle at every layer, but it expresses
+differently by seat — these are not competing defaults:
+- **Operator (individual agent)** — triage-*filter*: show only their slice's
+  vendors with a live attention signal, long tail collapsed. **Operators get
+  NO holistic/aggregate views** (decided 2026-05-17) — only their filtered
+  atoms + their own "show all" soft-lens.
+- **Manager / estate** — triage-*encode*: show the whole structure
+  **aggregated**, nothing filtered out (absence of work is itself oversight
+  signal), but size/colour encode *attention load*, not bigness. Default
+  cluster dimension = **by analyst** ("your team's load at a glance"), easily
+  **configurable** to other dimensions. Click a hot cluster → drill to the
+  triage-filtered atoms within it.
+
+### 8.3 Built now vs still pending
+
+**Built (this session, pending commit):**
+- Metric vocabulary swapped to the feasible-now set (`§3 ✅`); old collinear
+  five removed. Forecast/volume metrics shown **disabled + labeled
+  "awaiting D1/D2/K8"** in the selector — never faked.
+- Health is **attention-driven** (RED = behind on a closed period; AMBER =
+  post-final adjustment; else GREEN), not historical-finalized state. On real
+  data this is truthfully ~all-GREEN — differentiation now comes from size +
+  position, not colour.
+- `BubbleField` rewritten: deterministic static layout, overlap allowed, no
+  sim. False "log scale" subtitle removed (it was rank-percentile).
+- New defaults: **X = active programs, Y = earnings (this FY),
+  size = earnings (lifetime)**, colour = attention. Real, non-collinear,
+  instantly populated (verified against the 2,573-vendor real DB).
+- **Pan & zoom** on the field (drag empty space, wheel-to-cursor, +/−/reset;
+  plot content transforms, axis/legend fixed).
+
+**Not yet built (next, in order):**
+1. **Attention-detector model** (proposed, awaiting go) — the field is
+   truthfully all-GREEN today because real closed periods are 100% finalized;
+   that is correct, *not* a data gap. Surface real problem vendors **with no
+   Ken dependency** via computable detectors on the multi-year data already
+   ingested: **YoY earnings collapse**, **earnings cliff** (material last FY,
+   ~$0 this FY), **lapsed/closed program with continued activity**. Composite
+   severity → bubble colour (RED/AMBER) + a selectable metric; later feeds the
+   operator triage-*filter* and Manager triage-*encode* (§8.2). Tier-precise
+   under-attainment needs K8 and purest no-program-volume needs D2 — those
+   *sharpen/add*, they do not gate. Every flag traces to real rows
+   (`project_no_synthetic_data`).
+2. **Analyst-clustered aggregation + triage-encoding** for the Manager/estate
+   seat (rides on the seat switcher, which exists). Cluster dimension
+   configurable.
+3. **User-drawn exploder** (local de-overlap on demand). Detachable.
+4. **Per-seat default wiring** (the `§4` triplets) once aggregation lands.
+5. D1/D2/K8-dependent metrics enabled as those extracts arrive.
