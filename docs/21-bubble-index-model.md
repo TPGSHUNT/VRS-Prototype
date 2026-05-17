@@ -385,13 +385,27 @@ defines *how they apply per seat*.
 
 ### 9.9 Build order
 
-1. **Materiality composite** — Cat 1 + breadth live now; rank-normalized;
-   equal-thirds; component attribution. Drives vertical position + size.
-2. **Performance X** — same-period YoY; replaces the generic X.
-3. **Attention colour** — operational + same-period cliff/collapse,
-   thresholds tunable.
-4. **Settings bar** — the two definitions + colour basis + TTM window +
-   seat; absorbs the bottom toolbar.
-5. **Remove the X/Y/Size pickers.**
-6. Cat 2 (volume/contract) terms + the lapsed detector **auto-activate**
+1. **Materiality composite** — ✅ built. Cat 1 + breadth live; rank-
+   normalized; equal-thirds; component attribution. Drives vertical + size.
+2. **Performance X** — ✅ built. Same-period YoY (FY-YTD vs prior-FY same
+   periods); replaces the generic X.
+3. **Attention colour** — ✅ built. Same-period cliff/collapse + operational;
+   thresholds tunable. (~10% flagged on real data — a real triage signal.)
+4. **Settings bar** — ✅ built. Two definitions + window + seat; absorbed
+   the bottom toolbar.
+5. **Remove X/Y/Size pickers** — ✅ done.
+6. **Estate aggregation / drill-down** — ✅ built (decided 2026-05-17 from
+   the "untenable 2,573-atom blob" screenshot). The estate is **never raw
+   atoms**: it opens as **analyst clusters** (16 on real data); click a
+   cluster to drill (analyst → program-type → atoms). Atoms render only
+   when the working set ≤ **200** (CEILING); above it the next dimension
+   aggregates. Breadcrumb navigation; cluster size/colour = aggregated
+   Materiality/Attention; cluster Performance = true aggregate YoY (Σytd,
+   not mean-of-ratios). No collision; deterministic; the exploder is still
+   the only de-overlap for the atom level.
+7. Cat 2 (volume/contract) terms + the lapsed detector **auto-activate**
    when D1/D2 / program-deactivation data arrive — no rework.
+
+**Known follow-up:** the dominant-analyst/program-type modal CTEs add
+~2 s to SSR (~3.6 s total). Functionally correct; optimize later
+(precompute dominance, or DISTINCT ON). Not demo-blocking but noted.

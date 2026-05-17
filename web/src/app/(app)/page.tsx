@@ -15,18 +15,21 @@ export default async function BubbleFieldLanding({
   if (!session?.user) redirect('/login');
 
   const showAll = (await searchParams).scope === 'all';
-  const { bubbles, scope } = await getBubbleData({
+  const { bubbles, scope, meta } = await getBubbleData({
     userId: session.user.id,
     role: session.user.role,
     showAll,
   });
 
-  const totalEarnings = bubbles.reduce((s, b) => s + b.metrics.earningsFY, 0);
+  const totalEarnings = bubbles.reduce(
+    (s, b) => s + b.components.earningsFullFY,
+    0,
+  );
   const queuePending = bubbles.filter((b) => b.queuePending).length;
   const healthCounts = {
-    red: bubbles.filter((b) => b.health === 'RED').length,
-    amber: bubbles.filter((b) => b.health === 'AMBER').length,
-    green: bubbles.filter((b) => b.health === 'GREEN').length,
+    red: bubbles.filter((b) => b.attention.level === 'RED').length,
+    amber: bubbles.filter((b) => b.attention.level === 'AMBER').length,
+    green: bubbles.filter((b) => b.attention.level === 'GREEN').length,
   };
 
   return (
@@ -35,7 +38,10 @@ export default async function BubbleFieldLanding({
       <div className="border-b border-gray-200 px-6 py-4 bg-white">
         <div className="grid grid-cols-5 gap-6 max-w-6xl">
           <KpiCard label="Vendors in scope" value={bubbles.length.toLocaleString()} />
-          <KpiCard label="Total earnings YTD" value={formatMoney(totalEarnings)} />
+          <KpiCard
+            label={meta.fullFY ? `Earnings (FY${meta.fullFY})` : 'Earnings'}
+            value={formatMoney(totalEarnings)}
+          />
           <KpiCard
             label="Awaiting AP approval"
             value={queuePending.toLocaleString()}
@@ -97,7 +103,11 @@ export default async function BubbleFieldLanding({
 
       {/* Bubble field viewport — quadrant layout, axis-selectable via toolbar */}
       <div className="flex-1 relative bg-gradient-to-br from-gray-50/80 via-white to-gray-50/60">
-        <WorkSurface vendors={bubbles} role={session.user.role} />
+        <WorkSurface
+          vendors={bubbles}
+          role={session.user.role}
+          meta={meta}
+        />
       </div>
     </div>
   );

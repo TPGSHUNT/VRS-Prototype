@@ -1,67 +1,47 @@
 'use client';
 
-// Vendor bubble field — DETERMINISTIC layout (docs/21, decided 2026-05-17).
-// No force simulation, no collision: position is a pure computed pass from
-// the selected metrics, so it renders instantly at any N and never "dances".
-// Bubbles MAY overlap — co-located bubbles mean co-located data, which is
-// truthful; a user-drawn exploder (later) is the only thing that separates
-// them, on demand. Position = rank-percentile on X/Y (median-centered);
-// size = sqrt(value) so area is proportional; colour = attention health.
+// Vendor bubble field — the "now"-anchored semantic encoding (docs/21 §9).
+// THREE fixed-semantic dimensions, no X/Y/Size pickers:
+//   • Materiality → vertical position AND bubble size (reinforced)
+//   • Performance → horizontal position (contraction ← centre → growth)
+//   • Attention   → colour
+// Deterministic layout: no force sim, no collision; overlap is truthful;
+// pan/zoom; the user-drawn exploder (later) is the only de-overlap.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  METRIC_FORMAT,
-  METRIC_LABELS,
-  type BubbleVendor,
-  type MetricKey,
-} from '@/lib/bubble-data';
+import type { BubbleHealth } from '@/lib/bubble-data';
 
-type BubbleHealthShort = BubbleVendor['health'];
-
-interface PositionedNode extends BubbleVendor {
-  radius: number;
-  x: number;
-  y: number;
+export interface FieldNode {
+  id: string;
+  name: string;
+  vendorNumber: number;
+  materiality: number; // 0..1 (normalized across the render set)
+  performancePctl: number; // 0..1 (0.5 ≈ flat)
+  performanceRaw: number; // signed YoY fraction (for label)
+  attention: { level: BubbleHealth; reasons: string[]; stake: number };
+  queuePending: boolean;
+  attribution: string[]; // "why this size" + attention, for hover
+  isCluster?: boolean; // aggregate node (estate drill-down, docs/21 §8.2)
+  count?: number; // members, when isCluster
 }
 
-const HEALTH_FILL: Record<BubbleHealthShort, string> = {
+const HEALTH_FILL: Record<BubbleHealth, string> = {
   GREEN: 'rgb(34, 197, 94)',
   AMBER: 'rgb(245, 158, 11)',
   RED: 'rgb(239, 68, 68)',
 };
 const HALO_STROKE = 'rgb(59, 130, 246)';
-
 const MIN_RADIUS = 6;
 const MAX_RADIUS = 54;
-// Below this radius the inner name label is dropped (unreadable + keeps the
-// DOM light when the estate has thousands of bubbles). Full name on hover.
 const LABEL_MIN_RADIUS = 17;
 const PADDING = { left: 70, right: 170, top: 110, bottom: 110 };
 
-function fmtSuffix(k: MetricKey): string {
-  const f = METRIC_FORMAT[k];
-  return f === 'money'
-    ? '($ · by rank)'
-    : f === 'percent'
-      ? '(% · by rank)'
-      : '(count · by rank)';
-}
-
 interface BubbleFieldProps {
-  vendors: BubbleVendor[];
-  xMetric: MetricKey;
-  yMetric: MetricKey;
-  sizeMetric: MetricKey;
+  nodes: FieldNode[];
   onSelect?: (vendorId: string) => void;
 }
 
-export function BubbleField({
-  vendors,
-  xMetric,
-  yMetric,
-  sizeMetric,
-  onSelect,
-}: BubbleFieldProps) {
+export function BubbleField({ nodes: input, onSelect }: BubbleFieldProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [hoveredId, setHoveredId] = useState<string | null>(null);
@@ -73,73 +53,6 @@ export function BubbleField({
     queuePending: boolean;
   } | null>(null);
 
-  // Pan + zoom viewport (k = scale, tx/ty = translate in screen px). Applied
-  // to the plot group only; axis labels + legend stay fixed. Hand-rolled —
-  // AppShell is overflow-hidden so wheel never scrolls the page.
-  const [vp, setVp] = useState({ k: 1, tx: 0, ty: 0 });
-  const panRef = useRef<{
-    startX: number;
-    startY: number;
-    tx: number;
-    ty: number;
-  } | null>(null);
-  const MIN_K = 0.4;
-  const MAX_K = 8;
-  const clampK = (k: number) => Math.min(MAX_K, Math.max(MIN_K, k));
-
-  function onWheel(e: React.WheelEvent) {
-    const el = containerRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const px = e.clientX - rect.left;
-    const py = e.clientY - rect.top;
-    setVp((p) => {
-      const k2 = clampK(p.k * (e.deltaY < 0 ? 1.15 : 1 / 1.15));
-      const ratio = k2 / p.k;
-      return {
-        k: k2,
-        tx: px - ratio * (px - p.tx),
-        ty: py - ratio * (py - p.ty),
-      };
-    });
-  }
-  function onPanDown(e: React.PointerEvent) {
-    // Only the background rect starts a pan (bubbles handle their own events).
-    if ((e.target as Element).getAttribute('data-bg') !== '1') return;
-    (e.currentTarget as Element).setPointerCapture(e.pointerId);
-    panRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      tx: vp.tx,
-      ty: vp.ty,
-    };
-  }
-  function onPanMove(e: React.PointerEvent) {
-    const s = panRef.current;
-    if (!s) return;
-    setVp((p) => ({
-      ...p,
-      tx: s.tx + (e.clientX - s.startX),
-      ty: s.ty + (e.clientY - s.startY),
-    }));
-  }
-  function onPanUp() {
-    panRef.current = null;
-  }
-  const zoomBy = (f: number) =>
-    setVp((p) => {
-      const k2 = clampK(p.k * f);
-      const cx = size.width / 2;
-      const cy = size.height / 2;
-      const ratio = k2 / p.k;
-      return {
-        k: k2,
-        tx: cx - ratio * (cx - p.tx),
-        ty: cy - ratio * (cy - p.ty),
-      };
-    });
-  const resetView = () => setVp({ k: 1, tx: 0, ty: 0 });
-
   useEffect(() => {
     if (!ctxMenu) return;
     const onKey = (e: KeyboardEvent) => {
@@ -149,7 +62,6 @@ export function BubbleField({
     return () => window.removeEventListener('keydown', onKey);
   }, [ctxMenu]);
 
-  // Entrance: read the empty quadrant frame first, then bubbles fade in.
   const [entered, setEntered] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setEntered(true), 450);
@@ -168,49 +80,81 @@ export function BubbleField({
     return () => ro.disconnect();
   }, []);
 
-  // Deterministic layout. Rank-percentile on each axis so the median lands
-  // at the visual centre regardless of skew and the field uses the whole
-  // viewport. No simulation, no collide — overlaps are allowed and meaningful.
-  const { xCenter, yCenter, nodes } = useMemo(() => {
-    if (!size.width || !size.height || vendors.length === 0) {
-      return { xCenter: 0, yCenter: 0, nodes: [] as PositionedNode[] };
+  // Pan + zoom viewport.
+  const [vp, setVp] = useState({ k: 1, tx: 0, ty: 0 });
+  const panRef = useRef<{
+    startX: number;
+    startY: number;
+    tx: number;
+    ty: number;
+  } | null>(null);
+  const clampK = (k: number) => Math.min(8, Math.max(0.4, k));
+  function onWheel(e: React.WheelEvent) {
+    const el = containerRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const px = e.clientX - r.left;
+    const py = e.clientY - r.top;
+    setVp((p) => {
+      const k2 = clampK(p.k * (e.deltaY < 0 ? 1.15 : 1 / 1.15));
+      const ratio = k2 / p.k;
+      return { k: k2, tx: px - ratio * (px - p.tx), ty: py - ratio * (py - p.ty) };
+    });
+  }
+  function onPanDown(e: React.PointerEvent) {
+    if ((e.target as Element).getAttribute('data-bg') !== '1') return;
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    panRef.current = { startX: e.clientX, startY: e.clientY, tx: vp.tx, ty: vp.ty };
+  }
+  function onPanMove(e: React.PointerEvent) {
+    const s = panRef.current;
+    if (!s) return;
+    setVp((p) => ({ ...p, tx: s.tx + (e.clientX - s.startX), ty: s.ty + (e.clientY - s.startY) }));
+  }
+  const onPanUp = () => {
+    panRef.current = null;
+  };
+  const zoomBy = (f: number) =>
+    setVp((p) => {
+      const k2 = clampK(p.k * f);
+      const cx = size.width / 2;
+      const cy = size.height / 2;
+      const ratio = k2 / p.k;
+      return { k: k2, tx: cx - ratio * (cx - p.tx), ty: cy - ratio * (cy - p.ty) };
+    });
+  const resetView = () => setVp({ k: 1, tx: 0, ty: 0 });
+
+  // Deterministic layout. Vertical = materiality (rank-percentile,
+  // median-centred). Size = sqrt(materiality). Horizontal = performance
+  // percentile (0.5 ≈ flat, left = contraction, right = growth).
+  const { xCenter, yCenter, placed } = useMemo(() => {
+    if (!size.width || !size.height || input.length === 0) {
+      return { xCenter: 0, yCenter: 0, placed: [] as (FieldNode & { x: number; y: number; r: number })[] };
     }
-    const innerWidth = size.width - PADDING.left - PADDING.right;
-    const innerHeight = size.height - PADDING.top - PADDING.bottom;
-    const xCenter = PADDING.left + innerWidth / 2;
-    const yCenter = PADDING.top + innerHeight / 2;
+    const iw = size.width - PADDING.left - PADDING.right;
+    const ih = size.height - PADDING.top - PADDING.bottom;
+    const xCenter = PADDING.left + iw / 2;
+    const yCenter = PADDING.top + ih / 2;
 
-    const ranks = (key: MetricKey) => {
-      const sorted = [...vendors].sort(
-        (a, b) => a.metrics[key] - b.metrics[key],
-      );
-      const m = new Map<string, number>();
-      sorted.forEach((v, i) => m.set(v.id, (i + 0.5) / sorted.length));
-      return m;
-    };
-    const xR = ranks(xMetric);
-    const yR = ranks(yMetric);
+    // Rank materiality for vertical position (median-centred spread).
+    const byMat = [...input].sort((a, b) => a.materiality - b.materiality);
+    const yr = new Map<string, number>();
+    byMat.forEach((v, i) => yr.set(v.id, (i + 0.5) / byMat.length));
 
-    const sizeMax = Math.max(
-      ...vendors.map((v) => Math.max(v.metrics[sizeMetric], 0)),
-      1,
-    );
-
-    const nodes: PositionedNode[] = vendors.map((v) => {
-      const t = Math.sqrt(Math.max(v.metrics[sizeMetric], 0) / sizeMax);
+    const placed = input.map((v) => {
+      const t = Math.sqrt(Math.max(v.materiality, 0));
       return {
         ...v,
-        radius: MIN_RADIUS + t * (MAX_RADIUS - MIN_RADIUS),
-        x: PADDING.left + (xR.get(v.id) ?? 0.5) * innerWidth,
-        // Y inverted: rank 1 (largest) at top.
-        y: PADDING.top + (1 - (yR.get(v.id) ?? 0.5)) * innerHeight,
+        r: MIN_RADIUS + t * (MAX_RADIUS - MIN_RADIUS),
+        x: PADDING.left + Math.min(1, Math.max(0, v.performancePctl)) * iw,
+        y: PADDING.top + (1 - (yr.get(v.id) ?? 0.5)) * ih,
       };
     });
-    // Largest first so big bubbles paint under small ones (small stay
-    // clickable on top); hovered node is lifted at render time.
-    nodes.sort((a, b) => b.radius - a.radius);
-    return { xCenter, yCenter, nodes };
-  }, [vendors, xMetric, yMetric, sizeMetric, size.width, size.height]);
+    placed.sort((a, b) => b.r - a.r); // big under small (small clickable on top)
+    return { xCenter, yCenter, placed };
+  }, [input, size.width, size.height]);
+
+  const T = `translate(${vp.tx},${vp.ty}) scale(${vp.k})`;
 
   return (
     <div
@@ -222,20 +166,6 @@ export function BubbleField({
       onPointerLeave={onPanUp}
     >
       <svg width="100%" height="100%" className="block">
-        <style>{`
-          @keyframes vrs-halo-pulse {
-            0%, 100% { opacity: 0.65; transform: scale(1); }
-            50% { opacity: 0.2; transform: scale(1.18); }
-          }
-          .vrs-halo {
-            animation: vrs-halo-pulse 1.8s ease-in-out infinite;
-            transform-origin: center;
-            transform-box: fill-box;
-          }
-        `}</style>
-
-        {/* Pan surface — clicking empty space + dragging pans; bubbles
-            handle their own pointer events and never start a pan. */}
         <rect
           data-bg="1"
           x={0}
@@ -247,57 +177,51 @@ export function BubbleField({
           style={{ cursor: 'grab' }}
         />
 
-        {/* Quadrant watermarks (fixed — ambient context, not zoomed) */}
+        {/* Quadrant watermarks (fixed) */}
         {size.width > 0 &&
           (() => {
-            const xLabel = METRIC_LABELS[xMetric];
-            const yLabel = METRIC_LABELS[yMetric];
-            const innerLeft = PADDING.left;
-            const innerRight = size.width - PADDING.right;
-            const innerTop = PADDING.top;
-            const innerBottom = size.height - PADDING.bottom;
-            const tlX = (innerLeft + xCenter) / 2;
-            const trX = (xCenter + innerRight) / 2;
-            const topY = (innerTop + yCenter) / 2;
-            const botY = (yCenter + innerBottom) / 2;
-            const titleStyle: React.CSSProperties = {
+            const il = PADDING.left;
+            const ir = size.width - PADDING.right;
+            const it = PADDING.top;
+            const ib = size.height - PADDING.bottom;
+            const tlX = (il + xCenter) / 2;
+            const trX = (xCenter + ir) / 2;
+            const topY = (it + yCenter) / 2;
+            const botY = (yCenter + ib) / 2;
+            const ts: React.CSSProperties = {
               fontSize: 13,
               fontWeight: 700,
-              letterSpacing: '0.18em',
+              letterSpacing: '0.16em',
               textTransform: 'uppercase',
             };
-            const subStyle: React.CSSProperties = {
+            const ss: React.CSSProperties = {
               fontSize: 10,
               fontWeight: 500,
-              letterSpacing: '0.12em',
+              letterSpacing: '0.1em',
               textTransform: 'uppercase',
             };
-            const Watermark = ({
+            const W = ({
               x,
               y,
-              yWord,
-              xWord,
+              mat,
+              perf,
             }: {
               x: number;
               y: number;
-              yWord: 'High' | 'Low';
-              xWord: 'High' | 'Low';
+              mat: string;
+              perf: string;
             }) => (
               <g transform={`translate(${x},${y})`} pointerEvents="none">
-                <text
-                  textAnchor="middle"
-                  className="fill-gray-300"
-                  style={titleStyle}
-                >
-                  {yWord} {yLabel}
+                <text textAnchor="middle" className="fill-gray-300" style={ts}>
+                  {mat} materiality
                 </text>
                 <text
                   textAnchor="middle"
                   y={18}
                   className="fill-gray-300"
-                  style={subStyle}
+                  style={ss}
                 >
-                  {xWord} {xLabel}
+                  {perf}
                 </text>
               </g>
             );
@@ -308,43 +232,40 @@ export function BubbleField({
                   transition: 'opacity 700ms ease',
                 }}
               >
-                <Watermark x={tlX} y={topY} yWord="High" xWord="Low" />
-                <Watermark x={trX} y={topY} yWord="High" xWord="High" />
-                <Watermark x={tlX} y={botY} yWord="Low" xWord="Low" />
-                <Watermark x={trX} y={botY} yWord="Low" xWord="High" />
+                <W x={tlX} y={topY} mat="High" perf="Contracting" />
+                <W x={trX} y={topY} mat="High" perf="Growing" />
+                <W x={tlX} y={botY} mat="Low" perf="Contracting" />
+                <W x={trX} y={botY} mat="Low" perf="Growing" />
               </g>
             );
           })()}
 
-        {/* Plot group — pan/zoom transform applies here (crosshairs move
-            with the data so the median reference stays meaningful). */}
-        <g transform={`translate(${vp.tx},${vp.ty}) scale(${vp.k})`}>
-        {/* Crosshairs at chart centre (median lands here under rank scaling) */}
-        {size.width > 0 && (
-          <>
-            <line
-              x1={xCenter}
-              y1={PADDING.top}
-              x2={xCenter}
-              y2={size.height - PADDING.bottom}
-              stroke="rgb(156, 163, 175)"
-              strokeWidth={1.25}
-              strokeDasharray="5 5"
-            />
-            <line
-              x1={PADDING.left}
-              y1={yCenter}
-              x2={size.width - PADDING.right}
-              y2={yCenter}
-              stroke="rgb(156, 163, 175)"
-              strokeWidth={1.25}
-              strokeDasharray="5 5"
-            />
-          </>
-        )}
+        <g transform={T}>
+          {size.width > 0 && (
+            <>
+              <line
+                x1={xCenter}
+                y1={PADDING.top}
+                x2={xCenter}
+                y2={size.height - PADDING.bottom}
+                stroke="rgb(156, 163, 175)"
+                strokeWidth={1.25}
+                strokeDasharray="5 5"
+              />
+              <line
+                x1={PADDING.left}
+                y1={yCenter}
+                x2={size.width - PADDING.right}
+                y2={yCenter}
+                stroke="rgb(156, 163, 175)"
+                strokeWidth={1.25}
+                strokeDasharray="5 5"
+              />
+            </>
+          )}
         </g>
 
-        {/* Axis labels (fixed — frame the field, not zoomed) */}
+        {/* Axis labels (fixed) */}
         {size.width > 0 && (
           <>
             <text
@@ -359,7 +280,7 @@ export function BubbleField({
                 textTransform: 'uppercase',
               }}
             >
-              X · {METRIC_LABELS[xMetric]} {fmtSuffix(xMetric)} →
+              ← contracting · PERFORMANCE (YoY, same period) · growing →
             </text>
             <text
               transform={`translate(20, ${size.height / 2}) rotate(-90)`}
@@ -372,122 +293,161 @@ export function BubbleField({
                 textTransform: 'uppercase',
               }}
             >
-              Y · {METRIC_LABELS[yMetric]} {fmtSuffix(yMetric)} →
+              MATERIALITY (size + height) →
             </text>
           </>
         )}
 
-        {/* Bubbles — static, deterministic, overlap allowed. Pan/zoom
-            transform mirrors the crosshair group. */}
-        <g transform={`translate(${vp.tx},${vp.ty}) scale(${vp.k})`}>
-        <g
-          style={{
-            opacity: entered ? 1 : 0,
-            transition: 'opacity 550ms ease',
-          }}
-        >
-          {nodes.map((node) => {
-            const isHovered = hoveredId === node.id;
-            const showLabel = node.radius >= LABEL_MIN_RADIUS;
-            return (
-              <g
-                key={node.id}
-                transform={`translate(${node.x},${node.y})`}
-                style={isHovered ? { isolation: 'isolate' } : undefined}
-              >
-                {node.queuePending && (
+        <g transform={T}>
+          <g
+            style={{
+              opacity: entered ? 1 : 0,
+              transition: 'opacity 550ms ease',
+            }}
+          >
+            {placed.map((node) => {
+              const isHovered = hoveredId === node.id;
+              const showLabel = node.isCluster || node.r >= LABEL_MIN_RADIUS;
+              return (
+                <g key={node.id} transform={`translate(${node.x},${node.y})`}>
+                  {node.isCluster && (
+                    <circle
+                      r={node.r + 5}
+                      fill="none"
+                      stroke="rgba(31,41,55,0.45)"
+                      strokeWidth={1.5}
+                      strokeDasharray="3 3"
+                      pointerEvents="none"
+                    />
+                  )}
+                  {node.queuePending && !node.isCluster && (
+                    <circle
+                      r={node.r + 8}
+                      fill="none"
+                      stroke={HALO_STROKE}
+                      strokeWidth={2.5}
+                      className="vrs-halo"
+                      pointerEvents="none"
+                    />
+                  )}
                   <circle
-                    r={node.radius + 8}
-                    fill="none"
-                    stroke={HALO_STROKE}
-                    strokeWidth={2.5}
-                    className="vrs-halo"
-                    pointerEvents="none"
+                    r={node.r}
+                    fill={HEALTH_FILL[node.attention.level]}
+                    opacity={isHovered ? 1 : 0.78}
+                    onMouseEnter={() => setHoveredId(node.id)}
+                    onMouseLeave={() => setHoveredId(null)}
+                    onClick={() => onSelect?.(node.id)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setCtxMenu({
+                        x: e.clientX,
+                        y: e.clientY,
+                        id: node.id,
+                        name: node.name,
+                        queuePending: node.queuePending,
+                      });
+                    }}
+                    style={{
+                      filter: isHovered
+                        ? 'drop-shadow(0 6px 16px rgba(0,0,0,0.3))'
+                        : 'none',
+                      transform: isHovered ? 'scale(1.12)' : 'scale(1)',
+                      transformOrigin: 'center',
+                      transformBox: 'fill-box',
+                      transition:
+                        'transform 200ms ease, filter 200ms ease, opacity 200ms ease',
+                      cursor: 'pointer',
+                    }}
                   />
-                )}
-                <circle
-                  r={node.radius}
-                  fill={HEALTH_FILL[node.health]}
-                  opacity={isHovered ? 1 : 0.78}
-                  onMouseEnter={() => setHoveredId(node.id)}
-                  onMouseLeave={() => setHoveredId(null)}
-                  onClick={() => onSelect?.(node.id)}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    setCtxMenu({
-                      x: e.clientX,
-                      y: e.clientY,
-                      id: node.id,
-                      name: node.name,
-                      queuePending: node.queuePending,
-                    });
-                  }}
-                  style={{
-                    filter: isHovered
-                      ? 'drop-shadow(0 6px 16px rgba(0,0,0,0.3))'
-                      : 'none',
-                    transform: isHovered ? 'scale(1.12)' : 'scale(1)',
-                    transformOrigin: 'center',
-                    transformBox: 'fill-box',
-                    transition:
-                      'transform 200ms ease, filter 200ms ease, opacity 200ms ease',
-                    cursor: 'pointer',
-                  }}
-                />
-                {showLabel && (
-                  <text
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    pointerEvents="none"
-                    fill="white"
-                    style={{
-                      fontSize: Math.max(9, Math.min(node.radius / 4.2, 13)),
-                      fontWeight: 600,
-                      letterSpacing: '0.01em',
-                      userSelect: 'none',
-                    }}
-                  >
-                    {compactName(node.name)}
-                  </text>
-                )}
-                {isHovered && (
-                  <text
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    y={node.radius + 16}
-                    pointerEvents="none"
-                    className="fill-gray-900"
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      paintOrder: 'stroke',
-                      stroke: 'white',
-                      strokeWidth: 4,
-                      strokeLinecap: 'round',
-                      strokeLinejoin: 'round',
-                    }}
-                  >
-                    {node.name}
-                  </text>
-                )}
-              </g>
-            );
-          })}
-        </g>
+                  {showLabel && (
+                    <text
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      y={node.isCluster ? -5 : 0}
+                      pointerEvents="none"
+                      fill="white"
+                      style={{
+                        fontSize: node.isCluster
+                          ? Math.max(10, Math.min(node.r / 4, 15))
+                          : Math.max(9, Math.min(node.r / 4.2, 13)),
+                        fontWeight: 700,
+                        userSelect: 'none',
+                      }}
+                    >
+                      {node.isCluster
+                        ? compactName(node.name).slice(0, 16)
+                        : compactName(node.name)}
+                    </text>
+                  )}
+                  {node.isCluster && (
+                    <text
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      y={10}
+                      pointerEvents="none"
+                      fill="white"
+                      style={{ fontSize: 10, fontWeight: 600, opacity: 0.85 }}
+                    >
+                      {node.count} ▾
+                    </text>
+                  )}
+                  {isHovered && (
+                    <g pointerEvents="none">
+                      <text
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        y={node.r + 16}
+                        className="fill-gray-900"
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          paintOrder: 'stroke',
+                          stroke: 'white',
+                          strokeWidth: 4,
+                          strokeLinejoin: 'round',
+                        }}
+                      >
+                        {node.name}
+                      </text>
+                      {node.attribution.slice(0, 3).map((line, i) => (
+                        <text
+                          key={i}
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          y={node.r + 32 + i * 14}
+                          className="fill-gray-600"
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 500,
+                            paintOrder: 'stroke',
+                            stroke: 'white',
+                            strokeWidth: 3.5,
+                            strokeLinejoin: 'round',
+                          }}
+                        >
+                          {line}
+                        </text>
+                      ))}
+                    </g>
+                  )}
+                </g>
+              );
+            })}
+          </g>
         </g>
       </svg>
 
-      {/* Health legend */}
+      {/* Attention legend */}
       <div className="absolute top-3 right-3 bg-white/85 backdrop-blur-sm border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-xs">
         <div className="font-medium text-gray-700 mb-1.5">Attention</div>
         <div className="flex flex-col gap-1">
           <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Behind on a
-            closed period
+            <span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Cliff /
+            behind
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />{' '}
-            Post-final adjustment
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> YoY
+            collapse / adj.
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-green-500" /> Clear
@@ -499,7 +459,7 @@ export function BubbleField({
         </div>
       </div>
 
-      {/* Zoom controls (pan = drag empty space; wheel = zoom to cursor) */}
+      {/* Zoom controls */}
       <div className="absolute top-3 left-3 flex flex-col gap-1">
         <div className="flex flex-col rounded-lg border border-gray-200 bg-white/85 backdrop-blur-sm shadow-sm overflow-hidden">
           <button
@@ -534,7 +494,6 @@ export function BubbleField({
         </span>
       </div>
 
-      {/* Right-click context menu (P1.2) */}
       {ctxMenu && (
         <>
           <div
@@ -572,6 +531,15 @@ export function BubbleField({
           </div>
         </>
       )}
+
+      <style>{`
+        @keyframes vrs-halo-pulse {
+          0%,100% { opacity:.65; transform:scale(1); }
+          50% { opacity:.2; transform:scale(1.18); }
+        }
+        .vrs-halo { animation: vrs-halo-pulse 1.8s ease-in-out infinite;
+          transform-origin:center; transform-box:fill-box; }
+      `}</style>
     </div>
   );
 }
