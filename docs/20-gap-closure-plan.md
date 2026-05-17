@@ -175,9 +175,13 @@ no-sim/no-collision** `BubbleField` + real non-collinear defaults
 for the Manager seat, the user-drawn exploder, per-seat default wiring, and
 D1/D2/K8-dependent metrics. The "mass of green that never loads" is resolved
 by the no-sim rewrite + real size/position differentiation. **Pan & zoom
-built** (2026-05-17). **Next: the attention-detector model** (`docs/21` §8.3
-item 1) — computable YoY-collapse / earnings-cliff / lapsed-with-activity
-problem signal, no Ken dependency; then Manager analyst aggregation.
+built** (2026-05-17). **Next: the "now"-anchored encoding — fully
+documented as `docs/21` §9** (spec of record): semantic axes
+(Materiality = vertical+size composite, Performance = horizontal,
+Attention = colour), composite materiality (equal-thirds, configurable,
+rank-normalized, transparent), same-period YoY (no partial-year trap),
+top settings bar (view-shaper, not nav/filter; absorbs the bottom toolbar),
+no X/Y/Size pickers. Build order in §9.9. Then Manager analyst aggregation.
 
 ## Decision points needing David
 
