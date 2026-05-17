@@ -46,7 +46,7 @@ The purest "uncaptured" (purchase volume with *no* rebate program at all) needs 
 | P0.3 | Vendor dual identity: add **AP #** (VARCHAR9) + **IP #** (NUMBER5); aggregate by **name** | D3 | Bubble + everywhere vendor is keyed |
 | P0.4 | Sequence-shaped IDs for surfaced identifiers (REBATE_ID etc.) | D3 | Keep UUID PKs internally; display sequence-style |
 | P0.5 | Schema seams for pending Ken answers | K2/K7 | Add nullable Extract Begin/End alongside Rebate dates (K2); put the "active" predicate behind one query helper (K7) so the answer is a one-line change |
-| P0.6 | Reference realism in seed | D4 | Real approval thresholds ($250K/$1M, `DMM_APPROVE_TPR=No`), real Source/Frequency domains, ~real Category bloat sample, AcctControlMaster shaped as the real 10-transaction structure |
+| P0.6 | Reference realism in seed | D4 | Real approval thresholds ($250K/$1M, `DMM_APPROVE_TPR=No`), real Source/Frequency domains, ~real Category bloat sample. **AcctControlMaster: load the real matrix** from `VRS_DATA_ROUND_4.xlsx` (2,842 rows, 203 rebate_types, RSL/GL/AP routing — `docs/19` K3 RESOLVED) instead of a shaped stand-in; also seeds the authoritative `rebate_type`/`acct_type` domain. |
 | P0.7 | Migration + reseed + **re-capture baseline** | — | New migration supersedes `20260502010319_init`; update `docs/db-baseline-state.md` so cross-machine drift detection still works |
 | P0.8 | Shared glossary/label module | G7 | Used by every later surface |
 
@@ -95,7 +95,7 @@ Implementation: `getBubbleData()` takes a scope arg derived from the session sea
 |---|---|---|---|
 | P2.1 | **Period-close workflow** as a left-slider guided checklist with persistent state + blockers | P1 | The strongest single proof of friction-elimination; pick this as the demo's centerpiece moment |
 | P2.2 | **Ask Vera** drawer — shell + two-tier interaction + tool contract + hallucination guardrails (deny-by-default, cite-or-refuse) | P1/G4 | Real answers wait on Phase 3 data; build the surface + contract now |
-| P2.3 | **Seat switcher** (NOT a login — decision 2026-05-16): named personas w/ real role/group semantics, persistent in header for live seat-hopping, "Signed in via SSO — like production" caption; + Delegate indicator + FPA Supervisor seat | P1/G5 | Rationale: real VRS has no login screen (SSO-only, Ken) — no-login is more faithful *and* on-thesis. Replaces the scaffold-looking enum grid. Personas are curated (no clean name→role map — Ken Q#21 unanswered); don't label as real employees. May-12 answers resolved the role modeling. |
+| P2.3 | **Seat switcher** (NOT a login — decision 2026-05-16): named personas w/ real role/group semantics, persistent in header for live seat-hopping, "Signed in via SSO — like production" caption; + Delegate indicator + FPA Supervisor seat | P1/G5 | Rationale: real VRS has no login screen (SSO-only, Ken) — no-login is more faithful *and* on-thesis. Replaces the scaffold-looking enum grid. Personas are the real DG people with real roles (TPG built/maintains VRS; confirm the featured few with Ken/David — trivial, not a data-pull). May-12 answers resolved the role modeling. |
 | P2.4 | Shell behavior corrections (audit log all-roles; AP-stage→APA; Review/Approve/Finalize APM+Admin only; Batch-on-Demand APA; reports AP/MDSE split; renewal alerts on APA tagged "enhancement") | P1 | From 15-handoff P1 |
 | P2.5 | Notification click-through routing per `06 §1.3` | P1 | Bell exists; targets don't |
 | P2.6 | Agreement status timeline (visual progression, no "Move Forward" hunt) | P1 | |

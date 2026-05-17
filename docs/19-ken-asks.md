@@ -42,8 +42,8 @@ vague parts of **K11**, and **K12** is the D4 confirm.
 ### K2 — Rebate vs Extract date pairs. **(now largely answered by the data — downgrade to a confirm)**
 `REBATE_PROGRAM` on the share carries **all four**: `rebate_beg_date`, `rebate_end_date`, `extract_beg_date`, `extract_end_date`. So the two-pair model is real and we have it. Remaining ask is only **semantic confirmation**: is the rule simply "Extract range usually starts earlier than Rebate range so PMU and Margin both compute in period 1," and are there cases where they're equal or Extract is *later*? Low priority; not blocking — the schema seam (P0.5) already accommodates it.
 
-### K3 — Representative real Accounting Control / GL routing values.
-The Accounting Control Master screenshot (`docs/17` image067) shows the Acct Type list and the fixed 10-transaction structure, but the **Account / Offset / Cost Center values are blank** in the capture. For Batch/Distribute to look real we need **6–8 representative real rows** (e.g., for R-COTRKT / S-NSA / N-ADVCOOP / D-SCAN across RSL/GL/AP). *(docs/05 B.3 — still open; not in any answer file.)*
+### K3 — Representative real Accounting Control / GL routing values. **(RESOLVED 2026-05-17 — overshot, not just sampled)**
+~~The Accounting Control Master screenshot (`docs/17` image067) shows the Acct Type list and the fixed 10-transaction structure, but the **Account / Offset / Cost Center values are blank** in the capture. For Batch/Distribute to look real we need **6–8 representative real rows**.~~ **Delivered in full as `VRS_DATA_ROUND_4.xlsx`** (on the share, 2026-05-17): the **complete real `AcctControlMaster` routing matrix** — 2,842 rows, not a 6–8-row sample. 203 distinct `rebate_type` codes (full taxonomy incl. NSA*/S5S5/BOPIS/DAMAGES*/SCN*/SBT/VOL*/TPR*), one routing key `(rebate_type, merch_type, rebate_source, acct_type)` per type fanning out to ~14 ledger lines across RSL/GL/AP × Accrual/Reclass/Prepaid/Received, with real `account`/`acct_offset`/`cost_center`/`cost_offset` values and `reverse_sign`/`reverse` flags. Supersedes the docs/17 image067 "blank values" gap entirely. **Now the authoritative `rebate_type` + `acct_type` domain** and the input for the real `AcctControlMaster` seed (`docs/20` P0.6, `docs/18` D4 — no longer "shape it to look real," load it real).
 
 ### K4 — Current-system report runtimes. **(supports a "this is faster/less painful" contrast)**
 Typical wall-clock runtimes for the main extracts under today's Oracle Reports/rwservlet (e.g., the ~38K-row Rebate Program Extract, a period Batch Detail). Useful as a friction-contrast data point in the vision narrative; not load-bearing. *(docs/05 B.2 — open.)* Also: confirm our report substitutions are acceptable — "Earnings Summary by Merch Type" and "Batch Detail Report" reportedly don't exist; we substituted **Plan-vs-Actual** and **GL Batch**. Ken: are those fair representatives?
@@ -73,6 +73,9 @@ Phase 3.1 ingested the four real extracts (REBATE_VENDOR/PROGRAM/VENDOR_DEPT + C
 Real `CALCULATE_RESULT` carries `year` ∈ {0, 2023, 2024, 2025, 2026} (0 = the VRS "current period" sentinel, per Ken). Our `FiscalPeriod` table is still the synthetic FY2025 1–12. So health/period logic evaluates against FY2025 only and reads flat. **Ask Ken / derive:** the real period close-state per (year, period) — which (year,period) are closed vs open right now — so health and the period-close story reflect the real calendar, not a synthetic stand-in. (May be derivable from `reviewed/approved/batched/sent` flags + dates without Ken — investigate first.)
 
 ---
+
+### K13 — `rebate_source = P` appears in real routing data but Ken said "P unused". **(data-flagged, accumulated 2026-05-17)**
+**Data tension.** Ken's round-1 answer (recorded in §2 below + memory) states the source code **`P` is never used**. But `VRS_DATA_ROUND_4.xlsx` (the real `AcctControlMaster`) carries **14 rows with `rebate_source = P`** — i.e., P has live ledger-routing config. Minor and non-blocking, but a direct contradiction between Ken's stated domain and his delivered data; do not silently trust either side. **Ask Ken:** is `P` genuinely retired (and these 14 rows are dormant/legacy config), or is the round-1 "P unused" statement out of date? Affects only whether a `P` value should ever surface in a source dropdown. Lowest priority.
 
 > **Accumulator note:** §1 is the running list of genuine questions for Ken. New ones get appended K-numbered, tagged `(data-flagged …)` when surfaced by a real-conditions data review (per memory `feedback_data_reflects_actual_conditions`). Do not start parallel lists elsewhere; do not add items that Ken's delivered data already answers.
 
@@ -105,6 +108,8 @@ Previously listed as the top ask ("K1"). **Removed from the priority list** beca
 | Roles matrix (15 groups × forms) | Delivered | `DG_Roles_flat.csv`, `docs/14` |
 | Tiers tables | `REBATE_TIER` / `REBATE_TIERS`; NSA has none | round-3 body, `docs/16` |
 | Subsystem scope (NSA/S5S5/BOPIS/MDSE/Damages) | Catalogued | `docs/16` |
+| Accounting Control / GL routing (K3) | **Full real `AcctControlMaster`** — 2,842 rows, 203 rebate_types, RSL/GL/AP routing w/ real account/cost-center values | `VRS_DATA_ROUND_4.xlsx` (on share) |
+| `rebate_type` + `acct_type` domains | 203 rebate_types / 16 acct_types — authoritative | `VRS_DATA_ROUND_4.xlsx` |
 
 ---
 

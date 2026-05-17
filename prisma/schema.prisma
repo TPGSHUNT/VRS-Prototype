@@ -122,6 +122,7 @@ enum FunctionType {
   ACCRUAL
   RECLASS
   PREPAID
+  RECEIVED  // real AcctControlMaster `description` value (VRS_DATA_ROUND_4) — the GL "Received" leg
   DEDUCTION
 }
 
@@ -504,16 +505,38 @@ model Batch {
 // ─── 14. ACCT CONTROL MASTER ─────────────────────────────────────────────────
 // Routing config: (rebateTypeCode, functionType, targetSystem) → (account, cost center, txn type).
 
+// Real structure: the legacy AcctControlMaster is a flat, ordered routing
+// matrix (VRS_DATA_ROUND_4.xlsx, Ken 2026-05-17 — 2,842 rows, 203 rebate
+// types). One routing key (rebateType, merchType, rebateSource, acctType)
+// fans out — in order — to ~14 ledger lines across RSL/GL/AP × Accrual/
+// Reclass/Prepaid/Received, each with a debit account + offset and a cost
+// center + offset, plus reverse flags. There is NO natural unique key (the
+// real data contains exact duplicate rows); ordering is meaningful, so rows
+// carry `seq`. The old @@unique([rebateTypeCode,functionType,targetSystem])
+// was a synthetic-era approximation that collapsed ~14 real rows → 1, and is
+// removed. merchType/rebateSource/acctType are stored as raw codes, not the
+// Source/MerchType enums: real ROUND_4 carries 41 merch codes (enum has 36)
+// and sources P & X (enum Source lacks both) — enforcing the enum here would
+// reject real data (memory feedback_data_reflects_actual_conditions). This is
+// a routing reference table; the enums stay enforced on RebateProgram.
 model AcctControlMaster {
   id                  String       @id @default(uuid())
+  seq                 Int          @default(0) // load order within the real matrix; ordering is meaningful
   rebateTypeCode      String
   rebateType          RebateType   @relation(fields: [rebateTypeCode], references: [code])
-  functionType        FunctionType
-  targetSystem        TargetSystem
-  accountCode         String
-  costCenter          String
-  transactionTypeCode String
-  description         String?
+  merchType           String       @default("") // real `merch_type` (raw code)
+  rebateSource        String       @default("") // real `rebate_source` (raw code; incl. P/X not in enum Source)
+  acctType            String       @default("") // real `acct_type` (Acct1/2/3, SBT1/2/3, NSA1, DMG1, FRGT, PPD, ANALY, AUDCY, AUDPY, DGMN, RCVY, XMONY)
+  functionType        FunctionType // from real `description` (Accrual/Reclass/Prepaid/Received)
+  targetSystem        TargetSystem // real `system` (RSL/GL/AP)
+  transactionTypeCode String       // real `transaction` (JE / Deduct / Element### / ###_######)
+  accountCode         String?      // real `account` — nullable (RSL element rows carry none)
+  accountOffset       String?      // real `acct_offset`
+  costCenter          String       // real `cost_center` — always present
+  costOffset          String?      // real `cost_offset`
+  reverseSign         Boolean      @default(false) // real `reverse_sign` (Y/N)
+  reverse             Boolean      @default(false) // real `reverse` (Y/N)
+  description         String?      // optional human label (synthetic seed used this; real file's `description` → functionType)
   active              Boolean      @default(true)
 
   batchItems BatchItem[]
@@ -521,7 +544,7 @@ model AcctControlMaster {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([rebateTypeCode, functionType, targetSystem])
+  @@index([rebateTypeCode, functionType, targetSystem])
 }
 
 // ─── 15. BATCH ITEM ──────────────────────────────────────────────────────────
