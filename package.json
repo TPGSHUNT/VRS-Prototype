@@ -17,8 +17,7 @@
     "db:down": "docker compose down",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:reset": "prisma migrate reset",
-    "db:seed": "tsx prisma/seed.ts",
+    "db:load-acm": "tsx prisma/load-acm.ts",
     "db:studio": "prisma studio"
   },
   "devDependencies": {

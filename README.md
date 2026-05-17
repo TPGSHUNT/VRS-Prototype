@@ -20,7 +20,7 @@ See `/docs` for the build plan and schema specification.
 /web              Next.js app (UI + API route handlers)
 /worker           BullMQ report worker (separate Container App)
 /packages/db      Shared Prisma client used by web + worker
-/prisma           schema.prisma + seed.ts
+/prisma           schema.prisma + real-data loaders (ingest/, load-acm.ts)
 /docs             Build plan and schema specification
 /infra            Bicep / az CLI scripts for Azure provisioning
 ```
@@ -39,14 +39,24 @@ cp .env.example .env.local
 # 3. Start local Postgres and Redis
 npm run db:up
 
-# 4. Run initial migration and seed
+# 4. Run migrations, then load REAL data only (no synthetic seed — policy)
 npm run db:migrate
-npm run db:seed
+#   real ingest (vendors/programs/vendor-depts/calc) from the P: share CSVs:
+python prisma/ingest/real_ingest.py
+npm run db:load-acm   # real AcctControlMaster routing matrix (ROUND_4)
 
 # 5. Start the web app and worker (two terminals)
 npm run dev          # Next.js on http://localhost:3000
 npm run dev:worker   # BullMQ worker
 ```
+
+> **No synthetic data — policy (2026-05-17).** The synthetic seed
+> (`prisma/seed.ts`) and `db:seed`/`db:reset` have been removed. The DB is
+> populated **only** from real DG extracts: `prisma/ingest/real_ingest.py`
+> (vendors/programs/vendor-depts/calc) + `npm run db:load-acm`
+> (AcctControlMaster). Tables with no real extract yet (Agreement, Invoice,
+> AnalyticsSummary) stay **empty until Ken delivers them** (docs/19 D1–D3) —
+> that is intentional honesty, not a gap to fill with mock data.
 
 ## Common scripts
 
@@ -56,7 +66,6 @@ npm run dev:worker   # BullMQ worker
 | `npm run dev:worker` | BullMQ worker with hot reload               |
 | `npm run db:up`      | Start Postgres + Redis containers           |
 | `npm run db:migrate` | Run Prisma migrations against local DB      |
-| `npm run db:seed`    | Seed mock data                              |
-| `npm run db:reset`   | Drop, migrate, and reseed                   |
+| `npm run db:load-acm`| Load real AcctControlMaster (ROUND_4 fixture) |
 | `npm run db:studio`  | Open Prisma Studio                          |
 | `npm run lint`       | Lint all workspaces                         |

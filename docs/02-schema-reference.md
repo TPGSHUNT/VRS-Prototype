@@ -475,7 +475,9 @@ For the prototype, seed the following realistic distribution:
 ```
 /prisma
   schema.prisma          ← single source of truth for all types above
-  seed.ts                ← realistic mock data
+  ingest/real_ingest.py  ← real DG ingest (vendors/programs/calc)
+  load-acm.ts            ← real AcctControlMaster loader (ROUND_4)
+  fixtures/              ← committed real extracts (no synthetic seed)
 
 /src
   /lib

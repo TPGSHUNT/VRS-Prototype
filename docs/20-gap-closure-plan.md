@@ -47,10 +47,10 @@ The purest "uncaptured" (purchase volume with *no* rebate program at all) needs 
 | P0.4 | Sequence-shaped IDs for surfaced identifiers (REBATE_ID etc.) | D3 | Keep UUID PKs internally; display sequence-style |
 | P0.5 | Schema seams for pending Ken answers | K2/K7 | Add nullable Extract Begin/End alongside Rebate dates (K2); put the "active" predicate behind one query helper (K7) so the answer is a one-line change |
 | P0.6 | Reference realism in seed | D4 | Real approval thresholds ($250K/$1M, `DMM_APPROVE_TPR=No`), real Source/Frequency domains, ~real Category bloat sample. **AcctControlMaster: load the real matrix** from `VRS_DATA_ROUND_4.xlsx` (2,842 rows, 203 rebate_types, RSL/GL/AP routing — `docs/19` K3 RESOLVED) instead of a shaped stand-in; also seeds the authoritative `rebate_type`/`acct_type` domain. |
-| P0.7 | Migration + reseed + **re-capture baseline** | — | New migration supersedes `20260502010319_init`; update `docs/db-baseline-state.md` so cross-machine drift detection still works |
+| P0.7 | Migration + **real reload** (no reseed) | — | Real-data path only (`real_ingest.py` + `db:load-acm`); `docs/db-baseline-state.md` synthetic fingerprint is retired (2026-05-17) |
 | P0.8 | Shared glossary/label module | G7 | Used by every later surface |
 
-**Exit criteria:** `npm run db:reset && db:seed` yields a 12/4-5-4, correctly-signed, dual-identity dataset; baseline manifest regenerated; bubble field still renders against it.
+**Exit criteria:** after `npm run db:migrate`, `python prisma/ingest/real_ingest.py` + `npm run db:load-acm` yield a 12/4-5-4, correctly-signed, dual-identity **real** dataset; bubble field still renders against it. *(2026-05-17: synthetic seed retired — no `db:seed`/`db:reset`; real-data path only. Memory `project_no_synthetic_data`.)*
 **Gate:** David approves the schema change + Decision ① before migration runs (it invalidates the current DB).
 
 ---

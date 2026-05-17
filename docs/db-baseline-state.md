@@ -1,3 +1,13 @@
+> **⛔ DEPRECATED 2026-05-17 — this entire document describes the retired
+> synthetic seed.** The synthetic seed (`prisma/seed.ts`) and
+> `db:seed`/`db:reset` have been **removed by policy** (no synthetic data,
+> ever — memory `project_no_synthetic_data`). The live DB is the **real
+> Phase 3.1 ingest** (851,174 calc rows · 2,573 vendors · real
+> AcctControlMaster) and is *not* this synthetic baseline. The fingerprint /
+> verification query below no longer applies. Rebuild path is real-only:
+> `prisma/ingest/real_ingest.py` + `npm run db:load-acm`. Kept for history
+> only — do not diff against it.
+
 # DB Baseline State — for cross-machine verification
 
 **Captured:** 2026-05-16 from the Phase-0 reseed, local Docker `vrs-postgres` (Postgres 16, port 5435).
