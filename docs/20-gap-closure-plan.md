@@ -65,7 +65,7 @@ The purest "uncaptured" (purchase volume with *no* rebate program at all) needs 
 | P1.2 | Bubble **click** → opens P1.1; **right-click** → context menu (Open / Run report / Ask Vera / Approve) | P0 |
 | P1.3 | **Left slider — actions shell**: filter panel first (always-available), framework reused by later actions | P0 |
 | P1.4 | **Lasso / box select** + selection actions (side panel / explode / filter-to-these) | P0 |
-| P1.5 | Bubble axis fixes: drop `estimatedValue` default, add **Merch Type × Earnings** preset, name-aggregation (use `Vendor.apNumber`→name), and **fix the false `($, log)` axis labels** — the scale is rank-percentile, not log; don't claim log in a demo | P0 |
+| P1.5 | **SUPERSEDED/EXPANDED → `docs/21-bubble-index-model.md`** (design agreed 2026-05-17). The narrow original scope was an axis-label fix; it is now a full triage-first, seat-driven index-model redesign that is **re-sequenced after the seat switcher** (P2.3 — see §"Sequencing"). Only the trivial **fix the false `($, log)` subtitle** (scale is rank-percentile, not log — don't claim log in a demo) remains an independent, do-anytime P1 item. Feasible-now metrics (`docs/21` §3 ✅) may be built in parallel; per-seat default wiring waits on P2.3. | P0 |
 | P1.6 | Slider mechanics per design language: dim+blur field, Esc/close, configurable widths, multi-open | G2/G3 |
 | P1.7 | **Seat-scoping model** (settled spec below) — estate vs operator default views, soft lens never a cage | G1/G5 |
 
@@ -95,7 +95,7 @@ Implementation: `getBubbleData()` takes a scope arg derived from the session sea
 |---|---|---|---|
 | P2.1 | **Period-close workflow** as a left-slider guided checklist with persistent state + blockers | P1 | The strongest single proof of friction-elimination; pick this as the demo's centerpiece moment |
 | P2.2 | **Ask Vera** drawer — shell + two-tier interaction + tool contract + hallucination guardrails (deny-by-default, cite-or-refuse) | P1/G4 | Real answers wait on Phase 3 data; build the surface + contract now |
-| P2.3 | **Seat switcher** (NOT a login — decision 2026-05-16): named personas w/ real role/group semantics, persistent in header for live seat-hopping, "Signed in via SSO — like production" caption; + Delegate indicator + FPA Supervisor seat | P1/G5 | Rationale: real VRS has no login screen (SSO-only, Ken) — no-login is more faithful *and* on-thesis. Replaces the scaffold-looking enum grid. Personas are the real DG people with real roles (TPG built/maintains VRS; confirm the featured few with Ken/David — trivial, not a data-pull). May-12 answers resolved the role modeling. |
+| P2.3 | **Seat switcher** (NOT a login — decision 2026-05-16). **RE-SEQUENCED 2026-05-17: build this FIRST — it is a prerequisite of the `docs/21` bubble-index model (per-seat defaults have no delivery vehicle without it).** Named personas w/ real role/group semantics, persistent in header for live seat-hopping, "Signed in via SSO — like production" caption; + Delegate indicator + FPA Supervisor seat | P1/G5 | Rationale: real VRS has no login screen (SSO-only, Ken) — no-login is more faithful *and* on-thesis. Replaces the scaffold-looking enum grid. Personas are the real DG people with real roles (TPG built/maintains VRS; confirm the featured few with Ken/David — trivial, not a data-pull). May-12 answers resolved the role modeling. |
 | P2.4 | Shell behavior corrections (audit log all-roles; AP-stage→APA; Review/Approve/Finalize APM+Admin only; Batch-on-Demand APA; reports AP/MDSE split; renewal alerts on APA tagged "enhancement") | P1 | From 15-handoff P1 |
 | P2.5 | Notification click-through routing per `06 §1.3` | P1 | Bell exists; targets don't |
 | P2.6 | Agreement status timeline (visual progression, no "Move Forward" hunt) | P1 | |
@@ -149,6 +149,23 @@ Ken K3/K5  ─► refine P0.6 realism (non-blocking)
 ```
 
 Two co-equal critical paths after P0: **(work-surface)** P0 → P1 → P2.1 period-close → P4, and **(Vera, central)** P0 → P3.1 ingest → P3.3 capability → P3.4 grounding → P4. Vera does **not** wait for the UI work — start P3 in parallel the moment P0 lands. The demo's two hero moments are the period-close friction-kill *and* Vera's money-on-the-table reveal; both must land.
+
+### Sequencing — seat switcher before the bubble-index model (decided 2026-05-17)
+
+The original P1.5 axis fix is now the **triage-first, seat-driven index
+model** (`docs/21-bubble-index-model.md`). Its per-seat defaults can't ship
+without a seat to drive them, so **P2.3 (seat switcher) is pulled ahead as a
+prerequisite**:
+
+```
+seat switcher (P2.3) ──► per-seat index defaults (docs/21 §4)
+feasible-now metrics (docs/21 §3 ✅) ──┘   [parallel; no switcher/Ken dep]
+D1/D2/K8 (docs/19) ──► D1/K8/D2-dependent metrics (docs/21 §7) [as they arrive]
+false-log subtitle fix ──► independent, do anytime
+```
+
+Net: P2.3 moves from "Phase 2" ordering to *immediately actionable*; the
+P1.5-successor index work follows it rather than preceding it.
 
 ## Decision points needing David
 

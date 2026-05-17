@@ -1,0 +1,55 @@
+VRS PROTOTYPE — ROUND 5 DATA REQUEST (DRAFT)
+=============================================
+Status:   DRAFT for David to send. Engineering does not contact Ken
+          directly (docs/19 §0/§3; memory project_ken_role_boundary).
+Channel:  Outlook, to kbanks@tpg-partners.com (the existing VRS thread).
+          No tool can create an Outlook draft — copy/paste from here.
+Prepared: 2026-05-17. Rationale: docs/21-bubble-index-model.md §7,
+          docs/19 D1/D2/K8.
+
+---------------------------------------------------------------------
+To:      Ken Banks <kbanks@tpg-partners.com>
+Subject: VRS prototype — three more extracts to round out the data picture
+
+Ken,
+
+The prototype's vendor workbench is now driven off triage / performance /
+opportunity signals rather than static size, which has surfaced three
+extracts that would make those views real. Same extract mechanism as the
+four you already sent; sanitized is completely fine, and none of this is
+blocking — happy for you to deprioritize as needed.
+
+1. Full MDSE Agreement extract — the real AGREEMENT table across all
+   statuses, with the real estimated/forecast value and the
+   buyer/DMM/SVP/GMM routing plus key lifecycle dates. We currently only
+   have the ~132 unapproved rows, mostly with $0 forecast, so anything
+   keyed on "delivering vs expected," approval workload, or contract
+   value is empty.
+
+2. Volume tables — SALES_SUMMARY / VRS_SALES / VRS_DISCOUNT, or a
+   vendor-by-period rollup if that's easier. (These are the
+   RSL-resident tables, not the locked 1010.) This is the single
+   highest-value one — it unblocks gross volume and the whole
+   earnings-vs-volume picture.
+
+3. REBATE_TIER / REBATE_TIERS — we have the tier flags on
+   REBATE_PROGRAM but not the actual breakpoints/rates; with them,
+   tier-attainment becomes exact rather than approximate.
+
+Lower priority, only if convenient: an invoice/billing extract (for
+invoice aging).
+
+One quick confirm when you have a second: is year = 0 / period = 0 in
+CALCULATE_RESULT the "current/open period" sentinel?
+
+Separately — for a future call, not email — a single sanitized real
+example where DG missed rebate earnings (agreement not in place,
+lapsed, or wrong tier) would be hugely useful for the analytics
+narrative. Best saved for the pre-demo session with Khari.
+
+Thanks — appreciate it, especially with everything on your plate.
+
+David
+---------------------------------------------------------------------
+Maps to: docs/19 D1 (#1), D2 (#2), K8 (#3), D3 (lower), D4 (confirm),
+         K6 (Khari-session conversation).
