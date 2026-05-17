@@ -9,6 +9,34 @@ The recurring lesson from the handoffs: **most "open" questions are already answ
 
 ---
 
+## 0. ★ DATA TO REQUEST FROM KEN — the real extracts that fill the holes
+
+**This is the list to route to Ken.** After Phase 3.1 (real ingest of vendors/
+programs/vendor-depts/calc — done), the prototype runs on real data but three
+surfaces go flat because their source extracts were never provided. In
+priority order by demo impact:
+
+| # | Extract requested | What it unblocks | Notes |
+|---|---|---|---|
+| **D1** | **Full MDSE Agreement extract** — the real AGREEMENT table (all statuses, with real estimated value / forecast), not just the ~250-row `UnapprovedExtract` we have | Real **contract value**, **active-agreements**, deeper **Buyer/DMM/GMM seat-scoping**. Today only ~9 of 2,573 vendors have any agreement value. | We loaded 132 from `UnapprovedExtract` (mostly $0 forecast). Need the full population + real values. Extends old K11. |
+| **D2** | **Volume tables** — extract (or vendor×period rollup) of **`SALES_SUMMARY` / `VRS_SALES` / `VRS_DISCOUNT`** | Real **gross commercial volume**, the **entire 1010-Intelligence surface** (pace-to-target, YoY, anomaly) — **Vera-central / socks-off**. Currently `AnalyticsSummary` = 0 rows. | Reframed: these are **RSL-DB-resident and extractable like the four we already pulled** — NOT the locked, un-queryable "1010". This is the highest-value ask for the Vera goal. |
+| **D3** | **Invoice / billing extract** | Invoice aging, overdue signals, billing realism on the vendor record + health. | `Invoice` table empty. Lower demo-criticality than D1/D2. |
+| **D4** *(confirm only)* | One-line confirm of the `year=0 / period=0` "current period" sentinel semantics | Validates the derived real period calendar (already built from the `reviewed/approved/batched/sent` flags). | Not blocking; derivable. |
+
+**Explicitly NOT a Ken ask (don't request):** "make health show red/amber" —
+real closed periods are genuinely 100% finalized; that's the truth of DG's
+data. The attention signal is a *design* reframe (live period + Vera-derived
+opportunity), not missing rows.
+
+**Delivery:** D1 + D2 are the two that matter for the demo's central beats
+(MDSE story + Vera). Sanitized is fine. Same extract mechanism as the four
+already delivered. David routes to Ken; engineering does not contact Ken.
+
+Older granular items (K1–K12) follow as the working log; D1–D3 supersede the
+vague parts of **K11**, and **K12** is the D4 confirm.
+
+---
+
 ## 1. Genuinely still open — ordered by demo impact
 
 ### K2 — Rebate vs Extract date pairs. **(now largely answered by the data — downgrade to a confirm)**

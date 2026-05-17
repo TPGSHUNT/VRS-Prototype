@@ -1,6 +1,6 @@
 # VRS Prototype — Handoff
 
-**Date:** 2026-05-15 (amended 2026-05-16 — see "2026-05-16 amendments" callouts inline)
+**Date:** 2026-05-16 EOD (full-day session — see ⭐ END-OF-DAY STATE section, authoritative). Header/§1–§7 retained as 2026-05-15 history.
 **Supersedes:** the prior contents of this file (2026-05-07) and extends `docs/15-handoff-12-may-2026.html` (2026-05-12) with this session's findings. Read `15-handoff-12-may-2026.html` for the Ken-round detail; read this for current state and where work stops.
 
 > **2026-05-16 amendments (read first):** Three items this file calls "open" or "the biggest gap" are now resolved — see the inline callouts in §3.5, §3.7, §4, §5, §6. New reference docs added: `docs/16-legacy-subsystems.md` (the 603-table real schema vs the 23-model prototype), `docs/17-legacy-forms-image-catalog.md` (legacy Forms screenshots, not stored in-repo by decision), `docs/18-demo-gaps.md`, `docs/19-ken-asks.md`, and `docs/ken/Ken_answers_4_may12.txt` (verbatim post-round-3 Ken answers). `VRS_Analysis_and_Architecture.txt` got a correction banner (its 1010-analytics thesis is contradicted by Ken).
@@ -8,6 +8,124 @@
 > **LOGISTICS — the two-laptop framing (§2, §6.5, §7) is STALE.** As of 2026-05-16 David is on the home laptop through the demo; that machine is the demo box. Cross-laptop git-as-transport is retired — ignore "commit so it travels" / "must travel between laptops." Weigh local-state changes by demo-day risk on this one machine instead. (memory `project_single_demo_machine`.)
 >
 > **STRATEGIC — §3.6 below is STALE.** The demo thesis is **a completely new frictionless way to see the system**, *not* Oracle-Forms conversion. DG's, Ken's, and Khari's perspective/expectations (incl. "fully working AI-converted form, not a mock") are **moribund and explicitly not the bar** — that mental model is what the demo aims to displace. Disregard the "demo audience is IT / load-bearing claim is form-conversion" framing in §3.6 and in `15-handoff-12-may-2026.html` §A. Authoritative: `docs/18-demo-gaps.md` §0. (David, 2026-05-16.)
+
+---
+
+## ⭐ 2026-05-16 — END-OF-DAY STATE (authoritative; supersedes §1–§7 below)
+
+§1–§7 are historical (2026-05-15 and earlier). This section is current truth.
+
+### A. One-paragraph state
+
+The prototype now runs on **real DG data** at real scale (Phase 3.1 ingest):
+2,573 vendors · 38,997 programs · 122,416 rebate-vendors · 143,071 vendor-depts
+· **851,174 CalculateResult rows** (FY2024–26) · +$7.16B normalized earnings.
+The bubble field, vendor record (7 real tabs), seat-scoping, and a redesigned
+**role-selection screen** all work against it. The demo thesis is locked: a
+**frictionless reimagining** of VRS for a domain-expert DG audience — **not**
+form-conversion (that framing is dead). **Ask Vera is a co-central goal.**
+Today exposed that several surfaces go flat on real data because the source
+extracts for **agreements value, 1010 volume, and invoices don't exist yet** —
+that's the Ken data ask (deliverable: `docs/19-ken-asks.md`, consolidated).
+
+### B. What landed today (commit arc `0586b19 → d4c70cf`)
+
+- **Strategy reset** (memory + `docs/18` §0): demo = frictionless vision, not
+  form-conversion; DG/Ken/Khari expectations are the thing to *displace*.
+  Audience are domain experts — domain-correct behavior isn't "an error";
+  don't add hand-holding. No-login **seat switcher**; single demo machine;
+  "everything real data"; data must reflect actual conditions.
+- **Ken correspondence** fully reconciled: `docs/16` (603-table real schema vs
+  23-model prototype), `docs/17` (legacy Forms image catalog), `docs/18`
+  (demo gaps), `docs/19` (Ken asks), `docs/20` (phased gap-closure plan),
+  `docs/ken/Ken_answers_4_may12.txt`.
+- **Phase 0** (`2d82791`): 12-period/4-5-4 calendar, earnings-sign
+  normalization (positive = value to DG; `finalEarningsLegacy` keeps source
+  sign), vendor dual identity (AP#/IP#), clean baseline migration.
+- **Phase 1**: vendor-record right slider — **all 7 tabs real** (Overview ·
+  Calculations · Agreements · Programs · Invoices · 1010 Intelligence ·
+  Activity); bubble click + right-click context menu; two-tier seat-scoping
+  (estate vs operator); false `($,log)` axis label fixed; prisma `export *`
+  warning fixed.
+- **Phase 3.1** (`93d4c88`, `a7560d4`): real ingest via
+  `prisma/ingest/real_ingest.py` (staged Postgres COPY); schema relaxations
+  (RebateType/RebateProgram/Agreement nullable for real codes);
+  `getBubbleData` rewritten as a CTE aggregate (**317 ms** at real scale —
+  the load-all path OOM'd); real period calendar derived from the data
+  (38 closed / `0-P0` open); real agreements from `UnapprovedExtract`
+  (132, real Buyer/DMM/SVP users); MDSE seat-scoping wired real.
+- **Auth**: `AUTH_SECRET` regenerated per `npm run dev` (always lands on the
+  selector) + logger suppresses the expected stale-cookie noise.
+- **Role-selection screen** (`d4c70cf`): replaced the 74-card grid with a
+  3-zone master-detail — roles (left) → users (right) → live scope-summary
+  detail pane + "Enter as…" confirm. Process/test-name noise filtered from
+  the picker (UI-only; rows untouched, still a Ken question).
+
+### C. What we're looking at RIGHT NOW (open, immediate)
+
+Mid manual test pass on real data. Findings:
+- **All-green health** — *correct/truthful*: every real closed period is 100%
+  finalized in the extract. Not a bug; "attention" signal must come from the
+  live period or Vera analytics, not historical finalized state (design
+  reframe, not a Ken ask).
+- **All bubbles identical size + collapsed X** — *real defect*: default axes
+  are `size=grossVolume`, `X=contractValue`, both ~empty on real data
+  (no 1010 extract; only 9/2,573 vendors have agreement value). Only
+  `annualEarnings` (0→$472M, 2,292 distinct) and `activePrograms` (1→3,747)
+  carry real signal. **Pending decision:** re-default to
+  `X=activePrograms / Y=annualEarnings / size=annualEarnings`; hide vs keep
+  the flat metrics. Independent of Ken; should be done now.
+- **`getVendorRecord` not yet verified at real scale** (per-vendor slider
+  query) — a heavy vendor (PEPSICO) could be slow. Read-only spot-check
+  pending before heavy click-through is trusted.
+- Identical AP-Manager books = correct (estate role; matches real
+  VRS_ADMIN pair). Left as-is by decision (domain audience understands).
+
+### D. Direction decided
+
+Frictionless vision demo; Vera central; real data only (no synthetic
+fabrication — gaps become Ken asks or honest design reframes). Role-selection
+screen is interim; the real target is an **in-header seat switcher** (no login
+screen — real VRS is SSO). Health/attention to be reframed around the live
+period + Vera-derived signals.
+
+### E. Remaining demo build (the punch list — none started unless noted)
+
+Immediate / independent of Ken:
+- **Axis-default fix** (above) — small, do first.
+- **`getVendorRecord` real-scale check/repair** (mirror the bubble-query
+  aggregate fix if it's slow).
+
+Core surfaces (`docs/20` Phase 1/2; the demo's substance):
+- **Left-slider filter panel** (P1.3) — the "work comes to you" beat.
+- **Lasso/box select** (P1.4); slider-mechanics polish (P1.6).
+- **Period-close workflow** — the hero friction-elimination moment.
+- **Approval queue** work-management surface.
+- **Agreement wizard** (left-slider, guided).
+- **Admin / shell behaviour** corrections (audit log all-roles; AP-stage
+  routing; Review/Approve/Finalize gating; Batch-on-Demand; reports AP/MDSE
+  split; renewal alerts on APA tagged "enhancement").
+- **Alerts / notifications** — bell click-through routing per `06 §1.3`;
+  tier/anomaly alerts (tie into Vera).
+- **Ask Vera** (CO-CENTRAL) — drawer, two-tier, tool contract,
+  grounded-or-refuse guardrails, the "uncaptured opportunity" capability on
+  real multi-year data. Highest reputational risk; highest socks-off payoff.
+- **In-header seat switcher** (replaces the interim role-selection screen).
+
+Data-dependent (unblock when Ken extracts arrive — see `docs/19`):
+- Ingest full agreements / volume / invoices → real contractValue,
+  grossVolume, 1010-Intelligence, invoice-aging, deeper MDSE scope.
+
+Hygiene: `role-card.tsx` + `role-user-picker.tsx` now unused (left in place,
+not deleted without ask).
+
+### F. Data we need from Ken
+
+Consolidated, prioritized, in **`docs/19-ken-asks.md`** (the running
+accumulator). Top of that list = the three real extracts that unblock the
+flat surfaces: **full MDSE Agreement extract**, **volume tables
+(SALES_SUMMARY/VRS_SALES/VRS_DISCOUNT — RSL-resident, extractable)**,
+**invoice/billing extract**.
 
 ---
 
