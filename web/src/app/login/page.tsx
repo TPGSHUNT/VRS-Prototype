@@ -10,7 +10,7 @@
 //    (no full name exists for AP userids in any extract). No fabrication.
 
 import { prisma, UserRole } from '@vrs/db';
-import { RoleUserPicker, type RoleGroup } from './role-user-picker';
+import { RoleSelect, type RoleGroup } from './role-select';
 
 const ROLE_LABELS: Record<UserRole, string> = {
   AP_MANAGER: 'AP Manager',
@@ -70,22 +70,20 @@ export default async function LoginPage() {
   })).filter((g) => g.users.length > 0);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-10">
+      <div className="w-full max-w-5xl">
+        <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Vendor Rebate System</h1>
           <p className="mt-2 text-sm text-gray-600">
-            Choose a role, then a user, to view the system from that seat.
+            Select a role, then a user, to view the system from that seat.
           </p>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-          <RoleUserPicker groups={groups} />
-        </div>
+        <RoleSelect groups={groups} />
 
-        <p className="mt-6 text-center text-xs text-gray-500">
-          Prototype role-sim — no password. Production signs in via Azure
-          Entra&nbsp;ID SSO (VRS has no login screen; the system knows the user).
+        <p className="mt-5 text-center text-xs text-gray-500">
+          Role selection — not a login. In production the system knows the user
+          via Azure Entra&nbsp;ID SSO (real VRS has no login screen).
         </p>
       </div>
     </div>
