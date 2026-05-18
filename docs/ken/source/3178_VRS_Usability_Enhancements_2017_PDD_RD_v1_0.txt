@@ -1,0 +1,745 @@
+Project Design Document (PDD)
+Table of Contents
+Project Design Document (PDD)	3
+Purpose	3
+Project Scope	3
+Project Phases	3
+Interdependent Projects	4
+Business Requirements	4
+Requirements to be addressed in Phase -1	4
+Pool of Usability Requirements for later Phases.	12
+Access Changes – (Review Required)	39
+Availability Requirements – (Review Required)	39
+Critical Financial Systems – (Review Required)	39
+Assumptions and Dependencies	39
+Business Requirements – Signatures	40
+Functional Design	41
+Process Flow	41
+Authentication – (Review Required)	41
+Security Roles/Authorization – (Review Required)	41
+Data Security – (Review Required)	41
+Functions	41
+System Errors – (Review Required)	46
+User Documentation	46
+User Testing – (Review Required)	46
+User Training – (Review Required)	46
+Functional Design – Signatures	47
+Technical Design	48
+Site Planning – (Review Required)	48
+Hardware – (Review Required)	48
+Software – (Review Required)	48
+Disaster Recovery – (Review Required)	48
+Service Level Requirements – (Review Required)	48
+Security – (Review Required)	48
+Controls – (Review Required)	48
+System Flow	49
+Programs/Procedures	49
+External Data Sources – (Review Required)	55
+Internal Data – (Review Required)	55
+Process Failure/Error Handling/Recoverability – (Review Required)	55
+Operational Requirements – (Review Required)	56
+Testing Assumptions – (Review Required)	56
+Technical Design – Signatures	57
+Document Control	58
+Project Design Document (PDD)
+Purpose
+The purpose of this project is to enhance the usability of VRS system for merchandising users. This project is an amalgamation of various requests from business users to help them use the system in a more efficient way.
+Project Scope 
+The Project Scope is limited to the requirements listed in the Business Requirement section of this document. This list was developed by having several meetings with Business users, to understand the scope of the project. The delivery of project scope will be divided into phases as discussed in Project Phases section.
+Project Phases
+The project will be deployed in multiple phases spanning till the scheduled year-end freeze. The business users and IT will determine which requirements will be implemented in each phase, considering the project schedule and cost to benefit analysis. It is understood that not all requirements stated in the Requirement section can be fulfilled in these phases but a concrete effort will be done to address most of them.
+The tentative dates for Implementation of these phases are as follows
+Phase 1	May 5 2017
+Phase 2	July 7 2017
+Phase 3	Sep 8 2017
+Phase 4             Nov 3 2017. 
+Interdependent Projects
+VRS Bounce back
+.
+Business Requirements
+Requirements to be addressed in Phase -1
+Category: High
+INC0104353  - ADVCOOP VRS Export (Ref List # 21)
+Description: We have found that the VRS Export for the ADVCOOP rebate type is very inflated. It appears that the export is pulling from the incorrect side of the Ad Coop Master for this rebate type. It should pull from the right column, circled in green, rather than the left column, outlined 
+with a red box. This is causing our forecast to be highly overstated. I have attached the complete files but pasted screen shots below of the reports referenced. 
+User Comment (Elizabeth Barnett) – Elizabeth will send the VRS export file with the underlying issues after running the export in the Development environment.  Ken will analyze the issue and suggest a solution. 
+Rewrite to exclude FP&A information which seems to be clouding the results.
+PRIORITY 2
+Technical Comment (Ken Banks) – Export will be rewritten because the current export is intertwined with the FPA Forecast and these are really two different things.  The ADVCOOP issue will be addressed in the rewrite. What is really needed here is an Export that is based purely on the Detailed Forecast of Agreements that are active in the Fiscal Year specified.  See Functional and Technical design sections at the end of this document.  
+VRS Export:
+INC0090963 - Agreement 65559 (Ref List # 15)
+Description: Would you please assist in adjusting the Cycle Close process in VRS to include agreements that credit Margin?  Currently, the agreements are not included in the Cycle Close and reforecast each month, causing an overstatement of the Rebate Forecast.
+User Comment (Elizabeth Barnett) - Same as INC0078583 and INC0084256. Priority 3
+Technical Comment (Ken Banks) – this is a minor change to the Apply Actuals process in the Cycle Close. See the Technical design section at the end of this document. Note that Margin is not included by design because Margin is, by definition, money that should have been collected in the prior Fiscal year and Forecasts are for the Current Fiscal Year.  This Issue arose because Agreements were set up and forecast for the current fiscal year but in the AP side, only Margin was calculated. So, in order to support this behavior, Margin will now be included. 
+INC0112506 - Ad Coop Prior Year Dates (32)
+Description: Would it be possible to remove prior year Ad Coop dates from VRS?  The merchants currently have to scroll through all prior year dates to choose the ad date for the agreement they are entering? Also, would it be possible to add a feature to select by fiscal year? I have pasted screen shots below to help you navigate to the screen with the ad dates.
+User Comment (Elizabeth Barnett)
+1/20 – Modify “Add Agreement to Forecast” form to fetch the category records by begin date descending order.  Simple fix.
+Phase 1 Implementation
+Technical Comment (Ken Banks)
+Not only were Radio Button sorts added but also a Search on the From Date.  See Functional and Technical design sections at the end of this document.
+Category: Medium
+INC0027241 - VRS Agreement Audit Log Shows incorrect USERID (Ref List # 1).
+Description: Wrong user id is getting assigned to the “user actions”. This issue occurs when the agreement is updated after the creation of Rebate.
+User Comment (Elizabeth Barnett) – Resolution is to update mdse_form functions. Update to buyer rev package procedure.  Phase 1 Implementation.
+Technical Comment (Ken Banks) – this issue occurred because the Update Statement used to set the Agreement Status did not include a user id; therefore, the database trigger used the existing user id to create the audit log entry. See the Technical design section at the end of this document.
+]
+INC0114251 - Clip Strip Agreement 77538 Forecasting Error (34)
+Description: Would you please help us to understand why this agreement is only showing store counts from Period 2 through Period 6? The agreement is for Period 7 through Period 12.  No amounts are forecasting in P11 or P12 which is incorrect.
+User Comment (Elizabeth Barnett) - The agreement was copied from a previous agreement.  The cooler counts from the previous agreement got carried over to the new agreement and there is no functionality in the current system to change these counts after the “Copy” option.  Ken to analyze and suggest a solution.
+Technical Comment (Ken Banks) - The Cooler count form needs to be modified to recognize that the agreement dates have changed and adjust the periods accordingly.  Any periods added due to the adjusted dates will need to have the store counts added.  
+The Rebate Program Forecast form needs to be modified such that if the agreement dates are changed and if there are cooler counts, then the cooler count form needs to be called to allow the counts for the adjusted periods to be entered.   This would occur during the Save, but prior to the Reforecast which already occurs during the Save, if agreement dates are changed.
+There is an assumption that when an agreement of this sort is copied that the agreement dates are the same and that after copying, someone goes into the agreement and changes the dates. So it is when the dates are changed (and Saved) that the opportunity to address the new period range is addressed.  See Functional and Technical design sections at the end of this document.
+INC0095094 - VRS Error when creating a TPR for multiple store types (Ref List # 18).
+Description: When a TPR is being created for multiple store types (Market/Combo, DG Plus, DG13, and DG16) an error is received after trying to add the 3rd store type.  The user has to finish the agreement and then go back and add the 3rd type, save the agreement, then add the 4th type and save the agreement.  Please assist. See error message at the bottom of the print screen.
+User Comment (Elizabeth Barnett) - PRIORITY 11  Ken has created a resolution in DEV. 
+Elizabeth tested on 4/10. Ready for implementation.
+Technical Comment (Ken Banks) – this issue is the result of a limitation built into all the “selectors” used in VRS; however, most of the selectors are used in situations where the number selected is fairly small so the limitation is not an issue.  The limitation is the result of building an SQL “IN” list in a 4000 byte (max size) variable.   For stores, since the Store number is the key to the table, the limitation is somewhere between 650 and 700 stores depending on the stores selected.  This limitation is not formally tested for so when the limit is reached, the form exhibits erratic behavior and selections can no longer be made.  This was addressed by using a temporary instead of a variable to hold the list. See the Technical design section at the end of this document.
+
+INC0124037 - Calling of the Allocation Functions when an Adjustment is made on a Discount Amt/BOGO Rebate
+Description:  On the Rebate Program form, after an Adjustment is made, the appropriate Allocation function(s) are called based on source. This is done so that the Adjustment will be reflected in the Allocation data.   When the Discount Amount/BOGO Source was introduced, the invocation of the Discount BOGO Allocation Routine in the logic following the adding of an Adjustment was not done.  Therefore, when an Adjustment is made on a Discount Amount BOGO Rebate Program, it is not reflected in the Allocation data until the next time an Extract and Calculate is run.   If another Extract and Calculate is not run prior to the Closing of the period, the Allocation data will not reflect any Adjustments and if this data is used when applying actuals to an Agreement, the Actual amounts will be off by the amount of any Adjustments made.
+Null SBT causing Issue on Rebate Program Forecast Form
+NULL SBT Values caused a production issue when Agreements with a NULL were used in the Approval Queue to create Rebate Programs.  They were also causing an issue on the Forecast Rebate Program form when an Agreement with one of these was encountered – the form indicated that a Change had been made by asking if the Changes needed to be saved when if fact, no change had been made.  
+It was initially decided that a table change would be made to Default SBT Type to N but Lane objected to this and wanted to the Buyers to specifically choose the SBT Type on Portal Agreements. The SBT being NULL is a good indicator that it needs to be set; therefore, since the Forecast Rebate Program form was already having issues with the NULL, both problems can be solved with a change to the Forecast Rebate Program to deal with NULL SBT Type more directly. 
+Delete of Vendor’s User id should not be allowed if it has been used.
+A production issue occurred whereby in the reprinting of a Portal Agreement, the Address disappeared. This was caused by the Vendor’s User ID being deleted from the system because the Address was tied to the User, not the Contract. It was decided to prevent the deletion of any Vendor User id if it had ever been used on a Contract. 
+When an SBT Type is NULL, which occurs on Agreements coming from the Web Portal, the SBT / Non SBT Radio buttons that appear on the Vnd/Agmt tab will not have a choice made.   The lack of a choice made will indicate that the SBT Type is NULL.  In cases (sourced Agreements), where the SBT / Non SBT Radio buttons would not normally be there, the Non SBT Radio button will be turned back on but will not be selected.  So NULL is now considered a Valid value from the Forms perspective  but will prevent the form from moving forward. 
+If there is an attempt to Move Forward and the SBT Type is Null, A message will indicate this and the Agreement will not be allowed to move forward. 
+Pool of Usability Requirements for later Phases.
+Category: High
+INC0071221 - Buyer Agreement Recap Report Error (Ref List # 3).
+Description: The amounts for P2 – P10 are incorrect.  The total amount collected so far is $224,921; however, this report is only showing a total of $46,717 collected for the year.
+Buyer Agreement Recap Report from VRS:
+Meeting Notes –
+[ 03/27
+IT will fix underlying data issues related to The Buyer’s Recap Report. The current identified issues are related to – AP Margin not accounted for in the report.
+-Non Merch Earnings is not accounted during MDSE close process
+-Issue related to Allocation data.
+A new Exception Report will be developed to augment the Buyers Recap report by providing numbers based on pre-defined exceptions. (Examples - Rebates that are not tied to an agreement or agreements created after the period is closed in which they should be active).
+The Details of the Exception report will be discussed in the subsequent meetings.
+User Comment (Elizabeth Barnett) - Priority 1 2/10 – From Ken: The Buyer’s Agreement Report is not supposed to match with AP Buyer’s Report.  The consensus is to have the AP Buyer report available to MDSE users.  
+Working on developing a tool for the merchants to use.   Should report exclude Non-Merch?
+
+Ken suggested creating an exception report between Allocation Data and Earnings.
+(Continued on Next Page)
+Additional research:
+Agreement 77235 – Exclusivity
+1.      Buyer Agreement Recap - $0.00 run as a .csv file
+2.      Buyer Agreement Recap - $0.00 run as .pdf file    Also note that P2 Column Heading shows ACT, but I have not closed Period 2, yet.
+3.      Webfocus VRS Forecast (set to pull actuals for Period 1) - $0.00
+4.      VRS Export – Forecast Maintenance - Detail Rollup - Remaining Open Periods matches total of both agreements in P1 on Lane’s report, although the amount showing for each of the agreements is $0.00.
+5.      Lane’s Buyer Report - $67,263.81
+6.      VRS 
+INC0108803 - Volume Coke VRS Forecasting Error (Ref List # 25)
+Description: Would you please review the issue below we are having with calculating an accurate forecast for Volume Coke for a specific set of stores?  Although store lists are uploaded, the Base Volume is calculating for all stores rather than those selected.  
+User Comment (Elizabeth Barnett) - PRIORITY  4a 
+From Ken: The system is not built to forecast at the store level.  The solution for this will be first calculating forecast and then enter the manual forecast with the formula – (total forecast/# of stores in the store list).
+INC0084182 - VRS Volume Growth Agreements (Ref List # 9)
+Description: In the Tier Maintenance and the Rvw/Chg Forecast sections, the program will not allow changes to be saved.  The message box pops up stating "Nothing has changed." Example agreements are 63012 in test and the following agreements in production.
+66076	RUSSELL STOVER CANDIES
+66088	FERRARA PAN CANDY CO
+66091	KELLOGGS SALES COMPANY
+66093	LANCE INC
+66098	BLUE DIAMOND GROWERS
+66100	PIEDMONT CANDY CO INC
+66103	MARS SNACKFOOD US
+66104	BRIDGFORD FOODS OF ILLINOIS
+66108	TOPPS COMPANY
+66109	FUN SWEETS LLC
+66111	CROWN CANDY COMPANY
+66112	PARAMOUNT FARMS INTERNATIONAL
+66116	TOOTSIE ROLL INDUSTRIES
+66117	WM WRIGLEY JR COMPANY
+66118	LITE COOKIES LTD
+66119	BROWN & HALEY
+66120	ABRACO GROUP LLC
+66122	PEPPERIDGE FARMS INC
+66124	GHIRARDELLI CHOCOLATE CO
+66125	PEARSON CANDY CO
+User Comment (Elizabeth Barnett)  Priority 4b
+INC0102868 - Volume Growth Forecast (Ref List # 20).
+Description: Would you please assist on agreement 74326?  The vendor has not been used in a while so there is no history of receipts and no forecast will be generated.  How can we enter in a history for the vendor so the forecast will generate?
+User Comment (Elizabeth Barnett)  Priority 4c
+INC0112974 - Volume Agreement Error (33)
+Description: We are experiencing an issue when entering a Volume Rebate Agreement in VRS.  When entering the agreement, the forecast does not populate and we are unable to change the Dept/Class/SKU allocation to Manual.  
+User Comment (Elizabeth Barnett) - PRIORITY 4e This issue occurs when we enter the agreement after the period close in which the agreement is active.  The group needs to discuss with Lane to find the resolution.
+INC0096831 - VRS Error when creating a TPR for multiple store types. (Ref List # 19).
+Description: When a TPR is being created for multiple store types (Market/Combo, DG Plus, DG13, and DG16) an error is received after trying to add the 3rd store type.  The user has to finish the agreement and then go back and add the 3rd type, save the agreement, then add the 4th type and save the agreement.  Please assist. See error message at the bottom of the print screen.
+User Comment (Elizabeth Barnett) - When clicking the “Apply to Selected” button to apply the Overall Lump Sum, I get the following error: PRIORITY 13
+INC0108654 - Agreement 70310 (Ref List # 24)
+Description: Would you please help with agreement 70310?  The agreement has been rejected by AP; however, it is not appearing on anyone's dashboard (Buyer or FP&A).  We need to be able to end negotiations on it because the incorrect SKU was input by the vendor.  
+Meeting Notes
+[ 
+The issue is resolved by implementing ghost user.
+]
+User Comment (Elizabeth Barnett) - PRIORITY 5 Ghost user solution implemented. COMPLETE.
+INC0111773 - Coke Int'l Damage Agreement (29)
+Description: VRS Agreement # 68600 is not showing on Kenneth Marshall's dashboard.  Would you please assist in helping find this agreement?  The status needs to be changed to Negotiations Ended so the forecast will be changed to zero.
+User Comment (Elizabeth Barnett) - PRIORITY 5 Ghost user solution implemented. COMPLETE.
+INC0112373 - VRS Forecast (31)
+Description: The agreement below was put in as a lump sum, no source period.  The lump sum was $200k.  We collected the funds, but the forecast engine has changed the forecast twice on it. Can you tell me why?  It shouldn't be reforecasting a lump sum that has been collected.
+User Comment (Elizabeth Barnett) - PRIORITY 6 Earnings did not get applied to this agreement.  Manually changed to “Do Not Reallocate.”
+INC0078583 - P2 and P3 Rebate Forecast  (Ref List # 6)
+Description: Would you please assist in reviewing the following VRS agreements?  The forecast should only be in Period 1; however, it is showing for these two agreements in P2 and no forecast in P1.  The agreements were created and collected in P1 so there should not be a forecast in P2.  
+User Comment (Elizabeth Barnett) - Can this incident be moved to INC0090963? Same issue. Priority 7a
+INC0084256 - Why are these showing up on P3 (Ref List # 10)
+Description: I pulled up one agreement -- 64526 for CAPTIVATING HEADGEAR and verified that $25K was recorded in P2.  However, I think it should show under P2 on the screen below and should not be forecast in P3.  I believe it is the same with the other agreements that show a P3 forecast but should not.
+User Comment (Elizabeth Barnett) - Can we move this to INC0090963?  Same issue.
+Priority 7b
+INC0075686 - VRS Core MD contracts (Ref List #  4)
+Description: The contracts that are generated from VRS via the Pricing upload do not show a contract amount. The buyers need an amount on the contract for the vendors to verify what they are responsible for paying.
+User Comment (Elizabeth Barnett) - Phase 2, Priority 1 Can we add a column on the upload that would input data in the “Comments or Instructions” section of the .pdf agreement or have this field populated by the SKU and SKU Qty fields (columns AE and AI on the MD Core upload template)?
+INC0075877 - VRS 62845 Manual Lift (Ref List # 5)
+Description: The program was calculating an inflated lift and the buyer had to reduce the lift to negative 95% in order for the forecast to seem reasonable.
+User Comment (Elizabeth Barnett) - Priority 9 Scanback Agreement
+INC0079579 - P2 Forecast Upload Error (Ref List # 8)
+Description: I have uploaded an adjustment to the forecast and many lines were skipped.  For example, lines 1, 4 and 5 in the example below were not uploaded, although lines 2 and 3 were uploaded.  There are multiple Rebate Types affected.  The below is just an example.  The forecast export is off by ($4,908,009).
+User Comment (Elizabeth Barnett) - Priority 10 We might skip this issue since FP&A and Rebate Accounting do not use this report at this time.
+INC0111068 - Agreement Search Issue (Ref List # 27)
+Description:  When I search for an agreement and tell it to search 2016 P10, it is not giving me all the ad dates.  We had ads on 10/30 and 11/06 and they are not coming up in the list.  Can someone check into this, please?
+User Comment (Elizabeth Barnett) - Priority 12
+Provide capability to allow store list on DSD based Volume agreements. (Ref List # 39)
+Description: There is no functionality in VRS to add store list on DSD based on Volume agreements. More clarification is needed on this requirement.
+User Comment (Elizabeth Barnett) - Same as # 1 on page 12.
+Functionality to add & edit a POG on existing Planogram Maintenance Screen. (Ref List # 33)
+User Comment (Elizabeth Barnett) - Requesting to add the ability to edit the name. Also requesting the ability to allow the Merchants to have access to editing this screen.
+Display more agreement details, while searching for an agreement in Agreement Search Screen. (Ref List # 9)
+Description: Users want the ability to see additional information in the displayed results.   This will enable them to see more quantifiable data without opening the actual agreement.
+User Comment (Elizabeth Barnett) - The merchants would like to see the Agreement forecast amount, Buyer, and Agreement Status, and AP Source.
+Add the capability while creating an agreement, to show if the selected SKU was used in any other agreement. (Ref List #13)
+Verifying the format of Lump sum field while leaving the column and not while saving. (Ref List #4)
+Description: The Additional Agreement Information screen is used while creating agreements.
+Ability to filter by date in Buyer Agreement Recap Report.(Ref List # 17)
+User Comment (Elizabeth Barnett) - Possibly using a calendar like in the agreement set-up screen so a range of dates or periods can be selected.
+Ability to filter by class in Buyer Agreement Recap Report. (Ref List # 41)
+Add functionality in VRS to send an email to Buyers when VOLUME rebate is expiring. (Ref List # 24)
+Description: Email will not be sent during the specific time period at the end of fiscal year.
+Add functionality on Rebate Program Forecast screen to enter Dollar cap amount when the Merch Type is Markdown Non-Core or Markdown Core. (Ref List # 40)
+Add requested alert functionality alerting users on certain mentioned events.(Ref List # 43)
+Description: This is the second part of Lisa Demoya’s request.
+User Comment (Elizabeth Barnett) - Delete??  I am not sure what this request entails.
+Priority – Medium
+INC0055659 - VRS Volume Agreements not forecasting (Ref List #  2) .
+Description: The agreement 40232 is not forecasting.  It is set up to forecast based on receipts from same time LY, however, the Primary SKU fix has changed some of the SKUs.  This is also hindering the creation of the Agreement.
+User Comment (Elizabeth Barnett) - Priority 4a
+INC0094594 - VRS Agreements ignoring parameters (Ref List # 17)
+Description: Merchants should not be able to create rebate agreements for departments where the DEPT_EXCLUDE parameter is set.  We cannot record rebates in these departments.  
+ INC0114344 - VRS: AP Approval Queue Rebate Type Dropdown Disabled. (34)
+Description: In the AP Approval Queue, if there are multiple rebate types for the Merch Type/Source combination submitted, a dropdown box appears for the Rebate Type that should allow the rebate analysts to select a type other than the merchandising default type.  
+In the case below, both rebate types TPRSBBGO and TPRBOGO are active for the Type/Source combination TPR/Discount Amt/BOGO; however, the dropdown box is not enabled.  
+Technical Comment  (Ken Banks) – This has been resolved and is in production.   
+INC0115922 - Volume Purchase Error (36)
+Description: I am receiving the following error when trying to enter a Volume Purchase Incentive agreement.  I have included the Log Viewer in the second screen shot.
+INC0117443 - VRS Export Changes. ( 37)
+Description: 
+Attached is a sample of the VRS Forecast Export .csv that we extract from VRS.  The top portion is just a few lines of the actual export.  Below that is how we would like it to look going forward.
+We'd like to add a "Sort Order" column; change the name from "Rebate Type" to "Merch Type" and add a column for "Merch Type Description."
+Meeting Notes
+[
+Ken did the analysis and suggested changes to the mdse_formfunctions.sql.
+These changes can be tested and implemented after the VRS close.
+]
+Add functionality to store list. Need the ability to search and add a zone, by market store, Non-market store during the creation of agreements. (Ref List # 12)
+Need clarification from users on the definition of a zone.
+Ability to clone an agreement. (Ref List # 18)
+Description: Currently, users have to delete a current agreement and recreate it, instead of just amending the current agreement (for example Merch type). Note – We may be able to modify copy functionality.
+Add functionality of not approving contracts for items that state changes or revisions outside of the contracts that has been rejected. (Ref List # 7)
+User Comment (Elizabeth Barnett) - This is on the Buyer Dashboard.
+Add “Apply All” button for TPR Scan prices, Override current Retail and Current cost. (Ref List #16)
+Description: Accessed by clicking “Maintain TPR” on Rebate Program Forecast Screen. The requirement is similar to apply all functionality for Lift.
+Add the capability to include advertisement pricing information for the agreements downloaded from Agreement Export Screen. (Ref List # 20)
+Add the functionality to populate the retail dollars for TPRs. (Ref List #26)
+Description: Need additional information on this requirement from users.
+User Comment (Elizabeth Barnett) - This function exists today.  Request can be deleted.
+Ability to acknowledge all the agreements by Buyers using Buyers dashboard. (Ref List # 28)
+INC0079284 - Add Dept Number/Name to Invoice.                                                                              
+Due to the introduction of NSA invoices, we need to add the department number and name to the layout, as indicated below.  It must also be added to the version run by IT for the imaging PDFs.
+	MISSING SCREEN SHOT FROM REBATE ACCOUNTING.
+INC0086749 – NSA Invoices with split vendors do not show total SKU count.
+See invoice in attached spreadsheet and Period History Extract. The vendor was charged (correctly) for 8 SKUs – 3 of these are on a split vendor for a special negotiated rate.  The invoice only shows the SKU count from the main (non-split) vendor, so the math makes no sense. The total $s are correct, but the SKU count is understated and the reate should be a calculated average rate (Total $/Total SKUs).
+	MISSING SCREEN SHOT FROM REBATE ACCOUNTING
+INC0088718 – VRS/NSA: Add payment type to Period Vendor/Dept Summary export.
+MISSING SCREEN SHOT FROM REBATE ACCOUNTING.
+INC0090160 – VRS/NSA Percentage Calculations
+If a vendor is set to calculate NSA as a percentage of receipts, the calculation is incorrect.  In the attached are two examples from P4.  
+Vendor 1319 – GENIECO INC is set to calculate NSA as 6% of receipts for Dept. 120. Receipts for the period total $35,280; 6% is $2,116.80. The vendor was charged $786.04.
+Vendor 164915 WEB TEX INC is set to calculate NSA as 5% of receipts for Dept. 100.  Receipts for the period total $30,200.40; 5% is $1,510.02.  The vendor was charged $2,903.36.
+The same issues occur when a percentage cap is applied.
+	MISSING SCREEN SHOT FROM REBATE ACCOUNTING.
+INC0090251 – VRS/NSA Cap Repayment                                                                                           
+Arizona Beverages reached their Annual Dollar Cap for NSA in P3.  In P4, NSA created a Debit Entry to repay YTD NSA (extract history attached).
+The NSA calculation should never post a debit. If a cap is reached, there should be no entry. 
+	MISSING SCREEN SHOT FROM REBATE ACCOUNTING
+INC0092798 – VRS NSA Layout Exception not working                                                                
+For vendor # 138615 (MRS STRATTONS SALADS INC), we had layout types DGP16-8 and DGP18-S set to be exempted on the Exempt Layout Tab: -->Stores 2482 and 8518 have these Layout Types:But they were still billed (invoice copy below):
+		REBATE ACCOUNTING SUBMITTED.
+INC0110966 – VRS Portal assigning wrong category
+The attached rebate agreement was submitted via the Vendor Portal for the 11/24/16 ad.  The title and Ad Coop agreement reflect the correct category (CI112416); however, the Scanbacks are assigned to CI112415.  We have received 6 of these (so far).
+INC0115045 – VRS NSA Averages Incorrect
+The attached spreadsheet contains the Period Vendor Dept/Summary and Avg NSA by Store Type/Layout export files for P11, 2016. The total NSA shown in the Avg NSA by Store Type/Layout export is $7,380,662.10; however, the total NSA per the Period Vendor Dept/Summary is only $6,237,461.83.  The averages should be based on the Actual NSA Total. We have been unable to determine how the total used on the Averages is being calculated. 
+	MISSING SCREEN SHOT FROM REBATE ACCOUNTING.
+INC0121050 – Calculation of Rebate on TPR agreements
+It seems the math is incorrect on the TPR agreements.  Multiplying the Base Daily Sales x the Rebate Amount per Unit x the number of days. 
+6682.19 x .07 x 28 = $13,097.09. The result in VRS is $8,254.18.
+INC0119332 – Volume Growth
+Would you please assist as to why the user is receiving this error when entering a Volume Growth rebate?  
+She selected Volume Growth, Sales, Volume Growth.
+Dates are 2/1/17-1/31/20
+Vendor is Sony Corporation
+Class 1549
+From Ken: We know now that the issue is in the PERIOD_ALLOC_TIERS function.  These error messages are read from the bottom up.  CREATE_DETAILED_FCST called MERCH_ALLOC which called PERIOD_ALLOC_TIERS so it was PERIOD_ALLOC_TIERS that was running when the issue occurred. 
+From Anand: I was able to recreate the issue in RSLTEST . It creates the agreement and runs the forecast ( where it fails). If you reduce the number of SKU entered it works fine ( means creates forecast).
+Agreement ID = 70802  ( agreement created but if you run the forecast it gives the same error)
+Please find the process log and error log for the same.
+select * from batch_error_log a
+where process_id = 411310
+order by 1 desc
+select * from  batch_process_log a
+where  process_id = 411309 --411310
+order by 2 desc
+I think it may be # of SKUs entered.
+INC0120842 – Volume Growth Contracts with a dollar amount earned
+We are receiving more and more contracts for VRS Volume Growth rebates that have a specific dollar amount earned rather than a percentage.  I believe we need to add a second parameter to the Volume Growth Tier calculation where a dollar amount is earned rather than only a percent.  
+This is one example of the wording of the contract:
+Quarterly Growth Rebate Calculation. In accordance with the table below, to the extent that the
+dollar amount of retail sales of Products during a Dollar General fiscal quarter exceeds the quarterly retail
+sales set forth below, Vendor shall pay Dollar General a Quarterly Growth Rebate in the amount of $10,000
+(ten thousand dollars).
+Dollar General Fiscal Quarter Retail Sales Rebate Amount
+Q1 $4,070,000                  $10,000
+Q2 $4,215,000                  $10,000
+Q3 $4,135,000                  $10,000
+Q4 $4,375,000                  $10,000
+For purposes of calculating the Quarterly Growth Rebate for a fiscal quarter, 1010data will be utilized to
+measure retail sales of Products.
+Products are as follows:
+Arm & Hammer Double Duty Litter
+Arm & Hammer Clump & Seal Litter
+Arm & Hammer Slide Litter
+Arm & Hammer Cat Litter Deodorizer
+Any products
+From Ken: The 4 Tier Calculations on both the MDSE and AP are Percent of Cost calculations - albeit advanced one.  To change them to address something other than percent of Cost is a system enhancement and will require design etc. and potentially changes to both the AP and MDSE side of the system.  It might be worth finding out how Lane is addressing these on the AP side. 
+Category: Low
+Removing “Do you want to save” alerts after clicking Save button on VRS screens. (Ref List # 14)
+Increasing the size of “New Rebate” button and putting it on the top of the screen in Vendor Portal system. (Ref List # 8)
+Ability to have an option to enter a “Register Program” rebate via Vendor Portal system. (Ref List # 30)
+User Comment (Elizabeth Barnett)  - Need more information.  
+Add agreement number to Vendor Portal after the agreement is submitted. (Ref List #  32)
+User Comment (Elizabeth Barnett) - SOX compliance issue?
+Making discount tab copasetic with the comments section. (Ref List # 19)
+Description: Need more clarification on this requirement.
+User Comment (Elizabeth Barnett) - “Description of Offer” on Discount Tab should auto populate the “Comment that appears on the contract PDF.”
+Add ability to see an agreement after Buyer’s OK’s it. (Ref List # 25)
+Description: When a Buyer OK’s an agreement it disappears from the dashboard. Users want a way where they can see that agreement.
+Ability to see a preview of the attachment description while searching for a TPR. ( Ref List # 27)
+User Comment (Elizabeth Barnett) - Similar to the button on the Buyer Dashboard.
+Also, this button should read “View Attachment” or “View Contract” rather than “View Agreement.”
+Access Changes – (Review Required)
+There is no access changes required.
+Availability Requirements – (Review Required)
+There are no changes to system availability.
+Critical Financial Systems – (Review Required)
+The Vendor Rebate System (VRS), which is part of the RSL database, is a critical financial system.
+Assumptions and Dependencies
+Business Requirements – Signatures
+Functional Design
+Process Flow
+Not Applicable.
+Authentication – (Review Required)
+There are no changes to the current authentication process.
+Security Roles/Authorization – (Review Required)
+There are no changes to the current security roles/authorization.
+Data Security – (Review Required)
+There are no changes to the current data security.
+Functions
+INC0104353 –  ADVCOOP VRS Export ( New VRS Export)
+A new Extract along with a new Form to invoke it is being introduced.  The reason for this is that the existing Export, which was modified at some point to included Agreements, was really an extract that pulled FPA forecast, not “Detailed” forecasts so there was a mixture and getting the Extract to export the correct results when the year rolled was problematic.  What is really needed here is an Extract that gets the Detailed Forecasts data directly from Agreements active in the Fiscal Year specified. 
+A new form (Forecast Export) will be invoked from the Menu.  
+The form will contain a Drop Down list to pick a single Fiscal Year and also have the ability to filter by Agreement Status.  It will default to the current Fiscal Year and the list will include only those Fiscal years actually used on Agreements. 
+There will be a straight invocation of the Extract which will work just like it did on the Forecast Maintenance form.  There will also be a capability to call the export scheduled and then use the Batch number to create the file. 
+The CSV will be formatted just like it was before with the same fields and the last set of requested changes to the Column heading and the additional Sort field. 
+INC0090963 – INC0090963 - Agreement 65559 (Add Margin to Cycle Close )
+No Functional Design – Margin amounts were added to the PMU amounts that are already being pulled in the Apply Actuals process in Cycle Close. 
+INC112506 – Ad Coop Prior Year Dates (On Add Agreement Form)
+In order to accommodate this request, on the Add Agreement form, the list presented will be placed in Descending Order by the From Date and Radio Button Sorts will be added. 
+Also, a Search on Date will be added.  This search will return all the Categories for the Month and Year in the Date Entered. 
+INC0027241 - VRS Agreement Audit Log Shows incorrect USERID 
+No Functional Design – the existing update Statement that sets the BUYREV status just needed to have the User id added to it.  
+INC0114251 – Clip Strip Agreement 77538 Forecasting Error
+The Cooler count form needs to be modified to recognize that the Agreement dates have changed and adjust the periods according.   
+The Rebate Program Forecast form needs to be modified such that if the Agreement Dates are changed and if there are cooler counts, then the cooler count form needs to be called to allow the counts for the adjusted periods to be entered.  This would occur during the Save but prior to the reforecast which already occurs during the Save if Agreement dates are changed.
+There is an assumption here that when an Agreement of this sort is copied that the Agreement dates are the same and that after copying, someone goes into the Agreement and changes the Dates. So it is when the Dates are changed (and Saved) that the opportunity go address the new period range is addressed. 
+Also, during the Copy, an option to zero out the existing Cooler Counts will be offered. 
+This will be the process during the Save or Exit if the Agreement Dates changed enough to change Period Range and there are existing Cooler Counts on the Agreement. 
+The Normal process would be to use the forms, Apply to All to set the Store Counts before pressing the OK Button. 
+INC0095094 - VRS Error when creating a TPR for multiple store types 
+No Functional Design – the internals of the Store Selector form were modified to handle large a number of stores. 
+INC0124037 - Calling of the Allocation Functions when an Adjustment is made on a Discount Amt/BOGO Rebate
+BOGO Allocation data not updated when Adjustment is Created or Deleted
+No Functional Design – Additional statements to account for the BOGO source were added to the Add and Delete of an Adjustment on the Rebate Program from. 
+Null SBT causing Issue on Rebate Program Forecast Form 
+When an SBT Type is NULL, which occurs on Agreements coming from the Web Portal, the SBT / Non SBT Radio buttons that appear on the Vnd/Agmt tab will not have a choice made.   The lack of a choice made will indicate that the SBT Type is NULL. 
+ In cases (sourced Agreements), where the SBT / Non SBT Radio buttons would not normally be there, the Non SBT Radio button will be turned back on but will not be selected.  
+So, NULL is now considered a valid value from the Form’s perspective but will prevent the form from moving forward. 
+If there is an attempt to Move Forward and the SBT Type is Null, A message will indicate this and the Agreement will not be allowed to move forward. 
+Delete of Vendor’s User id should not be allowed if it has been used. 
+A trigger was added to the database that looks to see if the Vendor’s user id has even been used on an agreement and disallows the delete it this is the case. 
+Also the MDSE Vendor Contact from was modified in the following ways:
+Code to was added to the Delete button to see if the user id being deleted has even been used on an agreement and disallows the delete – displays a message when the delete is stopped. 
+It was discovered that the form also allowed a user id to me modified which has the same effect as it being delete so the ability to Update the user id field was disabled. 
+System Errors – (Review Required)
+There are no changes on how processing errors are communicated to the users.
+User Documentation		
+No additional user documentation will be created as part of this project.
+User Testing – (Review Required)	
+Merchandising Users will perform User Acceptance Testing of this project phase. Users will not have to wait until all the development is complete, but can start testing individual components as they are completed.
+User Training – (Review Required)	
+No training will be provided as part of this project.
+Functional Design – Signatures
+Technical Design
+The Technical Design section descriptions have been reduced to “reminders” related to each area.  For full explanations of each area, refer to the SDLC Manual for additional guidance. 
+Site Planning – (Review Required)	
+No site planning is required.
+Hardware – (Review Required)
+Software – (Review Required)
+The following software components will be used for this project:
+Oracle RDBMS 12C
+Oracle Developer Suite 10G 
+Disaster Recovery – (Review Required)
+This system will remain Category I.
+Service Level Requirements – (Review Required)
+There are no changes to Service Level Requirements.
+Security – (Review Required)
+There are no changes to security requirements. See attached Security Applicability document.
+Controls – (Review Required)
+This system will be using the existing controls.
+System Flow 
+Package: MDSE_FORM_FUNCTIONS (body and header)
+Procedure: UPDATE_TO_BUYER_REV (modified)
+Function: DETAILED_EXPORT (new)
+Function: SCHEDULE_DETAILED_EXPORT (new)
+Function: CALL_DETAILED_EXPORT (new)
+Package: MDSE_EXTRACTS (Body and Header)
+Procedure: APPLY_ACTUALS
+Form: add_agreement (Modified)
+Form: forecast_export (new)
+Form: fcst_rebate_program (Modified)
+Form: fcst_rebate_program_dialog (Modified)
+Form: rebate_program (Modified)
+Form: rebate_program_dialog (Modified)
+Form: cooler_count (modified)
+Form: store_select (modified)
+Form: mdse_vendor_contact.fmb (modified)
+Database Trigger: MDSE_VENDOR_CONTRACT_USER_ID
+Menu Item: Forecast Export
+Programs/Procedures
+INC0104353  - ADVCOOP VRS Export ( New VRS Export)
+Form: forecat_export
+Trigger: WHEN-NEW-FORM-INSTANCE
+Block: PROMPT
+Item: FISCAL_YEAR (Poplist)
+Item: AGMT_STATUS (Tlist)
+Item: AGMT_STATUS_FILTER (Tlist)
+Item: STATUS_SELECT_RIGHT (Pushbutton)
+Item: STATUS_SELECT_RIGHT_ALL (Pushbutton)
+Item: STATUS_SELECT_LEFT (Pushbutton)
+Item: STATUS_SELECT_LEFT_ALL (Pushbutton)
+Block: BUTTONS
+Item: EXPORT  (Pushbutton)
+Item: EXPORT_SCHEDULED  (Pushbutton)
+Item: EXIT (Pushbutton)
+Item: BATCH_NUMBER (Text Field)
+Program Units
+BUILD_FY_DROPDOWN – Procedure to Load the FISCAL_YEAR poplist.
+DELETE_ELEMENT – Procedure to Delete specified row from one of the TLIST
+ELEMENT_IN_LIST – Function that returns TRUE if specified  value is in one of the TLIST
+LOAD_STATUS – Procedure to load AGMT_STATUS Tlist
+LOAD_STATUS_FILTER  - Procedure to Load AGMT_STATUS_FILTER Tlist
+MOVE_LEFT – Procedure that move a row into the AGMT_STATUS Tlist
+MOVE_RIGHT – Procedure that move a row into the AGMT_STATUS_FILTER Tlist
+RUN_CSV_REPORT – copied from cst_maint.fmb
+In the WHEN-NEW-FORM-INSTANCE, load the FISCAL_YEAR and AGMT_STATUS using the program units BUILD_FY_DROPDOWN and LOAD_STATUS.
+In the WHEN-BUTTON-PRESSED trigger for the EXPORT button, clone the code from the fcst_maint form that invokes the FCST_EXPORT and change the call to DETAILED_EXPORT.  Include a check to make sure a file name was keyed in.
+BUILD_FY_DROPDOWN – need code load the FISCAL_YEAR poplist list by selecting DISTINCT FY from MDSE_AGMT_FCST_DTL. Make the default the Current FISCAL year based on the Parameter Table’s CALENDAR_INFO Sequence 4 Number Value. 
+STATUS_SELECT_RIGHT – WHEN-BUTTON-PRESSED should call MOVE_RIGHT
+STATUS_SELECT_LEFT – WHEN-BUTTON-PRESSED should call MOVE_LEFT
+ELEMENT_IN_LIST – Function that loops through either AGMT_STATUS or AGMT_STATUS_FILTER (passed in) and compares the value to the value passed in and returns TRUE or FALSE. 
+DELETE_ELEMENT– Function that loops through either AGMT_STATUS or AGMT_STATUS_FILTER (passed in) and deletes the row based on the value passed in. 
+LOAD_STATUS – query the MDSE_VENDOR_AGREEMENT for a DISTINCT list of AGREEMENT_STATUS’s and then pull the description form MDSE_AGMT_STATUS.  Load rows into AGMT_STATUS that are not in AGMT_STATUS_FILTER.
+LOAD_STATUS – query the MDSE_VENDOR_AGREEMENT for a DISTINCT list of AGREEMENT_STATUS’s and then pull the description form MDSE_AGMT_STATUS.  Load rows into AGMT_STATUS_FILTER that are not in AGMT_STATUS.
+MOVE_LEFT – delete the current selected row from AGMT_STATUS and add it to AGMT_STATUS_FILTER.
+MOVE_RIGHT – delete the current selected row from AGMT_STATUS_FILTER and add it to AGMT_STATUS.
+For the code that does the export 
+Package: MDSE_FORM_FUNCTIONS (body and header)
+Function: DETAILED_EXPORT (new)
+Function: SCHEDULE_DETAILED_EXPORT (new)
+Function: CALL_DETAILED_EXPORT (new)
+Add function prototypes to the spec:
+FUNCTION detailed_export (user_id VARCHAR2, 
+                           fiscal_year NUMBER,
+                           list_of_statuses VARCHAR2,
+                           err_msg OUT VARCHAR2,
+                           msg_len BINARY_INTEGER,
+                           batch_no IN OUT NUMBER ) RETURN BOOLEAN;
+FUNCTION schedule_detailed_export (user_id VARCHAR2, 
+                                    fiscal_year NUMBER,
+                                    list_of_statuses VARCHAR2,
+                                    err_msg OUT VARCHAR2,
+                                    msg_len BINARY_INTEGER,
+                                    batch_no NUMBER ) RETURN BOOLEAN;
+ PROCEDURE call_detailed_export (user_id VARCHAR2, 
+                                 fiscal_year NUMBER,
+                                 list_of_statuses VARCHAR2,
+                                 batch_no NUMBER);
+call_deteiled export calls detailed export and provides the two fields err_msg and msg_len.  It is a PACKAGE so it can be scheduled to run in DBMS_JOB. 
+scheduled_deteiled export creates a string of the function call to call_detailed export and then adds it to the DBMS_JOB Queue using DBMS_JOB.Sumbit. 
+detailed export – pseudo code below
+Start the Logger
+Get the begin and end dates of the fiscal year passed in. 
+Build a SQL statement in a string that returns the Agreement ID for agreements in the fiscal year.  Use the begin and end dates derived above to achieve this.  Include an “AGREEMENET_STATUS  IN” condition if the list passed in is not NULL. The list should be a comma separated with the quotes already in it.  The beginning and ending parenthesis will need to be added in when building the string. 
+Call the function: ins_vrs_export using the batch number passed in to set up the column headings.  The headings are done as a single string with commas separating each column heading. 
+Set up a loop (OPEN, FETCH, and CLOSE) using the SQL Statement executed dynamically. 
+For each iteration of the loop, execute a Query set up as a cursor that gets the data from MDSE_AGMT_FCST for the Agreement ID and the fiscal year passed in.  The Forecast value should be used unless the Actual Amount is NOT NULL.  Query Will need to join to MDSE_VENDOR_AGREEMEN, REPORT_TYPES , and VENDOR_MST as well.  Sum the amounts up to the Class level because some of the data is at the Class level but some is at the SKU Level. 
+Call the function: ins_vrs_export using the batch number passed in to create an output row.  The row of data is a single string with comma’s separating each of the data fields.  
+Close the Logger 
+A row of data should contain the following fields in the order presented separated by commas.  
+Column 1 – Status (Agreement Status)
+Column 2 – Begin Date
+Column 3 – End Date
+Column 4 – Agreement ID
+Column 5 – Merch Type Description
+Column 6 – Category 
+Column 7 – Dept 
+Column 8 – Class 
+Column 9 – Vendor 
+Column 10 – Vendor name 
+Column 11 – Fiscal Year 
+Columns 12 – 24 P1,P2,P3,P4,P5,P6,P7,P8,P9,P10,P11,P12  Forecast or Actual Amounts
+The idea is to create the data such that it will wind up as data in a CSV file readable by Excel. 
+INC0090963 – INC0090963 - Agreement 65559
+Add Margin to the Applying of Actuals 
+Package: MDSE_EXTRACTS
+Procedure: APPLY_ACTUALS
+Cursor: Actual_By_Class
+Cursor: Actual_By_SKU
+To each of these cursors’s select statement add a SUM(MARGIN) and add it to the existing SUM(PMU) such that there is still only a single field for the Period Amount Returned.
+Example: Select r.Agreement_id, r.Year, r.Dept_Num, r.Actual_Class, sum(r.PMU) + SUM(r.MARGIN) as per_Amt 
+INC0112506 - Ad Coop Prior Year Dates on Add Agreement From
+Form: add_agreement
+Trigger: WHEN-NEW-FORM-INSTANCE (see notes)
+Trigger: WHEN-NEW-ITEM-INSTANCE  (New)
+Block: MDSE_FCST_PROGRAM
+Property: ORDER BY Clause (change to)  BEGIN_DATE DESC
+Block: BUTTONS
+Item: SORT_BUTTONS  (New)
+Trigger: WHEN-RADIO-CHANGED (New)
+Radio Button: CATEGORY (New)
+Radio Button: BEGIN_DATE (New) aka. From Date
+Radio Button: END_DATE (New) aka. To Date
+Item: SEARCH_DATE (New)
+Trigger: WHEN-VALIDATE-ITEM (New)
+Item: SEARCH_BTN (New)
+Trigger: WHEN-BUTTON-PRESSED (New)
+Add a new Radio Button Group with 3 Radio Buttons (Category, From Date and To Date) and a WHEN-RADIO-CHANGED trigger to handle the sorting of the columns.  Make the Radio buttons text (Property: Label) match the existing column headings.  Set the “From To” Radio button as the default in the WHEN-NEW-FORM-INSTANCE trigger since that is the default sort performed by the Block. 
+Add a new Entry field and a new “Search” Pushbutton.   Entry field’s data type should be “char”. 
+Add a WHEN-BUTTON_PRESSED trigger on the Search button that sets the “Order By” Clause on the
+MDSE_FCST_PROGRAM block to either the Default (what it is now) or with a new condition including the Date that is keyed in.   Use only the Month and Date portions of the field. 
+Add a WHEN-VALIDATE-ITEM trigger on entry field to validate the date.  There is a function in VRS_LIB called FORMAT_DATE_INPUT that can be used to do this.  It returns NULL if the date entered is invalid. 
+Create a Form level WHEN-NEW-ITEM-INSTANCE trigger that sets the date retuned by FORMAT_DATE_INPUT back into the entry field.   This has to be done because you cannot update the field the WHEN-VALIDATE-ITEM is updating. 
+INC0114251 –Clip Strip Agreement 77538 Forecasting Error 
+Package: MDSE_FORMFUNCTIONS
+Procedure: UPDATE_TO_BUYER_REV
+Modify procedure to accept a “userid” as an additional argument.  Use a default of ‘Unknown’. To the Update Query, add sets for DATE_UPDATED = sysdate and USERID_UPDATED - the new “userid” argument passed in. 
+Form: fcst_rebate_program
+Program Unit:  BUYER_REV
+Add the :Parameter.USERID to the call to UPDATE_TO_BUYER_REV
+INC0114251 – Clip Strip Agreement 77538 Forecasting Error
+Cooler Counts from needs to handle changes to Agreement Dates.
+The Cooler Count Form is called from the “Add Wizard” when an Agreement is first Created (Add Mode) and it can also be called from the STORE_SELECT BTN’s – WHEN-BUTTON_PRESSED Trigger (Edit Mode). The issue being addressed here is that when the form is called in Edit Mode, the periods are not and cannot be adjusted to match the Agreement Dates.   This is because this is only done when the form is called from the “Add Wizard”. Note also that the form itself does not do the Inserts into the MDSE_AGMT_STORE_CNT, this is done in the Add Wizard code. 
+The way the form knows that it is called in Add Mode verses Edit mode is that it looks in the Record group 'COOLER_COMMENT_RVAL' and specifically at the number of rows.   This Record Group is loaded from COOLER_STORE_COUNTS Table/Array that is passed into the MDSE_LIB’s function CALL_COOLER_COUNTS and will be empty when the form is called from the Add Wizard.  In this case, the records Group is loaded using the From and To Dates.  This does not happen in Edit Mode – the existing data in the Record Group is used: and this is the issue.  In Edit Mode there needs to be a comparison between the Agreement Dates and the first and last row in the Record group to see if anything has changed.  If so, the Record Groups needs to be adjusted accordingly.  Also, since the Inserting into the MDSE_AGMT_STORE_CNT table occurs outside of the form, code to do this will need to be added to the WHEN-BUTTON-PRESSED trigger on the STORE_SELECT BTN. 
+In summary, in Add Mode the Record Group is loaded by the Cooler Count Form using the Agreement Dates and the Table is loaded after the form returns using the data in the Record Group.  In Edit Mode, the Record Group it is loaded from the table and is used as is and this is not correct when the Agreements dates have been changed. 
+Table: MDSE_AGMT_STORE_CNT
+Table(Array) Type: COOLER_STORE_COUNTS (Period, Year, Store)  1 per period. 
+Global Record Group: COOLER_COMMENT_RVAL
+Form: cooler_count
+Trigger:  WHEN-NEW-FORM-INSTANCE
+There needs to be code that compares the Agreement dates to the first and Last row in the Record Group and if they are different, the Record Group needs to be adjusted to match.  Exiting rows that are still valid need to retain their values but new rows will not have a store Count. 
+
+Form: fcst_rebate_program
+Block: BUTTONS
+Item: STORE_SELECT BTN
+Trigger:  WHEN-BUTTON_PRESSED
+Add code to save off the first and last row of the COOLER_STORE_COUNTS table/array and then compare them after the form returns to see if the time period changed.   If so, need to adjust the rows in the MDSE_AGMT_STORE_CNT.  This includes adding rows for periods there are not there and deleing rows for periods that are no longer there.  This should be done in a Program Unit so it can be called from multiple places. 
+Since changing the Agreement Dates can cause this out of sync condition, the  Cooler Count form should be called when the Agreement dates are changed.   The logical place to do this is in the Save Button.   And since the Exit button can also save the form changes, it needs to be caught there as well. 
+Block: MDSE_VENDOR_AGREEMENT
+Trigger:  PRE-UPDATE
+Block: BUTTONS 
+Items: SAVE_BTN and EXIT_BTN
+Triggers: WHEN-BUTTON-PRESSED 
+In the pre-update trigger, set a flag (use a new :Parameter field)  when the Dates changed. Note that there is already a Dates comparison there so really the new :Parameter field needs to created and set.  Check this flag in the Exit and Save button’s triggers and if there is data in MDSE_AGMT_STORE_CNT table then call the Store Cooler Count form and after the form returns, call the [new] function that will adjust the table.  
+INC0095094 – Store Selector cannot handle a large number of stores selected. 
+Form: store_select
+Program Unit: FILTERSELECTED
+In this program unit, it is currently building up a where condition and storing it in a variable.  Instead, have it INSERT rows into the STORE_MAINT_TMP table and return the text on the next line any stores are found. 
+' AND STORE_NUM NOT IN (SELECT STORE_NUM from STORE_MAINT_TMP)'
+The STORE_MAINT_TMP table only has 1 field and this is STORE_NUM
+INC0124037 - Calling of the Allocation Functions when an Adjustment is made on a Discount Amt/BOGO Rebate  
+BOGO Allocation data not updated when Adjustment is Created or Deleted
+Form: rebate_program
+Block: BUTTONS
+Item: ADD_ADJ_BTN
+Trigger: WHEN-BUTTON-PRESSED
+After the call to BatchFunctions.RUN_CALCULATE, there are a series of “if” statements.  To this list add an “if” on :Parameter.source = 'C’ and call the Procedure: BatchFunctions.CLASS_ALLOC_DISC
+Null SBT causing Issue on Rebate Program Forecast Form 
+Form: rebate_program
+Trigger:  VENDOR_AGREEMENT_SET_RB (modified)
+Block: BUTTONS
+Item: GRP_SBT_TYPE
+Radio Buttons: NOT_SET (new)
+Item: MOVE_BTN
+Trigger: WHEN-BUTTON-PRESSED (modified)
+Add a new Radio Button in the Group GRP_SBT_TYPE to hold the NULL Value.  In the Trigger VENDOR_AGREEMENT_SET_RB comment out the IF statement that sets the BUTTONS.GRP_SBT_TYPE to N when the SBT Type is NULL.  This is near the end of the trigger code. 
+In the  MOVE_BTN’s WHEN-BUTTON-PRESSED trigger, add the following near the top:
+if :MDSE_VENDOR_AGREEMENT.SBT_TYPE IS NULL
+then
+   pop_message('SBT Flag must be set before Moving Forward.');
+   return;
+end if;	
+Delete of Vendor’s User id should not be allowed if it has been used. 
+Add a new Delete Trigger on the Table: MDSE_VENDOR_CONTRACT_USER
+create or replace TRIGGER REBATE_OWNER.MDSE_VENDOR_CONTACT_USER_TD 
+   BEFORE DELETE ON REBATE_OWNER.MDSE_VENDOR_CONTACT_USER
+   FOR EACH ROW
+DECLARE
+ fail_it EXCEPTION;
+ PRAGMA EXCEPTION_INIT(fail_it,-20001); 
+CURSOR get_data 
+IS 
+  select DISTINCT 'Y'
+    from MDSE_VENDOR_CONTRACT
+   where SUBMIT_USER_ID = :OLD.USER_ID; 
+BEGIN
+ for x in get_data
+ loop
+   raise fail_it;
+ end loop;
+END;
+Form: mdse_vendor_contact
+Block:  CONTACT_USER
+Item: USER_ID
+Property: Update Allowed  Change to No
+Block:  BUTTONS
+Item: DELETE_BTN
+Trigger: WHEN-BUTTON-PRESSED
+Add code in the WHEN-BUTTON-PRESSED to check and see if the user id has even been used in an Agreement.  If so, pop a message and return – do not allow the delete. The same basic cursor that is in the Trigger code can be used but the field name should be changed to :CONTACT_USER.USER_ID. 
+Column Heading set to Act on Buyer Rebate Report  (may not do in phase 1)
+Report: buyer_agreement_recap
+Program Unit:  BEFOREREPORT
+There is logic in this Program Unit that determines if the Column Headings for Each Period should be set to Act or Fcst.  Periods prior to the Current Period should be set to Act and Future Periods to Fcst.  The issue is with the Current Period.  For the Current Period, it needs to be Determined if the Cycle Close has been run or not.   In the current code, the Current Year and Period are being determined using the following functions: 
+FormFunctions.GET_CURRENT_PERIOD();
+FormFunctions.GET_CURRENT_YEAR();
+These functions return the AP side’s Current Year and period. The MDSE Side functions need to be used. They are
+MDSE_FormFunctions.GET_CURRENT_PERIOD();
+MDSE_FormFunctions.GET_CURRENT_YEAR();
+Also, in the current code there is no attempt to determine if the Actuals have been applied.  It is assumed that if the AP side has Closed, that Actuals have been applied.  It needs to be determined if, in the current period,  Actuals have been applied and this is determined by looking in the REBATE_PARAMETERS table using the key: ‘FPA_CYCLE_CLOSE_STATUS’.   If the PARAMETER_NUM >= 50, then Actuals have been applied. 
+External Data Sources – (Review Required)
+There are not changes on the External Data Sources.
+Internal Data – (Review Required)
+Process Failure/Error Handling/Recoverability – (Review Required)
+Operational Requirements – (Review Required)
+Testing Assumptions – (Review Required)
+Unit Test	X	Beta Test
+X	System Test	__	Pilot Test
+__	Performance Test	X	User Acceptance Test
+__	Load/Stress Test	__	Conversion Test
+__	Implementation Test	__	Parallel Test
+Technical Design – Signatures
+Document Control
+List each version of this document which was formally reviewed by the project team.
+Change Record
+This represents the project requirements and design for
+ 3178 -  VRS Usability Enhancements.
+Author: | Ken Banks/Anand Upadhye
+Created: | 2/18/2020
+Last Updated: | 2/18/2020
+Version: | 1.0
+Provide a purpose statement -- an executive-level overview of the purpose of the project.  If applicable, it should also include brief discussion on the following:
+If the project pertains to only part of a larger project or system, identify that project or system.  
+If the project is one step in an evolution of a larger process, include the long-term vision.  
+If the project is a replacement for an existing application, write a short description of that application and why it needs to be replaced. 
+This area should also include why the project being undertaken.  If this project is started as the result of a project request, document the User’s reasoning for undertaking the project.
+This section will define the project’s Scope. The Scope Statement from the Project Charter should be used as a starting point; however, the PDD needs to include a much more detailed scope than the Charter.  This detail should include what the project does and does not include.
+Define how multiple phases for a project will be documented and deployed for this project.  Phases should be designed and approved as a single project.  Executing and/or Implementing can be performed in phases.  Change requests will be used to modify the documentation as approved by the Business.  Options include:
+Define how the work for each phase will be identified and represented in this document.  
+Define how programs will be identified as deploying by phase if development is being considered as a single phase.
+If this project is the predecessor to or successor of other projects, list the projects and the specific dependency.  Indicate the phases from the other project(s) that must be completed before a phase can begin in this project, or cannot be started until a phase of this project is complete.
+For each requirement uncovered during the requirements gathering phase:
+Name the requirement with just a few short words.  
+Provide a short description in business terms of the requirement and indicate whether it should be considered a high, medium or low priority.   
+Determine whether it is critical for an initial deployment or whether it can be deployed in a phased approach to allow critical changes to be deployed sooner (to support quicker cost or labor savings).  
+Identify requirements discussed during the discovery phase that will not be included in the system and explain why.
+Provide a short narrative to describe the “activity” using action verbs, outline the steps involved in completing the required task, document the condition under which each outcome occurs and define the outcome or deliverable.  You could paste any “Use Cases” in this area to meet most of this sections requirements.
+Define in non-IT terms as much as possible if any User access roles or steps used by the User to access the system will need to change as a result of the request.
+If there are any changes to application or system availability, provide the User with what changes will be required and why.  This should include consideration for period-end, quarter-end and year-end processing.  Define whether the entire system’s availability is changing or if specific areas or reports will be changing.
+If providing a new system:
+Define what hours the system will be available and what downtime is required for backups and maintenance.
+Discuss the options related to unplanned outages/fault tolerance and the costs associated with mitigating these outages with the Business Unit.  Zero downtime is attainable, but usually at an unacceptable cost.  A compromise is usually found and should be documented as to what the Business Unit is able to tolerate comparing the cost of the downtime to the cost of a higher level of availability.
+With the Business Unit, define and document the business impact of failing to meet the uptime requirements.
+If documenting requirements for a new system or for the addition of major new business functionality to an existing system, the author, in collaboration with Internal Audit and the Corporate Controller must determine if the system will be considered a Critical Financial System (CFS) and as such, be subject to the audit requirements of other critical financial systems.  Current CFSs can be found using the link in the SDLC Manual.
+An assumption is a statement that is believed to be true in the absence of proof or definitive knowledge.  As an example, an assumption could be “Receipts will be made against the correct purchase order.”  An assumption can also be a business rule, a statement that defines or constrains some aspect of the business. An example of such a business rule might be that a store is supplied from one and only one distribution center. The author should list business assumptions that may be included as “rules” or constraints within the system/process being developed or modified.
+
+A dependency is an external factor outside the control of the project which must exist or be completed before or during the project.  An example of a dependency would be another system under development that must be finished in order to provide data to the system being developed.  List any dependencies and the anticipated time when the predecessor must be complete.
+Name | Role | Signature | Date of Signature
+Gretchen Fischer | Sponsor |  | 
+Elizabeth Barnett | Business Team Member |  | 
+Lane Scoggin | Business Team Member |  | 
+Scott Martin | Business Team Member |  | 
+John Wilcox | IT Project Manager |  | 
+The process flow is the series of events required to execute a function.  Process flows are best described using  flowcharts.  The process flow should be written using business terms, events, and employee titles.  Document each decision point and the flow that stems from each decision.  As this is a business flow rather than a system flow, consider using swim-lanes rather than flowcharts to depict the process.
+Authentication refers to “how” the users log into the system.  Usually this is through the operating system username and password, but the circumstances of the system might warrant a different or additional authentication procedure.  An exception might be made for a particular application that only requires a ‘pin’ number to access a feature rather than a password.
+Define what each new role may or may not have access to for each of the new features identified in the Process Flow.  For each event to which a security role has access, the access may be read only, add only, add/change only, etc.  In some instances, the access may be even lower, i.e. the role might only have access to one DC’s information, or the role may have access to everything on a screen, except one field such as pay rate.  Document these requirements.  Include which job title(s) have access to each role/access.
+If data contains proprietary or confidential information, the data owner (Business Unit) must be assured the proper safeguards are being employed to restrict unauthorized access or interception (if transmitted) of sensitive data.  An example might be data used to develop a sales plan or information such as social security numbers.
+For every event or function in the Process Flow, produce a pictorial representation of screens and reports to be produced.  The Users should be able to understand the system from these pictures.  Include ‘Help screens’ and pop-ups.  Describe each field on each screen or report and indicate whether and how it is calculated.  Include screens used to generate reports.  See SDLC for complete list of required items.
+Before                                                                              After | Before                                                                              After
+Describe how processing errors will be communicated to the Users and under what conditions/triggers.
+Describe what type(s) of documentation will be developed for users to support testing, training, implementation and post-implementation.  Indicate who will be responsible for producing the documentation and what standards will be applied to each type.
+Define expectations regarding user testing, including who will be involved, how much involvement will be required, what type of setting will be used (location, software and hardware needs).  Define the type of data needed: period of time, depth and breadth. Note what times must be avoided.  Describe how results will be documented.
+Describe the method by which all users of the system will be trained.  List needed training materials and physical environment.  Establish expectations of what type and how much data should be pre-loaded to support the training.  Document any constraints on the training schedule or persons to be trained.
+Name | Role | Signature | Date of Signature
+Gretchen Fischer | Sponsor |  | 
+Elizabeth Barnett | Business Team Member |  | 
+Lane Scoggin | Business Team Member |  | 
+Scott Martin | Business Team Member |  | 
+John Wilcox | IT Project Manager |  | 
+Document each site and who on the project team is responsible for planning the site.
+Describe the specific hardware required for the system. List any new hardware that will be required for the affected site(s).
+Describe the specific software to be used for different functions and on each hardware platform.  Include programming languages, integrated development environments, third-party packages, testing tools and documentation tools.  List any new software that will be required for the affected site(s). Define who will be responsible for obtaining the software licenses if required.
+Describe how the system should be recovered during a disaster and during disaster testing.  The system should be developed so the most critical elements can be recovered first, if need be.  Define the recovery category.
+Referring to the Business Requirements section of the PDD, define how the designed system will meet the service level requirements as defined by the Business.  Are redundant systems provided?  Under different scenarios, how will the system be recovered and how long (approximately) would each step take?
+Provide technical details of security requirements to support the project. Reference the Technical Design Security Requirements Form for security changes being made.  Are external-facing screens being deployed to business partners?  If so, how are they being protected?  Are wireless devices required?  Do the wireless devices meet the standard security requirements deployed on wireless access points?  What wireless security will be employed?  If a new system, will MD5 security be employed?  Is LDAP being used?
+Explain the controls employed in the system.  This includes, but is not limited to, on-line editing, batch balancing and control reports.  Are any additional file delivery validations (acknowledgements) being employed or tracked?  Are alerts posted or e-mailed based on a failure to acknowledge delivery of files or data?  If database-to-database, what validations exist to ensure all information is passed and updated correctly.
+The System Flow documents every program and/or module provided as part of the solution.  For large or complex systems, create an overall flow of procedures; document each procedure separately.
+List every program/procedure documented in the system flow.  For each program, define the input(s) and how the input is to be used (update, read-only, reference, control balancing, conversion).  Define the output(s), including new files/tables, updated files/tables, converted files/tables, print, Excel, etc.  Provide flowcharts where possible to provide a visual representation of the program’s flow and decision points. Define Help screens and how they will be accessed.
+Identify any external data interface sources to be used or produced by the system along with their point of origin (system) and how they will be accessed/delivered.  Estimate volumes and increase compared to current data flows.  If database-to-database, define if any updatable views are provided and what field will need to be updated after data is consumed.  If non-updateable views, define how the developer will know what data to obtain what  to ignore.  Define which system will clean up data after retention times are met.
+For each new file or table, document each field along with what it will be used for and both its format and size.  If a file, provide the file naming convention, anticipated size, whether fields are right-justified, left-justified, zero-filled, delimited by any characters, and whether they can contain spaces or nulls.  Describe the format of the files (cvs, html, etc.).  And define the retention time and what program will eventually remove it once the retention time is met.  If database tables, define indexes, triggers, constraints, and defaults. Provide anticipated daily size and any growth rates anticipated.  Define retention times, how the table will be purged and what program/system is responsible for the clean-up.
+Describe how each type of application error, to include processing failures (program crashes) will be handled, where notifications will be sent, and where logs are located for research.  For each type of failure, describe recovery capabilities and whether automatic recovery options exist or if manual intervention is required.
+Define any special requirements for Computer Operations or Technical Services to include:  OPCON setup, Backup requirements/times, database tuning needs, monitoring requirements, capacity planning and scaleability.  Discuss Helpdesk and After-hours support and who is authorized to call – who should be called.
+Indicate what types of testing should be planned prior to implementation.
+Name | Role | Signature | Date of Signature
+ | IT Project Manager |  | 
+ | Technical Peer |  | 
+ | Director IT Security (if required) |  | 
+ | IT Director 
+(if required) |  | 
+ | DBA
+(if required) |  | 
+ | Storage Architect
+(if required) |  | 
+ | Server Admin 
+(if required) |  | 
+ | Network Services
+(if required) |  | 
+ | PC Support
+(if required) |  | 
+Date | Author | Version | “Original” if version 1.0.  
+Otherwise, changes are documented below.

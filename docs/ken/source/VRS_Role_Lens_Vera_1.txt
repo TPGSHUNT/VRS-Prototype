@@ -1,0 +1,107 @@
+VENDOR REBATE SYSTEM
+Role-Lens UX Model, Vendor Intelligence Canvas & Ask Vera
+TPG Partners  ·  April 2026  ·  Confidential
+The Core Idea
+Every conversation about modernizing VRS eventually confronts the same question: why does a system that manages one thing — the relationship between Dollar General and its vendors — present itself as two separate applications? The answer is historical, not architectural. MDSE and AP were built separately, by different teams, at different times. The database is what ties them together. The menu split is an artifact of that construction history, not a reflection of how the business actually works.
+The replacement system starts from a different premise. There is one vendor relationship. Different people touch different aspects of it at different stages of its lifecycle. The application’s job is to show each person the right view of that relationship — not to route them to a different application.
+To that unified, intelligent canvas, the replacement adds something the current system has never had: a conversational AI layer that can synthesize everything it knows about the vendor portfolio and answer — or proactively surface — the questions that drive revenue. Ask Frosti became the single biggest attraction in GMCC. Ask Vera is its VRS counterpart, tuned to the domain where the stakes are highest: hundreds of millions of dollars in annual vendor rebate earnings.
+The Vendor Bubble Field
+2.1  The Landing Page Concept
+The entry point to the new VRS is not a menu, a dashboard of KPI cards, or a list of records. It is a vendor portfolio canvas — an interactive field of bubbles, one per active vendor, where the visual properties of each bubble encode the health and importance of that vendor relationship at a glance.
+This concept has precedent within TPG’s own portfolio. The P2M2 application uses a similar globular canvas where size and color encode importance and status. Applied to VRS, the approach is more powerful because the underlying data — rebate earnings, calculation health, invoice aging, and 1010 transaction pace — is richer and more actionable than a typical project portfolio.
+2.2  Visual Encoding
+2.3  Filtering the Canvas
+Dollar General has an estimated 600–900 active vendor relationships in VRS at any given time. The real value of filtering is that it reconfigures the same canvas for different users and different questions:
+An AP analyst applies ‘My Programs’ and immediately sees their 40–50 assigned programs. Red and amber bubbles are visible at a glance. No report to run.
+A department manager filters by Merch Type to see their category’s vendor health as a portfolio view.
+A buyer filters to their negotiated vendors to see which agreements are still in queue and which are actively calculating.
+An executive switches to Merch Type clustering — bubbles group by category, size reflects earnings weight.
+Available filter dimensions: Merch Type, Source, Category, Analyst, Period, Status, Queue pending, and a ‘My Programs’ toggle. A period time-slider lets users scrub through fiscal history and watch the bubble field evolve — which vendors grew, which shrank, which recovered from red. This is the 1010 data making itself visible in its most intuitive form.
+The Role-Lens Model
+3.1  Why the MDSE / AP Split Must Go
+Preserving the two-sided navigation in the replacement would be the easiest path, and the most dangerous one. It would import a 30-year-old organizational boundary directly into the new system’s navigation model, cementing it for another generation. The friction points — the context switching, the queue as a separate destination, the buyer who cannot easily see what happened to their agreement after it left their side — would all persist.
+3.2  What Each Role Sees
+3.3  The Approval Queue as Notification State
+In the replacement, the approval queue is a notification state on the bubble. A vendor with an agreement at Pending AP Approval status gets a pulsing ring. An AP analyst clicks the bubble, and the pending agreement is presented inline with Approve and Reject actions. Approving creates the Rebate Program in the same operation. The agreement status updates in real time. The buyer sees the change without refreshing. No separate navigation required.
+The 1010 Analytics Connection
+The vendor bubble field is only as intelligent as the data feeding it. The color of a bubble reflecting calculation health is useful. The color of a bubble reflecting a vendor’s pace against their rebate commitments — derived from real transaction data in the 1010 database — is transformative.
+The 1010 analytics layer operates via nightly materialized summary tables — vendor × department × source × fiscal period aggregations computed overnight and indexed for fast query. This keeps analytical queries off the transactional 1010 replica while making the data available in milliseconds.
+The analytics layer contributes the following signals to the bubble field and vendor record:
+Pace-to-target: current-period volume as a percentage of the run-rate needed to hit the current tier.
+Tier threshold proximity: when cumulative volume is within a configurable percentage of a tier boundary, triggering a review conversation before the window closes.
+Year-over-year variance: current-year volume compared to prior year for the same period. Significant declines without a corresponding agreement change are anomalies.
+Forecast vs. agreement value: 1010-derived earnings forecast compared to the estimated annual value on the agreement.
+Agreement value validation: when a buyer creates a new agreement, the system cross-references 1010 history and flags implausible estimates before the agreement reaches the queue.
+Ask Vera — Vendor Earnings & Rebate Advisor
+Just as Ask Frosti became easily the single biggest attraction in GMCC, VRS needs its own conversational AI layer. Ask Vera is the VRS counterpart: a persistent, role-aware LLM interface that can examine every aspect of the vendor rebate business and answer — or proactively surface — the questions that drive revenue. The name is not incidental. Vera knows the numbers, the contracts, the history, and the gaps. She is always present, accessible from every screen, and always knows who is asking.
+5.1  What Vera Knows
+Vera has access to everything in the unified data model simultaneously — a synthesis capability no human analyst currently has without significant manual effort:
+The full rebate program database: every agreement, every tier structure, every calculation history going back years.
+The 1010 transaction data via materialized summaries: actual vendor purchase and sales performance longitudinally.
+The Accounting Control Master: financial routing rules, transaction types, cost centers.
+Invoice aging: which vendors are slow payers, which have disputes outstanding.
+Calculation history: which programs consistently calculate cleanly and which have recurring adjustments.
+The relationships between all of these: which vendors hit their tiers, which fall short, which agreement structures produce earnings well above the portfolio norm.
+5.2  The Question Space by Role
+Vera’s role context is injected automatically at login. The same question asked by different roles receives calibrated answers:
+5.3  The Proactive Capability
+This is where Vera goes beyond Frosti and beyond any current VRS capability. Frosti answers questions about plant health. Vera makes recommendations about revenue. The distinction matters enormously in the context of a rebate management system.
+Vera can surface insights that no report in the current system can produce, because those insights require synthesizing across multiple data sources simultaneously:
+Tier optimization: “Based on P&G’s 1010 transaction pace in HBA, they are on track to hit Tier 3 this year. Their current agreement has no stretch tier above 3%. Historical data for similar vendors suggests a Tier 4 at 3.5% above $2M in receipts is achievable and precedented. Do you want me to draft the negotiation rationale?”
+Agreement restructuring: “Colgate-Palmolive has fallen below Tier 2 threshold in four of the last six periods. Their agreement is up for renewal in 90 days. Here are three restructuring options that protect DG’s earnings floor while maintaining the vendor relationship.”
+Uncaptured opportunity: “Three vendors in the HBA category have no ADVCOOP agreement for the current fiscal year but have participated in ad co-op programs in prior years. This represents approximately $280K in potential earnings not currently under agreement.”
+Anomaly explanation: “The Energizer receipt volume in Dept 018 dropped 31% versus prior year in P04. No corresponding agreement change exists. Possible explanations: distribution shift, planogram change, or data quality issue. Here are the relevant calculation records.”
+Renewal calendar: “Seven agreements representing $4.2M in annual earnings expire within the next 90 days. Three vendors have no renewal discussion on record. Do you want me to draft outreach summaries for each?”
+5.4  Architecture
+Vera follows the same two-phase pattern proven by Ask Frosti in GMCC, adapted for the VRS domain:
+Phase 1 — Intent routing: Vera identifies what data is needed and which stored procedures or 1010 query materializations to invoke. The ~200 VRS stored procedures become the query layer; the 1010 materialized summaries add analytical depth.
+Phase 2 — Synthesis: Vera executes the selected queries, injects the results as context, and formulates a natural-language answer, recommendation, or what-if analysis.
+Role injection: the logged-in user’s role, assigned programs, and analyst context are injected automatically into every Vera session. A buyer asking about P&G gets a negotiation-oriented answer. An AP analyst asking the same question gets a calculation-and-invoice-oriented answer.
+Conversation memory: the last five question-answer pairs are maintained in context, enabling natural follow-up questions and multi-turn analysis sessions.
+Proactive surfacing: beyond answering questions, Vera runs a nightly analysis pass across the portfolio and surfaces flagged items — tier proximity alerts, anomalies, expiring agreements — as a digest available on the bubble field canvas.
+Implementation: GPT-4o via Azure AI Foundry, consistent with the GMCC/Frosti architecture. For complex multi-domain questions requiring more than ~20 tool calls, a hierarchical routing model — domain sub-agents per the Frosti pattern — is used to keep each model call within reliable function-selection bounds.
+Design Principles & What Is Preserved
+6.1  What This Architecture Is Not
+Not a re-skinned Oracle Forms application. The bubble field, role-lens model, and Vera are structurally incompatible with the form-centric paradigm. Building it as a more attractive version of the existing forms produces the wrong system.
+Not a dashboard of KPI cards. Dashboard cards tell you numbers. The bubble field tells you relationships and relative importance. Vera tells you what to do about them.
+Not two applications in a shared shell. The role-lens model requires a genuinely unified data model. An implementation that separates MDSE and AP codebases and wraps them reproduces the original friction.
+6.2  What Is Preserved from the Current System
+The three-level program/vendor/department hierarchy. Earnings are calculated at the vendor/department intersection. That does not change.
+The one-calculation-per-period-per-vendor/dept rule and period boundary integrity.
+The source-driven AP architecture. All source codes (R, S, D, B, F, C, N, E, Q, T) and their calculation mechanics are preserved.
+The Rebate Type as Source × Merch Type intermediary.
+The Accounting Control Master structure and RSL/AP/GL export semantics.
+6.3  The Role of Domain Knowledge in the Build
+Ken Banks is most valuable as a validator and domain authority, not as the lead architect of the new system’s UI and workflow design. His knowledge is irreplaceable in three areas: validating business logic of calculations and financial exports; leading user acceptance testing with AP analysts and MDSE buyers he knows personally; and owning the integration specifications for RSL, AP, GL, Opcon, and the portal. The navigation architecture, bubble field concept, role-lens model, and Vera’s question taxonomy should be owned by architects and UX designers current in modern web application patterns — informed by Ken’s domain knowledge, not constrained by his design instincts.
+Summary
+The replacement VRS is built on a single governing insight: the MDSE/AP split is a construction artifact, not a business requirement. The business has one vendor relationship. The application should have one canvas.
+That canvas is the vendor bubble field — a spatial, proportional representation of Dollar General’s vendor portfolio where size encodes earnings, color encodes health, and the pulsing ring encodes queue state. It is filtered by role, period, and merch type. It is fed by nightly 1010 analytics that surface vendor performance intelligence no existing VRS view provides. It is navigated by clicking a bubble, and what you see is determined entirely by who you are.
+Sitting alongside the canvas on every screen is Ask Vera — the Vendor Earnings & Rebate Advisor. Vera synthesizes the full data model, the 1010 transaction history, and the agreement portfolio to answer operational questions, surface proactive revenue opportunities, and draft negotiation rationales. She knows what exists. She knows what should exist. She knows the difference.
+The approval queue stops being a destination and becomes a notification state. The period close stops being a five-form sequence and becomes a guided checklist. The vendor portal becomes genuine self-service. Ken Banks’ carefully designed data model survives intact beneath a completely reimagined surface.
+The governing principle
+Role determines lens, not navigation structure. The MDSE/AP split disappears as a UI concept and reappears as a role-filtered view of unified data. One entry point. One canvas. One data model. The role does the rest.
+Visual property | What it encodes
+Size | Total annual rebate earnings across all programs for this vendor. A vendor generating $40M looks physically larger than one generating $200K. The naturally skewed power-law distribution produces a clean, readable canvas.
+Color | Health status. Green = all programs current, no overdue calculations. Amber = something needs attention: a pending approval, an open queue item, a calculation approaching its review deadline, or a 1010 anomaly flag. Red = overdue calculation, unresolved invoice, or flagged data quality issue.
+Pulsing ring | Approval queue state. A vendor with an agreement sitting in the Approval Queue gets a pulsing outer ring — immediate visual cue that AP action is required, without navigating to a separate queue view.
+Role | Lens — what the bubble and vendor record surface
+AP Analyst | Bubble color = calculation health. Vendor record leads with: active rebate programs, period calculation status, checks/deductions, invoices pending. Context menu: run E&C, review calculation, create rebate program, add deduction, generate invoice. Pulsing ring = queue item waiting for AP action.
+Buyer / Delegate | Bubble color = agreement pipeline health. Vendor record leads with: agreements in their portfolio, status timeline, earnings pace from 1010 data. Context menu: create agreement, edit agreement, check Move Forward status. Pulsing ring = agreement awaiting DMM/GMM approval.
+DMM / GMM | Bubble color = approval queue depth for this vendor. Vendor record leads with agreements pending their approval. Context menu: approve, reject, delegate. Pulsing ring = agreement waiting for them specifically.
+AP Manager | Sees all analysts’ programs. Can reassign programs. Period close authority. Dashboard overlay shows analyst workload distribution across the canvas.
+Vendor (Portal) | Separate portal surface. Vendor sees their own active programs, current-period earnings, invoice history, and 1010-derived pace-to-target. Can submit new agreements for all supported merch types.
+Read-Only | Full canvas visibility, no context menus. Used by finance, audit, and executive stakeholders.
+The 1010 insight
+The 1010 database holds billions of receipt, sales, and drop-ship transaction records. This is not merely calculation input — it is a longitudinal record of vendor performance. A bubble that turns amber because P&G’s receipt volume in HBA is running 18% below the pace needed to hit the next tier threshold is giving an AP analyst and a buyer actionable intelligence they currently cannot get without building a manual spreadsheet.
+Why Vera changes the value proposition
+Every other feature in this document shows users what is happening. Vera answers what should happen. That is a fundamentally different capability, and it is the one that turns a modernized administration tool into a revenue intelligence platform. A system that can proactively identify uncaptured rebate opportunities, flag underperforming agreement structures, and draft negotiation rationales is not a nice-to-have feature. It is a direct financial contribution.
+Role | Question type | Representative examples
+AP Analyst | Operational clarity | What’s open on P&G for period P05? Which of my programs haven’t had an E&C run this period? Show me every vendor where the calculation is approved but not yet batched.
+Buyer / Delegate | Negotiation intelligence | How has Unilever’s receipt volume trended over the last three years by department? Which of my agreements are approaching a tier threshold this period? What would our earnings look like if we restructured the HBA agreement from flat 2% to a 2/3/4% tier?
+DMM / GMM | Approval context | What is the total value of agreements sitting in my approval queue right now? Show me the risk profile of the Conagra submission before I approve it.
+AP Manager | Portfolio intelligence | Which merch types are underperforming their agreement estimates? Which vendors have had the highest invoice aging in the last two fiscal years? What is the total earnings at risk if our five largest vendors hit their lower tiers?
+All roles | Synthesis | Summarize this vendor’s rebate relationship with DG — agreements, earnings history, payment behavior, and current period status. Prepare a briefing on P&G before our renewal meeting next week.
+The insight about missing agreements
+Identifying what does not exist is something no report in the current VRS can do. Vera can, because she knows both what exists and the historical patterns that suggest what should exist. This is arguably the highest-value single capability in the entire platform — turning latent revenue into active agreements.
+The pitch in two sentences
+We are not rebuilding your 1990s application in modern technology. We are redesigning around the way your people actually think about vendor relationships — and adding an AI advisor that turns thirty years of transaction history into revenue intelligence your current system never surfaces.

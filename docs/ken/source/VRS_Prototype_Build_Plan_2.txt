@@ -1,0 +1,205 @@
+VENDOR REBATE SYSTEM
+Prototype Build Plan
+Non-throwaway architecture · Production-ready foundations · Database strategy
+TPG Partners  ·  April 2026  ·  Confidential
+Governing Principle: No Throwaway Code
+The prototype serves two purposes simultaneously: it demonstrates the full vision to Dollar General in a form they can interact with, and it produces code that is structurally reusable in the production build. These are not competing goals if the prototype is built on the production stack from day one.
+The temptation in prototype work is to reach for shortcuts — mock data in flat JSON files, hardcoded layouts, no real authentication, no database. That approach produces a convincing demo and six weeks of throwaway work. The approach described here produces a convincing demo and six weeks of production-grade foundation.
+Database Strategy
+2.1  What ‘Keep the Data Model’ Means
+The recommendation to keep the VRS data model means preserving the logical design as a construct — the entity relationships, the three-level hierarchy, the one-calculation-per-period rule, the source-driven architecture. It does not mean keeping the physical Oracle database.
+The current system runs on Oracle Database, driven by Oracle Forms and PL/SQL. The replacement stack is PostgreSQL. These are different engines and there is no attempt to keep Oracle in place. The migration path is a schema translation plus a data migration at cutover — not an ongoing hybrid.
+2.2  Prototype Database: PostgreSQL from Day One
+The prototype uses a real PostgreSQL database from the first day of development. Not JSON files. Not an in-memory store. A properly structured relational database with the production schema, populated with realistic mock data.
+This decision alone is what makes the prototype non-throwaway. When the time comes to populate it with real DG data migrated from Oracle, the schema is already proven, the Prisma models are already written, and the API layer is already tested against the shape of the data. The only change is the data source.
+2.3  Schema Translation: Oracle to PostgreSQL
+The core VRS tables translate directly to PostgreSQL with minimal structural changes. The key differences are mechanical, not conceptual:
+2.4  The 1010 Database
+The 1010 Oracle database stays where it is. It is not migrated. What the new system builds is a read path: a nightly job that executes summarization queries against 1010 and writes the results into materialized summary tables in the VRS PostgreSQL database. The VRS application never queries 1010 directly.
+This approach is correct regardless of whether the 1010 database is eventually migrated in a later phase. The materialized summary tables in VRS are a stable, fast, independently-deployable analytical layer that does not depend on 1010’s engine, schema, or availability.
+2.5  Core Schema: Key Tables for the Prototype
+The prototype implements the following tables in the first sprint. These are the production tables — not simplified mock versions:
+Technology Stack
+Every technology choice below applies equally to the prototype and the production system. There is no ‘prototype stack’ and ‘real stack’. The prototype is built on the production stack with mock data substituted for real data.
+What the Prototype Demonstrates
+The prototype covers six demonstration surfaces. Each surface is built with real component architecture, real data fetching patterns, and real state management — the only thing that is not real is the data itself.
+4.1  Role-Simulated Login
+A login screen with a role selector (AP Analyst, Buyer, DMM, AP Manager, Read-Only). Selecting a role logs in as a pre-seeded mock user with that role’s permissions. After login, every surface in the prototype reconfigures itself based on the selected role. This is the single most important demonstration for DG stakeholders — it makes the role-lens concept immediately tangible.
+4.2  Vendor Bubble Field
+The landing page after login. A full D3.js force-simulation bubble field with mock vendor data covering realistic earnings distributions (a small number of large vendors, a long tail of small ones). All three visual encodings implemented: size, color, and pulsing ring. Filter controls for merch type, period, status, and a My Programs toggle. Clicking a bubble navigates to the vendor record.
+The mock data is seeded into the PostgreSQL vendors and rebate_programs tables. The bubble field queries the database via a Next.js API route — not a JSON file. Replacing mock data with real data requires no code change.
+4.3  Vendor Record — Role-Lens View
+Clicking a bubble opens the unified vendor record. The record renders differently based on role: AP Analyst sees calculation status prominently; Buyer sees agreement pipeline; DMM sees approval queue items. All views are tabs on the same component — the role determines which tab is active by default and which actions are available in the context menu.
+The 1010 Intelligence tab is implemented with mock analytics_summaries data showing pace-to-target as a progress bar, YoY variance as a sparkline, and tier threshold proximity as a callout. This tab demonstrates the highest-value differentiator of the platform.
+4.4  Agreement Workflow (MDSE Lens)
+A buyer creates an agreement through the guided wizard. The agreement is written to the agreements table with Pre-Negotiation status. Move Forward advances it through the status chain. When it reaches Pending AP Approval, the vendor’s bubble on the landing page gains a pulsing ring (demonstrating real-time state reflection). The Approval Queue surface shows the pending item and allows inline approval, which creates a rebate_programs record atomically.
+4.5  Period Close Workflow (AP Lens)
+The guided period-close checklist surface. Mock calculate_results data pre-seeded for several programs in various states (open, E&C run, reviewed, approved). The checklist shows real completion percentages. The Approve step allows bulk approval. The Batch step creates a batch record. Finalize closes the period. Each step updates the database and the checklist re-renders — demonstrating the workflow without requiring a real E&C engine.
+4.6  Ask Vera
+A persistent chat interface accessible from every screen. Vera is wired to the Claude API with a system prompt that gives her full context of the mock vendor portfolio. She can answer questions about specific vendors, calculations, agreements, and earnings pace. She can generate proactive suggestions based on the mock data. She knows which role is logged in and calibrates her answers accordingly.
+In the prototype, Vera queries mock data directly via the Claude API without the full stored-procedure routing layer. In production, the routing layer is added but the chat UI, session management, and role injection are identical.
+Build Plan
+5.1  Sprint Overview
+The prototype is built in four two-week sprints. Each sprint produces demonstrable, working software — not just components in isolation. The sprint sequence is designed so that the most impactful demonstration surfaces are ready earliest.
+5.2  Sprint 1 Detail: Foundation
+Project scaffolding
+Initialise Next.js 15 app with TypeScript, Tailwind, shadcn/ui
+Configure ESLint, Prettier, Husky pre-commit hooks
+Set up GitHub repo with branch protection and PR workflow
+Configure Vercel deployment from main branch
+Database
+Provision PostgreSQL on Railway (prototype) or Supabase
+Write Prisma schema covering all 15 core tables
+Write and run initial migration
+Build seed script: 50 mock vendors across 8 merch types, realistic earnings distribution (power law), 150 rebate programs, 400 calculate_results across 6 periods, 80 agreements in various statuses, 5 users one per role
+Auth
+Implement NextAuth.js credentials provider backed by users table
+Build login page with role selector (prototype mode)
+Implement session middleware that injects role into all API route handlers
+Write role-permission utility (canApproveCalculation, canCreateAgreement, etc.)
+5.3  Sprint 2 Detail: Bubble Field
+D3 bubble field
+Build /api/vendors/bubble-data route: returns vendors with earnings, health status, queue state
+Health status computed server-side from calculate_results and agreements tables
+D3 force simulation: forceCollide, forceManyBody, forceCenter
+Bubble size: sqrt(annualEarnings) scaled to viewport
+Bubble color: CSS custom properties mapped to status enum (green/amber/red)
+Pulsing ring: CSS keyframe animation on bubbles where queuePending = true
+Click handler: navigate to /vendors/[id] with role context
+Filter controls
+Merch Type multi-select (drives API query filter)
+Period selector (fiscal period dropdown)
+Status filter (green/amber/red toggles)
+My Programs toggle (filters to sessionUser.analystCode)
+Filter state in URL params — shareable, bookmarkable views
+Vendor record
+Route: /vendors/[id] with server-side data fetch
+Tab structure: role hook determines default active tab
+1010 Intelligence tab: pace-to-target bar, YoY sparkline, tier proximity callout from analytics_summaries
+5.4  Sprint 3 Detail: Workflows
+Agreement wizard (Buyer lens)
+Multi-step form: vendor select → merch type → source → rate tiers → departments → dates → review
+Zod validation at each step
+1010 validation: on vendor+dept selection, fetch analytics_summaries and warn if estimated value is implausible
+Writes to agreements table with status=PRE_NEGOTIATION
+Move Forward action advances status (state machine in service layer)
+Approval Queue inline
+When agreement reaches PENDING_AP_APPROVAL: set vendor.queuePending=true (triggers bubble ring)
+AP Analyst clicks bubble → vendor record opens with Queue tab active
+Approve action: creates rebate_programs record, sets agreement.status=ASSIGNED, clears queuePending
+Reject action: sets status back with reason code, notifies buyer (mock email log)
+Period close checklist
+Route: /period-close
+Six-step checklist with live completion percentages from database
+E&C step: shows open programs, mock ‘Run All’ that sets calculate_results.status=PENDING_REVIEW
+Review / Approve steps: inline bulk actions
+Batch step: creates batch record, shows blocker list
+Finalize: confirmation modal, sets period.status=CLOSED
+5.5  Sprint 4 Detail: Ask Vera
+Chat interface
+Persistent drawer component available on every page (bottom-right, expandable)
+Message history maintained in React state (last 10 pairs)
+Role badge shown in chat header (‘Vera knows you are: AP Analyst’)
+Vera service layer
+VeRAService class with sendMessage(role, userId, message, history) method
+System prompt construction: injects role context, assigned programs, current period, portfolio summary stats
+Database context injection: for vendor-specific questions, fetches relevant vendor record and injects as context
+Provider interface: AnthropicProvider (prototype) and AzureFoundryProvider (production) behind common interface
+Claude API call: claude-sonnet-4-5 model, 1500 max tokens, streaming response
+Proactive digest
+Nightly job (node-cron) runs VeRAService.generateDigest() for each analyst
+Digest covers: tier proximity alerts, anomaly flags, expiring agreements, uncaptured opportunities
+Digest stored in digests table, surfaced as notification on bubble field landing page
+What Goes to Production Unchanged
+The following prototype outputs require no rework for production. They are production code written against mock data:
+Team & Timeline
+7.1  Recommended Team for the Prototype
+7.2  Timeline
+7.3  The DG Demo Sequence
+The prototype demo should be structured to maximise impact. Recommended sequence:
+Log in as AP Analyst. Show the bubble field — explain size, color, pulsing ring. Filter to My Programs. Click a red bubble. Show the period close checklist.
+Switch to Buyer role (role selector, no logout). Show the same bubble field reconfigured. Click the same vendor — show how the vendor record has changed. Show the agreement wizard. Move an agreement forward and watch the bubble ring appear.
+Switch to AP Manager. Show the full portfolio view. Apply a Merch Type filter. Show the analyst workload overlay.
+Open Ask Vera from any screen. Ask: ‘Which of my vendors are closest to hitting a higher tier this period?’ Show the answer. Ask a follow-up. Switch roles and ask the same question again. Show calibration.
+Show the 1010 Intelligence tab on a specific vendor. Ask Vera to generate a negotiation rationale based on that vendor’s performance data.
+The non-throwaway test
+Before writing any code, ask: would this module, component, hook, or schema survive intact into the production codebase with real data substituted for mock data? If the answer is no, redesign it. The prototype is not a proof of concept — it is Sprint 1 of the real product.
+Oracle construct | PostgreSQL equivalent
+NUMBER sequences for PKs | SERIAL or UUID primary keys (UUID preferred for multi-tenant)
+VARCHAR2(n) | VARCHAR(n) — identical semantics
+DATE with time component | TIMESTAMPTZ — explicit timezone handling
+PL/SQL stored procedures | TypeScript service layer + optional PostgreSQL functions for complex calculations
+PL/SQL validation logic | Zod validation in API layer + PostgreSQL CHECK constraints
+Oracle sequences | PostgreSQL sequences (via SERIAL or explicit CREATE SEQUENCE)
+SYSDATE / NVL / DECODE | NOW() / COALESCE / CASE — standard SQL equivalents
+Oracle partitioning | PostgreSQL table partitioning (for CALCULATE_RESULT history tables)
+Table | Description — maps to Oracle original
+vendors | Vendor master. Maps to VRS vendor tables.
+rebate_types | Source × Merch Type intermediary. Maps to REBATE_TYPES.
+rebate_categories | Category groupings. Maps to REBATE_CATEGORY_TYPES.
+agreements | MDSE-side agreements. Maps to VRS agreement tables with status enum.
+rebate_programs | AP-side rebate programs. Maps to REBATE_PROGRAM. Source locked at creation.
+rebate_vendors | Program→Vendor link with agreement FK. Maps to REBATE_VENDOR.
+rebate_vendor_depts | Vendor→Dept level with earnings components. Maps to REBATE_VENDOR_DEPT.
+calculate_results | One row per rebate/vendor/dept/period. Maps to CALCULATE_RESULT.
+checks | Vendor checks received. New table, maps to existing check tracking.
+deductions | Deduction entries. New table.
+invoices | Generated invoices with delivery status. Enhanced from current.
+acct_control_master | RSL/AP/GL routing config. Maps to ACCT_CONTROL_MASTER.
+users | Internal users with role enum. New — replaces Oracle-based security.
+vendor_portal_users | Vendor-side portal credentials. New.
+analytics_summaries | 1010 materialized summaries. New — no Oracle equivalent.
+Layer | Technology · Rationale
+Framework | Next.js 15 (App Router) · TypeScript. Server components handle data fetching, client components handle interactivity. The App Router’s file-based routing maps cleanly to the role-lens navigation model. Identical to GMCC stack.
+Styling | Tailwind CSS + shadcn/ui component library. Tailwind provides utility-first CSS that travels from prototype to production unchanged. shadcn/ui provides accessible, composable base components.
+Database | PostgreSQL 16. Hosted on Railway or Supabase for prototype (zero-config, instant provisioning), migrated to RDS or Azure Database for PostgreSQL in production. Schema is identical in both environments.
+ORM | Prisma 5. Type-safe database client that generates TypeScript types from the schema. The Prisma schema file IS the data model documentation. Migrations are version-controlled. Identical to GMCC.
+API layer | Next.js API routes (Route Handlers). tRPC optional for end-to-end type safety on complex queries. The API layer is where Oracle PL/SQL logic is re-implemented in TypeScript.
+Auth | NextAuth.js v5 with credentials provider for prototype (username/role selection). Azure AD SAML integration in production. The auth interface is identical — only the provider changes.
+Visualisation | D3.js for the vendor bubble field. React-based, server-side data, client-side rendering. The bubble physics and encoding logic written once and reused in production.
+Ask Vera | Anthropic Claude API for prototype (fast to wire up, no infrastructure). Migrated to Azure AI Foundry / GPT-4o for production if DG requires Microsoft stack alignment. The Vera service layer is provider-agnostic by design.
+Job scheduling | Node-cron for prototype E&C simulation and 1010 summary jobs. Temporal.io in production. The job logic is identical — only the scheduler wrapper changes.
+Deployment | Vercel for prototype (zero-config Next.js hosting). AWS ECS Fargate or Azure App Service in production.
+Version control | Git / GitHub. Conventional commits. The prototype repo becomes the production repo — no fork, no rewrite.
+Non-throwaway note
+The auth module uses NextAuth.js with a credentials provider backed by the users table in PostgreSQL. In production, the credentials provider is replaced with an Azure AD SAML provider. The session handling, role injection, and permission checks are unchanged.
+The Vera demonstration strategy
+The single most powerful thing to show DG stakeholders: log in as a Buyer, open P&G, and ask Vera: ‘How is P&G tracking against their HBA tier this period, and what would our earnings look like if they hit Tier 3?’ Then log in as an AP Analyst and ask the same question. Same vendor, same underlying data, calibrated answers. That demonstration sells the platform.
+Sprint | Duration | Deliverables | Non-throwaway output
+Sprint 1 | Weeks 1–2 | Project scaffolding · PostgreSQL schema · Prisma models · mock data seed · NextAuth role-sim login · basic routing | Production schema · Prisma client · auth module · project structure
+Sprint 2 | Weeks 3–4 | Vendor bubble field (D3.js) · bubble filter controls · vendor record shell · role-lens tab switching · 1010 Intelligence tab (mock) | Bubble field component · D3 force simulation · vendor record layout · role-permission hook
+Sprint 3 | Weeks 5–6 | Agreement wizard · status timeline component · Approval Queue inline · bubble ring notification · period close checklist | Agreement CRUD · status machine · queue action component · period close workflow
+Sprint 4 | Weeks 7–8 | Ask Vera chat UI · Claude API integration · role-aware system prompt · proactive suggestions · demo polish · role-switching showcase | Vera chat component · API service layer · provider-agnostic Vera interface
+Prototype output | Production status
+PostgreSQL schema (all 15 tables) | Production — populate with migrated Oracle data
+Prisma schema and generated client | Production — update connection string only
+All API route handlers | Production — mock data replaced by real queries
+D3 bubble field component | Production — real data from API, no code change
+Role-permission utility and hooks | Production — unchanged
+Agreement wizard and Zod validation | Production — unchanged
+Status state machine (agreement lifecycle) | Production — unchanged
+Period close checklist component | Production — add real E&C engine integration
+Vera chat UI and session management | Production — unchanged
+VeRAService provider interface | Production — swap AnthropicProvider for AzureFoundryProvider
+Auth module (NextAuth credentials) | Production — swap credentials provider for Azure AD SAML
+Vendor record tab layout | Production — add remaining tabs (invoices, process log)
+Seed script | Replaced by Oracle migration ETL at cutover
+Mock analytics_summaries data | Replaced by nightly 1010 job at production launch
+Color key
+Green = ships unchanged. Amber = ships with targeted additions (no redesign). Red = replaced by production data pipeline at cutover. The red items are data, not code.
+Role | Responsibilities
+Lead engineer (1) | Full-stack Next.js. Owns schema, API layer, auth, Vera service, deployment pipeline. Primary non-throwaway architect.
+Frontend engineer (1) | D3 bubble field, component library, role-lens UI, chat interface. Can be the same person as lead on a small prototype.
+Domain consultant — Ken Banks | Review seed data structure, validate agreement status logic, approve calculation state machine, sign off on schema translation from Oracle. Not a builder role — a validator role.
+Prototype coordinator — TPG | Manages mock data content, coordinates DG stakeholder feedback sessions, owns demo narrative.
+Week | Milestone
+Week 1 | Repo live, schema merged, seed running, role-sim login working, Vercel deployment live
+Week 2 | All 15 tables seeded with realistic mock data, vendor list API complete, basic vendor record page
+Week 3 | Bubble field rendering with size and color encoding, filter controls wired
+Week 4 | Pulsing ring working, role-lens tab switching, 1010 Intelligence tab, first internal demo
+Week 5 | Agreement wizard complete, Move Forward working, status timeline component
+Week 6 | Approval Queue inline, bubble ring triggered by queue state, period close checklist
+Week 7 | Vera chat UI, Claude API integration, role-aware system prompt, proactive digest
+Week 8 | Demo polish, role-switching showcase, stakeholder rehearsal, documentation
+The closing message
+Everything you have just seen is running on the production codebase against mock data. The schema is the production schema. The components are the production components. When we populate this with your Oracle data, the system is live. The prototype is not a demo — it is Month 1 of your new platform.

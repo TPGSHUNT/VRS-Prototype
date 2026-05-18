@@ -1,0 +1,12 @@
+
+Buyers have “delegates” who do most of the work in terms of putting Agreements into the MDSE side of VRS.  A given delegate may support several Buyers.
+ 
+DMMs and GMMs are primarily set up in VRS in order to do Approvals and they too can have delegates to do the actual work.
+ 
+When an Agreement is set up on the MDSE side it goes through the “queue” which is a gateway to the AP Side. 
+Lane controls what gets into the AP side and Rebates have to be setup in the AP side in order for Earnings to be generated in order to deduct from or bill the Vendor.
+ 
+There are many Rebates set up without an Agreements by which I mean they are never set up on the MDSE side — they start and end on the AP side.  That does not mean that there is not a Contract between DG and the Vendor, it just means it is not set up on the MDSE side.
+ 
+It is the AP Side’s data that really has the complete picture in terms of Earnings. .
+

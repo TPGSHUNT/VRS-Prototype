@@ -1,0 +1,326 @@
+The Merchandising Forecast Engine in the Vendor Rebate System creates the “Detailed” forecasts that one sees when looking at an Agreement’s Forecast tab. 
+The results of a Forecast are produced by the Merch and Period Allocation methods and maintained going forward during Cycled Close by the Reallocation method.  Each Agreement will have one of each of these methods assigned to it.  They can be seen on the Misc Tab.  The Reallocation method can be changed here. 
+To understand how the allocation methods work, consider a Grid with Classes or SKUs running vertically and Periods horizontally. 
+Merch Allocation is “Vertical” – allocates between Classes or SKU's 
+Period  Allocation is “Horizontal”  – allocates between Periods
+In some cases the Period numbers are spread using the Class/SKU amounts.  
+In other cases, the Period numbers are derived and then summed to create the Class/SKU amounts.  
+The forecast is generated when the Agreement is created using the Merch and Period Allocation methods.  The forecast, including changing the Allocation Method(s), can be modified after the initial creation using the Forecast Change Forms which are accessed via the RW/Chg Forecast button.  
+The forecast can be regenerated using the existing settings using the Forecast button.   The original thinking was that the forecast would be generated once at Agreement creation and then only modified if the desire was to use different Allocation methods.   It is the Reallocation method that can modify the forecast over time and it is invoked during the Cycle Close - more on this later. 
+The 3 methods are defaulted during Agreement creation and are set based on the settings in the Merchandise Rebate Setup form.   
+The settings on this form also dictate what methods are available for a given Merch Type.  
+On the following page is a list of the Merch, Period and Reallocation methods that are maintainable in the Merchandise Rebate Setup form. 
+Note, the original settings when the system was installed reflected the designer’s intent for which methods would be available for each Merch Type.  This form was primarily intended to allow the default to be changed although it does allow the methods to be modified as well; however, this should be done with care.   The Forecast engine has a lot rules pertaining to which methods it will and will not use and it is possible to set up methods here that are incompatible with the Forecast engine.  This will be clearer when the Forecast engine’s rules are explained.  
+Merch Allocation Methods – also known as Dept/Class and Dept/Class/SLU  Allocation Methods 
+Period Allocation Methods
+Reallocation Methods – run during Cycle Close 
+Agreement Groups 
+The Forecast engine divides Agreements into 1 of 4 Groups:
+Agreement Level Lump Sum - Lump Sum Amt is Not Blank
+SKU Class Agreement – Agreements with Class or SKU Lump Amounts for the life of the Agreement.
+Source is No Source type (N,E,T or Q) 
+Not in #3 or #1  (Agreement Level Lump Sum Agreements are No Source as well)
+SKU Class Period - Agreements with Class or SKU Level Lump Amounts by Period
+Source is No Source type (N,E,T or Q) 
+Store Layout Count  = Y
+Class SKU Setup = CF (Class Formula) or SF (SKU Formula)
+Sourced Agreements - Default if not in one of the other 3 
+Basically, there are Lump Sum amounts at the Agreement / Class / SKU Level or some kind of Source is used.   Lump Sum implies that the amount is known up front and forecasting is an exercise in spreading the amount.  Sourced implies some kind of performance basis (how much is bought / how much is sold) and historical information is used to derive the forecast.  
+Based on the Agreement Group, the Forecast engine controls what (and sometimes how) Merch and Period Methods are used. 
+Merch Allocation Rules
+These are the rules that determine what Merch Allocation methods the Forecast engine may use and at times how they are used.  For a given Merch Type, the Allocation Methods available are controlled by the settings in the Merchandise Rebate Setup form; however, it is possible (because the Merchandise Rebate Setup form does not take the forecast engine rules into account) to set up a Merch Allocation method that will be ignored by the Forecast engine.  Ex: SKU Distribution.  This is only ever used by Lump Sum Agreements.  The rules are organized by Agreement Group: 
+Group 2 - SKU Class Agreement
+There is a special Merch Allocation Method for these:  Forecast = Actual: Scope is Agreement
+Group 3 - SKU Class Period
+There is a special Merch Allocation Method for these:  Forecast = Actual: Scope is Period
+Additional Notes
+Agreements with Tiers and the TPR Merch Types have specialized Merch Allocation Methods. 
+SKU Distribution is only ever used with the Agreement Level Lump Sum Group
+Even though the Sales and Receipts Methods have the same names, they work differently between Groups 1 and 4.
+There are scenarios in the Merch Allocation Logic where a Merch Allocation is not done. The Merch Allocation is derived after the Period Allocation.  (see Group 4)
+Period Allocation Rules
+These are the rules that determine what Period Allocation methods the Forecast engine will use and at times how they are used.  As with Merch types, it would be possible to have Period Allocation methods in the Merchandise Rebate Setup form that are ignored by the Forecast engine.  The rules are organized by Agreement Group: 
+Group 3 - SKU Class Period
+In this case, the Merch Allocation took care of the Period Allocation as well.
+Additional Notes
+Period Allocations for Agreements with Tiers was handled in the Tier Merch Allocation Method. 
+Reallocation
+The Merch and Period Allocation methods are used when the Forecast is generated. The forecast can be manually changed after its initial generation but that should be the exception and would normally only be done when the forecast is 0, does not appear correct or a different allocation method is desired.  It is the Reallocation methods that changes the forecast over time.
+Reallocation attempts to deal with the difference between Forecast and Actual especially in the case of Lump Sum amounts where the amount to be collected is known up front and the actual collected and  forecast should ultimately be equal.  Reallocation is part of Cycle Close and is the last step prior to closing.  Reallocation occurs for Agreements that meet the following criteria:
+The agreement is not cancelled nor has negotiation ended (status not CANCEL or NEGEND)
+The agreement has started (agreement date less than or equal to today's date)
+The agreement is "IN" the A/P system (tied to a  Rebate Vendor)
+At least one rebate program associated to the agreement is NOT closed
+The agreement is NOT "IN" A/P and has current/future data in them
+Once this criterion is met, the Recalculation Methods come into play. 
+In the final analysis, there are really only two types of Reallocation:
+Move to the Next Period – typically done in the last period
+Applied proportionally to remaining Periods
+The Reallocation methods combined with the Agreement Dates determine when or if these are done. 
+Changing Forecast
+Similar to the 4 Agreement Groups using by the Forecast Engine, there are 4 “Forecast Change” forms (Forecast Tool 1 – 4). These are used to modify the Forecast after the initial creation.  The criteria used to determine which form is used for a given agreement is similar to the Forecast Engine’s criteria.
+Forecast Tool 1 – (Sourced Agreements) Source is R, B, D, S, or F
+Forecast Tool 2 – (Agreement Level Lump Sum)
+Forecast Tool 3 – Default - when not in other 3
+Forecast Tool 4 – (Markdown or Quantity based formula) Source – ‘Q’ or CCR Flag = ‘Y’
+There are some things these forms have in common:
+They address 1 Fiscal year at a time. 
+They run a “temporary” Forecast when they are opened. 
+Support some kind of direct keying (Manual $ or %) of the Forecast.
+Note - there are also specialized forms for dealing with Tier and TPR.  
+Forecast Tool 1
+This form deals with Sourced Agreements and allows you to change both the Merch Allocation Method as well as the Period Allocation Method. 
+When the Manual $ Merch Allocation is selected: 
+The Base Volume and Overall Rebate Amount can be modified.   The Lift % will be derived.  
+The Lift % can be entered using the “Apply to” Section.  
+When the Overall Rebate is entered using the “Apply to” section, it adds to the amounts already there. 
+When the Manual % Merch Allocation is selected: 
+The Base Volume and Lift % can be modified.  The Overall Rebate Amount will be derived. 
+The Overall Rebate Amount can be entered using the “Apply to” Section.  
+When the Overall Rebate is entered using the “Apply to” section, it adds to the amounts already there. 
+When the Manual $ or Manual % Period Allocation is selected, active periods can be entered but after entering they Period amounts must add up to the Overall Rebate Amount.
+Nuance when using the Manual options:
+After Saving and Exiting, the overall Forecast amount is not set.  To deal with this, the Forecast needs to be manually run after exiting the form. 
+Multiple Years – since the form only deals with one year at a time, all years should be addressed before manually running the Forecast.  
+Forecast Tool 2
+This form deals with “Agreement Level” Lump Sum Agreements and allows you to change both the Merch Allocation Method as well as the Period Allocation Method.  The “Coop ONLY” section is only relevant if the Merch Type is ADV Coop. 
+When the Manual $ Merch Allocation is selected: 
+The Overall Rebate Amount can be modified but the total must add up to the Agreement’s Lump Sum Amount.    
+When the Manual % Merch Allocation is selected: 
+The Dept/Class % of Total can be modified but the total must add up to 100.   
+When the Manual $ or Manual % Period Allocation is selected, active periods can be entered but after entering the Period data, the amounts must add up to the Overall Rebate Amount. 
+The “Agreement Level” Lump Sum Amount is not modified here.   It is changed on the Vend/Agr tab:
+Forecast Tool 3
+This form deals with “Class /SKU” Lump Sum Agreements that are Not Markdowns or NS - Quantity and allows you to change Period Allocation Method.  Merch Allocation is done by Forecast engine and its method cannot be changed. 
+When the Manual $ or Manual % Period Allocation is selected , active periods can be entered but after entering the Period data, the amounts must add up to the Total Forecast Amount. 
+The Lump Sum Amounts are not entered here.   The forms that modify them can be accessed from the Class and SKU Tabs respectively using the “Maintain” button. 
+Forecast Tool 4
+This form deals with “Class /SKU” Lump Sum Agreements that Markdowns or NS - Quantity and allows you to change Period Allocation Method.  Merch Allocation is done by Forecast engine and its method cannot be changed. 
+When the Manual $ or Manual % Period Allocation is selected , active periods can be entered but after entering the Period data, the amounts must add up to the Total Forecast Amount. 
+The Lump Sum Amounts are not entered here.   The form that modifies them can be accessed from the SKU Tabs “Maintain” Button.   
+Mixing Sourced and No Source on Merch Types
+When the MDSE system was first designed, each Merch Type had one or more sources defined for it; however, they were either a Sourced or a No Source type – the two types of sources were not mixed.  In the system, a Merch Type’s Sources are derived from the Rebate Types.  In the following example, VOLPURCH has 3 Rebate Types.  The No Source and NS-QTY sources are what were originally supported.  A Rebate Type with a Source of Receipts was added, resulting in a mixture of Sourced and Non Sourced sources on the VOLPURCH Merch Type. 
+To determine the sources available for a Merch Type, a combination of the following are used:
+Merch Type
+Source 
+Active Flag (checked)
+Used  by MDSE (checked)
+It is important that the Source is not duplicated; therefore, the “Used by MDSE” flag was introduced to allow Rebate Types to be setup that do not influence the Merch Type sources used when creating an Agreement.   
+Using the example above, picking the VOLPURCH Merch Type when adding an Agreement would yield the sources No Source and Receipts. 
+Note – on the Agreement Setup, the four No Sources (No Source, NS-Period, NS-QTY, NS-RATE) are combined into a single “No Source” choice.   This is why you do not see NS Quantity and No Source in the drop down list. 
+Having the source types mixed is an issue because the Merch, Period and Reallocation methods for a Sourced Agreement tend to be difference than those of a No Sourced Agreement.  This is because No Source forecasts tend to work by first allocating the Class/SKU’s amounts and then spreading the Period amounts; whereas, Sourced forecasts tend to derive the Period amounts first and then back into the Class/SKU amounts by summing up the periods.    For this reason, the two tend to have slightly different Allocation Methods available.  Also, No Source Agreements (which are Lump Sum) are usually always reallocated whereas sourced usually are not. 
+The methods for No Source might look something list this:
+The methods for Sourced might look something list this:
+Notice that even though many of the methods are the same, the defaults are different.  There was an actual case in production where the default of All First period generated an error when a VOLPURCH Agreement with a source of Receipts was created.   See page 5 – All First Period is not a legitimate Period Allocation for Group 4 (Sourced Agreements).
+When this situation is detected, it needs to be determined if the mixture is really desired and if it is, set the Allocation Methods as best as possible to accommodate both types.  Most likely, one of the sources (usually the Sourced) will need to be manually generated after the Agreement is created.   In the case of VULPURCH, it was determined that only Agreements with Receipts were needed so in this case, the Allocation methods were changed to accommodate a Sourced Agreement.  
+The trend over time seems to have been to introduce the Sources Sales and Receipts to Merch Types that originally only supported the No Source sources. 
+When doing sourced, it is a good idea to include the Manual $ and Manual % Merch Allocation methods in case the forecast returned is 0 (no History) or not correct.  On many of the Merch Types set up for No Source, these are not included because an internal Merch Allocation method is used. 
+Allocation Methods in more Detail
+In many of the Allocation methods you see the following in the description:
+LTM (Last 12 Months )
+Same time LY (Last Year)
+Date Range (specified using one of the Forecast Tool forms) 
+Last 2 Months (Receipts) or Last 6 Weeks (Sales)
+These determine the date range (begin and end date) that is used when pulling data from the Sales and Receipts History tables.  Using the date range, data is pulled from the History tables and the allocation methods either get Actual Amounts or derive Distribution Percents. 
+Period Allocation methods use LTM and Same time LY when pulling actuals.  Both use 12 periods:
+For LTM, the history is the prior 12 periods from the system date
+For Same Time LY, the history is the prior year’s 12 periods.
+When LTM and Same time LY are used in Merch Allocation methods, they do nothing unless one of the Period Allocations is Evenly, Weighted 454 or Proportional Number of Days and then they pull actuals.  Merch Allocation methods normally use Date Range and Last 2 Months/Last 6 weeks and either pull actuals or derived distribution percents.  
+Comparison between pulling Actuals and creating Distribution Percents
+When used to pull actuals (Period Allocation), 12 periods (using either LTM or LY) of data is summed up by Period then Class or SKU. These amounts are multiplied by the Default Lift percent which is defined in the Parameter Table with the key: DEFAULT_LIFT_PCT. When multiple years are in play, the lift is applied each year to the amount calculated for the previous year.  Active periods are then loaded with the data – period by period. 
+When used [for example] to distribute  between classes (Merch Allocation with EVENLY period method), if LTM is used, the method will accumulate 12 months of Receipts or Sales by Class and the overall total and then divide the Class total by the overall total to get the percent.   These percents can then be applied against a lump sum amount to get class level amounts.   
+Class | Total | Period 1 | Period 2 | Period 3
+100 | 500 | 200 | 150 | 150
+200 | 600 | 250 | 200 | 150
+Name | Description
+EVENLY | Evenly
+MANDLR | Manual $
+MANPCT | Manual %
+NONE | None
+RCPT2MN | Receipts - Last 2 Months
+RCPTDATE | Receipts - Date Range
+RCPTLTM | Receipts – LTM  (Last 12 Months)
+RCPTLY | Receipts - Same Time LY
+SALEDATE | Sales - Date Range
+SALES6WK | Sales - Last 6 Weeks
+SALESLTM | Sales – LTM  (Last 12 Months)
+SALESLY | Sales - Same Time LY
+SKU_DIST | SKU Distribution
+Name | Description
+ALFSTPER | All First Period
+COOLSTOR | Cooler or Stores
+EVENLY | Evenly
+MANDLR | Manual $
+MANPCT | Manual %
+MRKDNTYP | Markdown Type or POG
+NONE | None
+PROPDAY | Proportional Number of Days
+RACESEG | Racing Segment
+RCPTLTM | Receipts - Based on LTM  (Last 12 Months)
+RCPTLY | Receipts - Based on same time LY
+RESET | Reset Date
+SALESLTM | Sales - Based on LTM  (Last 12 Months)
+SALESLY | Sales - Based on same time LY
+TIERS | Tiers
+WGHT454 | Weighted Weekly 454
+Name | Description
+ALWAYS | Always reallocate
+NEXT | Next period based on tolerance
+NONE | Do not reallocate
+NOTEND | Future periods if end date not reached
+OVER | Future periods if actuals => forecast
+UNDER | Future periods if actuals =< forecast
+Class SKU  Setup values | Class SKU  Setup values
+Cd | Meaning
+CL | Class Lump Sum
+SL | SKU Lump Sum
+CF | Class Formula
+SF | SKU Formula
+CS | Class Sourced
+SS | SKU Sourced
+N | Agmt Lump Sum
+Group 1 - Lump Sum Agreements
+
+Source must be (N,E,T, or Q) | Group 1 - Lump Sum Agreements
+
+Source must be (N,E,T, or Q)
+Methods Allowed | Additional Information – applys to all methods listed
+Evenly | If Source is N or E Then apply across Classes
+If Source is T or Q Then apply across SKU's
+SKU Distribution | Distributes across Classes using a percent derived from SKU’s
+Manual $ | Nothing is done - amounts are manually keyed in.
+Manual % | Percent is applied to Lump Sum. 
+Note – the Change Forecast form where these are keyed in forces the total of the Percent to be 100.
+Receipts - Last 2 Months 
+Receipts - Date Range
+Receipts - LTM           
+Receipts - Same Time LY | A percent is derived using Receipts and is used to spread the Amount.  
+If there is no data, then the Forecast will be 0.
+If Source is N or E, the Percent is used to Spread across Classes
+If Source is T or Q, the Percent is used to spread across SKUs
+Sales - LTM              
+Sales - Same Time LY
+Sales - Date Range       
+Sales - Last 6 Weeks | A percent is derived using Sales and is used to spread the Amount.  
+If there is no data, then the Forecast will be 0.
+If Source is N or E, the Percent is used to Spread across Classes
+If Source is T or Q, the Percent is used to spread across SKUs
+Group 4 – Sourced Agreements | Group 4 – Sourced Agreements
+Methods Allowed | Additional Information - applys to all methods listed
+Receipts - Last 2 Months 
+Receipts - Date Range | Actual Receipts are used to derive the forecasted amounts.
+If there is no data then the Forecast will be 0
+Sales - Date Range       
+Sales - Last 6 Weeks | Actual Sales are used to derive the forecasted amounts.
+If there is no data then the Forecast will be 0
+Receipts - LTM           
+Receipts - Same Time LY
+Sales - LTM              
+Sales - Same Time LY | Does Nothing – Amounts are derived from the Sum of the Period Allocation. Unless: Period Allocation is:  EVENLY, WGHT454, or PROPDAY; then, Actuals are pulled for Class or SKU and the Period Allocation spreads the amount - if there is no data, then the Forecast will be 0.
+Manual %
+Manual $ | Does Nothing but will throw error if Period Allocation is not one of these: EVENLY,WGHT45,PROPDAY
+Group 1 - Lump Sum Agreements | Group 1 - Lump Sum Agreements
+Methods Allowed | Additional Information - applys to all methods listed
+All First Period | 
+Evenly | 
+Manual $ | Does nothing, amounts are already keyed in
+Manual % | 
+Proportional Number of Days | 
+Racing Segment | Special method for DG Racing
+Weighted Weekly 454 | 
+Group 2 - SKU Class Agreement | Group 2 - SKU Class Agreement
+Methods Allowed | Additional Information - applys to all methods listed
+All First Period | 
+Cooler or Stores | 
+Evenly | 
+Manual $ | Does Nothing, amounts are already keyed in
+Manual % | 
+Markdown Type or POG | 
+Reset Date | 
+Weighted Weekly 454 | 
+Receipts - LTM
+Receipts - Same time LY
+Sales – LTM
+Sales  - Same time LY | Normally not used but available
+Group 4 – Sourced Agreements | Group 4 – Sourced Agreements
+Methods Allowed | Additional Information - applys to all methods listed
+Evenly | 
+Manual $ | Does Nothing, amounts are already keyed in
+Manual % | 
+Propday | 
+Weighted Weekly 454 | 
+Receipts - LTM
+Receipts - Same time LY | Will either do Actual or Calculate a Percentage based on the Merch Allocation Method. Will calculate a % when the Merch method is:
+Manual $
+Manual %
+Receipts - Last 2 Months 
+Receipts - Date Range
+Sales - LTM
+Sales  - Same time LY | Will either do Actual or Calculate a Percentage based on the Merch Allocation Method. Will calculate a % when the Merch method is:
+Manual $
+Manual %
+Sales - Last 6 Weeks 
+Sales - Date Range
+Reallocation Methods | Reallocation Methods
+Methods | Additional Information
+ALWAYS | Any amounts still to be collected based on a comparison between Actual and Forecast left over will either be:
+Moved to the Next Period (the NEXT method)
+Applied proportionally to remaining Periods (the NOTEND method)
+NEXT | Any amounts still to be collected based on a comparison between Actual and Forecast left over will be moved to the Next Period.
+NONE | Do not Recalculate – leave the forecast alone.
+NOTEND | Any amounts still to be collected based on a comparison between Actual and Forecast left over will be applied proportionally if there are periods remaining based on the
+OVER | Differences between Forecast and Actual will be applied proportionally but only if Actual is more than Forecast but only if still in the Agreement Date Range.
+UNDER | Differences between Forecast and Actual will be applied proportionally but only if Actual is less than Forecast but only if still in the Agreement Date Range.
+Merch Allocation | Default | Period Allocation | Default | Reallocation
+Evenly | Y | All First Period | Y | Always Reallocate
+Receipts – LTM |  | Evenly |  | 
+Receipts – Same Time LY |  | Weighted 454 |  | 
+Receipts Last 2 Months |  | Manual $ |  | 
+ |  | Manual % |  | 
+Merch Allocation | Default | Period Allocation | Default | Reallocation
+Evenly |  | Evenly |  | Do not Reallocate
+Receipts – LTM | Y | Weighted 454 |  | 
+Receipts – Same Time LY |  | Receipts – LTM | Y | 
+Receipts Last 2 Months |  | Receipts – Same Time LY |  | 
+ |  | Receipts Last 2 Months |  | 
+Method Name | Availability | Details
+All First Period |  | Puts the Merch Allocation’s Class or SKU Amount into the first period even if there are multiple periods.   Only valid with Agreement Level Lump Sum Agreements. The idea is that the Reallocation done during Cycle Close will move any uncollected amounts into the next period.
+Cooler or Stores |  | Only A Placeholder - Agreements with Cooler Counts or Stores go into Group 3 which uses an Internal Merch Allocation method that allocates  both the Merch and Period amounts.
+Evenly |  | Period Allocation Method – spreads the Merch Allocation’s Class or SKU amounts evenly over the periods defined by the Agreement Date range starting with the current period.   
+
+Merch Allocation Method – only works with Agreement Level Lump Sum Agreements and spreads the Lump Sum amount evenly over the Classes or SKUs. Classes or SKU’s is determined by the source:
+Source is N or E then apply across Classes
+Source is R or Q then apply across SKUs
+Manual $ |  | In the forecast engine, this setting is only a placeholder. The idea is that the amounts are manually keyed into one of the Forecast Tool forms.  Forecast Tools 1 and 2 support both Merch and Period amounts.  Forecast Tools 3 and 4 only support Period amounts.
+Manual % |  | Period Allocation Method – uses the percents keyed in on the Forecast Tool form to spread the Merch Allocation’s Class or SKU amounts. 
+
+Merch Allocation Method –  only works with Agreement Level Lump Sum Agreements and uses the percents keyed in on the Forecast Tool #2 form to spread the Lump Sum amount over Classes or SKUs.
+Markdown Type or POG |  | Only works with SKU Class Agreement agreements.  Specialized method that uses the markdown cadence to spread across the periods.
+Proportional Number of Days |  | Spreads the Merch Allocation’s Class or SKU amounts evenly over the days defined by the Agreement Date range with each period getting the number of days it contains. This method uses the Agreements dates as opposed to just the Period derived from the date.   When this method is used, assuming the entire period is desired, make sure the Agreement Begin Date starts on the beginning day of a Period and the Agreement
+Racing Segment | Merch Type must be DG Racing | Special method that uses the data in the Racing Segments to spread the Merch Allocation’s Class or SKU amounts over the periods.
+Receipts – LTM
+Receipts - Same Time LY
+Sales – LTM
+Sales - Same Time LY |  | Period Allocation Method – Actual amounts from the Receipts History table times a default lift percent are used to set the Period amounts.  
+
+Merch Allocation method – for Sourced Agreements it is only a placeholder unless one of the Period Allocations is Evenly, Weighted 454 or Proportional Number of Days. 
+
+For No Source, only works for Agreement Level Lump Sum Agreements and in this case, distribution percents are derived from the Receipts History table and are used to spread the Lump Sum amounts across the Classes or SKUS. Whether the spread is to Classes or SKU’s is determined by the source:
+Source is N or E then apply across Classes
+Source is R or Q then apply across SKUs
+Receipts - Last 2 Months
+Receipts - Date Range
+Sales - Last 6 Weeks
+Sales - Date Range |  | Sourced – pulls Actual Amounts by Class or SKU for the time period indicated.
+
+No Source – only works with Agreement Level Lump Sum Agreements. Creates distribution percents using the data for the time frame indicated and then uses them to spread the Lump Sum amount over the Classes or SKU’s. 
+
+Date Ranges must be keyed in using one of the Forecast Tool forms; therefore, Date Range should never be a default.
+Reset Date | Agreement must have a Plan-o-gram ID | Changes the Agreement Date based on the Planogram then calls All In First Period.
+
+Use F7 while sitting on an Agreement to see if it has a Planogram ID.
+SKU Distribution |  | Only used with Agreement Level Lump Sum Agreements and only ones with SKU’s on them.  It creates a percent of the total number of SKU’s per Class and uses that to distribute the Lump Sum across the Classes.  Ex:  2 Classes and 10 SKU’s with 2 SKU’s in one Class and 8 in the other:  the percents would be 20% and 80% respectively.
+Tiers | Agreement must have Tiers on it. | Merch Allocation – using Receipts History and the Tier information, does both the Merch and Period allocations. 
+
+Period Allocation – just a placeholder.
+Weighted Weekly 454 |  | Spreads the Merch Allocation’s Class or SKU amounts evenly over the weeks defined by the Agreement Date range with the period in the middle of a quarter getting 5 weeks. This method uses the Agreements dates as opposed to just the Period derived from the date.   When this method is used, assuming the entire period is desired, make sure the Agreement Begin Date starts on the beginning day of a Period and the Agreement End Date ends on the ending day of a period.

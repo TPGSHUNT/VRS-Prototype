@@ -1,0 +1,1537 @@
+This document is a training guide for the AP side of VRS and is intended to be read sequentially.  Its primary purpose is to provide a conceptual understanding of the AP side of VRS.  It is not an attempt to “document” the system but there are many useful concepts that a developer might want to reference later; therefore, a Table of Contents is provided to help locate these more quickly when the document is used as a Reference.  Note – the document will read better if the Print Layout is used when viewing. 
+Table of Contents
+Sources	2
+Report Types	3
+Accounting Control Master	4
+Rebate Types	5
+Category	6
+Rebate Program	7
+Rebate Program Tables (ERD diagram)	16
+Rebate Program Additional Tables (ERD diagram)	21
+Creating a Rebate Program	22
+Adding Checks	33
+Adding Deductions	36
+Adjustments	42
+Invoices	45
+Uploading a Rebate Program	54
+Other AP Uploads	57
+Review Calculations Form	58
+Approve Calculations Form	60
+The Batching Process	62
+The Distribute Process	64
+The Finalize Process	67
+The Process Logger	69
+History Extracts	73
+Reports	74
+Inquiry Forms	75
+Tiers, Linking, Sub Systems and Vendor Contacts	81
+The Parameter Table	94
+Attaching Files	99
+The Approval Queue	101
+Security	117
+The Calculation	123
+Calculate Result and Rebate Vendor Department Tables in detail	129
+Glossary	135
+Sources
+The AP side of VRS is organized or “driven” (if you will) by source.  Many of the rules, the way things are approached, even how lines show up on an invoice are controlled by the Source.  This is in contrast to the MDSE side which is driven by Merch Type. 
+Sources fall into two groups:
+Sourced
+No Source
+The “Sourced” sources are:
+Sourced means that the data (Cost, Units etc.) used in the calculation of earnings comes from an “external” source.   Rebate Programs that are sourced have to pull the data into the system in order to calculate Earnings. 
+The “No Source” sources are:
+No Source means that there is not an external source. Everything needed exists inside the system and is defined on the Rebate Program itself. These can be thought of as “Fixed” amount Rebate Programs. NS-Quantity and NS-Rebate use formulas (Ex: Rate * Sides * Stores) but this still yields a fixed amount.   The N - No Source is the ultimate fallback that it is used when earnings have to be calculated by something other than the standard calculation engine. There are specialized subsystems within VRS that do very complex calculations (NSA and S5S5 are examples), but in the end, they put the earnings into a N – No Source Rebate Program.  
+Table:  REBATE_SOURCE              Primary Key: REBATE_SOURCE
+This is not a table that is maintainable by the VRS application because adding a new Source requires a tremendous amount of system modification.  New sources are not added very often although a new Source (X – Store Allocations), is being added in 2019. 
+Report Types (aka. Merch Types)
+The Report Type is a grouping Mechanism.   It is used to group Rebate Programs (and Agreements) together for purposes of reporting.  When VRS (AP) was designed, the idea was that you could create as many Report Types as you wanted to.   When the MDSE side was built, it was built specifically to handle a limited number of specific “Merch Types” and the Report Type was changed (when displayed) to Merch Type.  In the Report Types Table, many new fields were added which are not maintainable on the original maintenance form (shown below) so there is also a MDSE form to handle these additional fields.   
+*** in the AP Side tables, the Merch Type Column Name is REPORT_TYPE ***
+Table:  REPORT_TYPES
+Primary Key: REPORT_TYPE
+The original data in this table is maintainable in VRS on the on the Merch Types form via menu: Maintenance / Merch Types.
+As a grouping mechanism, there really is not much in the way of data associated with a Merch Type.  A very recent addition (2018) is the Analyst which is the initials of the AP associate responsible for Rebate Programs associated with the Merch type.  There are Category exceptions and these are handled in the Parameter table.  
+Accounting Control Master 
+When data is sent to RSL, AP and GL, there is information that is necessary to inform the receiving system what it being sent and what to do with it.  This “accounting” information is maintained in VRS.  This data contains things like Transaction Types and Cost Centers. The Information varies by System and content and it is included in the Batches during Batch creation.  Within VRS this information is in the Accounting Control Master which is made of up three tables. 
+Table: (1) ACCT_CONTROL_MASTER
+Table: (2) ACCT_CONTROL_MASTER_DETAIL
+Table: (3) ACCT_CONTROL_MASTER_FUNCTIONS
+There are 3 Systems involved
+RSL
+GL
+AP
+There 4 types of Functions
+Accrual
+Reclass
+Prepaid
+Deduction
+This data is used in the Bathing process and loaded into the various Batch Detail tables. 
+Rebate Types   
+Rebate Types are used to group together the Source, Merch Type and Accounting information.  There are also a couple of rules that can be implemented on the Rebate Type. When a Rebate Program is created, it is to the Rebate Type that it is linked, not to the Source, Merch Type or Accounting info. 
+Table: REBATE_TYPES 
+Primary Key: REBATE_TYPE
+The Used by MDSE flag was introduced when the MDSE side was built because the designer did not want the Buyer to have to know about the Rebate Type.  They wanted them to only know about the Merch Type and the Source.  Because of this, during Agreement creation the Rebate Type has to be derived.  And in order to derive it, the Rebate Type must be unique by Merch Type and Source. 
+The AP department sets up Rebate Types for many purposes and many times this violates the “Unique by Source and Merch Type” rule.  To solve this, the Used by Merch flag was introduced.   When the Rebate Type is being derived on the MDSE side, only rows with Used by MDSE are used.  This allows the AP Department to set up additional Rebate Types for other purposes and not interfere with the Agreement creation. 
+*** Rebate types must be unique by Merch Type and Source when Used by MDSE is set ***
+Category  
+The Category is a grouping Mechanism.   It is used on the AP side to group Rebate Programs together independent of the Merch Type that they are associated with.  Unlike the Merch Type, which is known indirectly via the Rebate Type, the Category is set up directly on the Rebate Program. 
+Table: REBATE_CATEGORY_TYPES
+Primary Key: REBATE_CATEGORY_TYPE
+There is also a Used by MDSE flag on the Category as well. That is because, just like with the Report Type and Rebate Type, the Category was negatively affected by the MDSE design.  
+The mapping of Categories to Merch Types (Merch Types button) is a feature that also was added due to the Merch Type design.  It is used to limit the Categories presented to the buyer when creating an Agreement.   Only the Categories for the Merch Type selected are in the Category Drop Down list. 
+Table used to do the Mapping: REBATE_CATEGORY_RPT
+Also, in the MDSE side, the Category’s Description is used for the AD Event so when an Ad is created, a Category is Inserted programmatically and this caused an explosion of Categories to be created making it difficult to pick the Category from a simple dropdown list. 
+Rebate Program
+The AP side of VRS is made of up of Rebate Programs.  At a minimum, a Rebate Program has:
+At least 1 Vendor (but it may have multiple)  
+At least 1 Department for each Vendor (but there may be multiple)
+Rebate Programs are viewed and maintained on the Rebate Program form.  
+Table: REBATE_PROGRAM (each row in this table defines 1 Rebate Program)
+Primary Key: REBATE_ID (which is a field that the users sees).  This is just an incremented sequence number, it has no intrinsic meaning. 
+On the Rebate Program form (form name: rebate_program), the Rebate Program data is show at the top of the form (and on the Comment Tab). 
+A Rebate Program is for a specific Source (Discount Amt/BOGO in the example above) and the Source may not be changed because it controls so many other aspects of the Rebate Program. There are two sets of date ranges.  Rebate Dates and the Extract Dates. The Rebate Dates control the time period in which is the Rebate Program is Active.  The Extract Dates control the time period used when Calculating. 
+Table: REBATE_VENDOR (child of REBATE_PROGRAM)
+Primary Key (1): REBATE_ID
+Primary Key (2): VENDOR_NUM (this is the AP Vendor Number – on the screens is called:  AP #)  
+On the Rebate Program form, the REBATE_VENDOR data is show on the Vendors Tab.
+In this example there is only 1 Vendor but a Rebate Program may have many Vendors.  Note that it is to the REBATE_VENDOR that an Agreement is tied.
+Table: REBATE_VENDOR_DEPT (child of REBATE_VENDOR)
+Primary Key (1): REBATE_ID
+Primary Key (2): VENDOR_NUM (this is the AP Vendor Number)
+Primary Key (3): DEPT_NUM
+Primary Key (4): CLASS_NUM (always negative -1) -1 means that a row is defined at the Department Level.  The system was never modified to use the Class Level once it was realized what this really meant.
+On the Rebate Program form, the REBATE_VENDOR_DEPT data is show on the Vend Dept Tab.
+The Vend Dept tab is where you can see the Earnings.  Note that the natural state of Earning is negative.  Earnings have 4 component parts.  
+PMU (Purchase Mark Up) – normal earnings 
+Margin – earnings from a Previous year recorded in the current Year
+Adv Coop – Specific to ADVCOOP. Represents the cost of the AD covered by the Vendor.  PMU is only recorded on an ADVCOOP if the vendor pays an amount greater than the cost of an AD. 
+Other Coop – works like ADVCOOP but used for other Merch Types. 
+The REBATE_VENDOR_DEPT table contains the fields necessary to hold the data from the most recent calculation. 
+The Earnings are derived via the Calculation (aka. the E&C).  The results of the calculation are stored in:
+Table: CALCULATE_RESULT (child of REBATE_VENDOR_DEPT)
+Primary Key: REBATE_CALC_ID
+Unique Key (1): REBATE_ID
+Unique Key (2): VENDOR_NUM (this is the AP Vendor Number)
+Unique Key (3): DEPT_NUM
+Unique Key (4): CLASS_NUM (always -1)
+Unique Key (5): YEAR
+Unique Key (6): PERIOD
+Other common components of a Rebate Program include (but not limited to):
+Classes
+SKUs
+Stores
+DCs
+Checks
+Deductions
+Earnings Adjustments
+The first 4 are additional setup options and their availability is determined by source.  The last 3 are used during the life of the Rebate Program and are available regardless of Source. 
+Table: REBATE_CLASS (child of REBATE_VENDOR_DEPT)
+Primary Key (1): REBATE_ID
+Primary Key (2): VENDOR_NUM (this is the AP Vendor Number)
+Primary Key (3): DEPT_NUM
+Primary Key (4): CLASS_NUM (always negative -1)
+Primary Key (5): ACTUAL_CLASS
+On the Rebate Program form, the REBATE_CLASS data is show on the Class Tab.
+ACTUAL_CLASS (not the CLASS_NUM used in the Primary Key) is what you see on the tab. 
+Class may or may not be allowed depending on the rule specified in the Source. When Classes are allowed, they are optional.  For Sourced Rebates you can specify the Amount per Unit and Percent of Cost.  For No Source Rebates you can specify Lump Sum amounts.  When Classes are used on a Sourced Rebate Program, they limit the data pulled to just the Classes specified. You could still have a Department for which there are No Classes and you would get all the data for that Department but for the Departments where Classes are specified, then the data is limited by Class.
+The calculation parameters override the Department Level.   The Calculation works from the bottom up when trying to determine what to use.  For example, if there is an Amount per Unit at the Class Level and at the Department Level then the Class Level will be used. 
+Table: REBATE_SKU (child of REBATE_VENDOR_DEPT)
+Primary Key (1): REBATE_ID
+Primary Key (2): VENDOR_NUM (this is the AP Vendor Number)
+Primary Key (3): DEPT_NUM
+Primary Key (4): CLASS_NUM (always negative -1)
+Primary Key (5): SKU 
+On the Rebate Program form, the REBATE_SKU data is show on the SKUs Tab.
+SKUs can be Allowed, not Allowed or Required. For Sourced Rebate Programs you can specify the Amount per Unit and Percent of Cost.  If the Source is Sales, you can use the Retail Price.  For No Source Rebate Programs, you can specify the components of the formula. No Source Rate uses: Rate, Sides and Stores and No Source Quantity uses Cost, Quantity, Percent, Cost and Amount per Unit.  
+Table: REBATE_STORE (child of REBATE_PROGRAM)
+Primary Key (1): REBATE_ID
+Primary Key (2): STORE_NUM 
+On the Rebate Program form, the data in this table is show on the Stores Tab.
+Stores may or not be allowed depending on the Source.  When they are Allowed, they are optional.   The is no Calculation data here.  The list itself limits the data that pulled by the Extract. 
+Table: REBATE_DC (child of REBATE_PROGRAM)
+Primary Key (1): REBATE_ID
+Primary Key (2): DC_NUM
+On the Rebate Program form, the REBATE_DC data is show on the DCs Tab.
+DCs may or may not be allowed depending on the Source.  When they are Allowed, they are optional.   The is no Calculation data here.  The list itself limits the data that pulled.  DCs are not used very often. 
+View: VW_REBATE_TOTALS
+This view uses the REBATE_VEND_DEPT table and sums up the data to get the Total and Vendor summaries that are displayed. 
+On the Rebate Program form, the VW_REBATE_TOTALS data is shown on the Totals Tab.
+Table: REBATE_CHECK_RECV (child of REBATE_VENDOR_DEPT)
+Primary Key (1): REBATE_ID
+Primary Key (2): VENDOR_NUM (this is the AP Vendor Number)
+Primary Key (3): DEPT_NUM
+Primary Key (4): CLASS_NUM (always negative -1)
+Primary Key (5): SEQ_NO
+On the Rebate Program form, the REBATE_CHECK_REVC data is shown on the Checks Tab.
+When a check is received (from a Vendor) the amounts are applied to the Rebate at the Vendor / Dept level.  There is also a form that allows you to search for and view checks that have been received. 
+Form name: checks_recieved
+Table: REBATE_DEDUCTIONS (child of REBATE_VENDOR_DEPT)
+Primary Key (1): REBATE_ID
+Primary Key (2): VENDOR_NUM (this is the AP Vendor Number)
+Primary Key (3): DEPT_NUM
+Primary Key (4): CLASS_NUM (always negative -1)
+Primary Key (5): SEQ_NO
+On the Rebate Program form, the data in this table is shown on the Deducts Tab.
+Deductions are created either On Demand or Systematically (the Type) during the Distribute process. 
+There is also a form that allows you to search for and view Deductions that have been taken. 
+Form name: deductions
+Table: (1) REBATE_INV_HEADER
+Table: (2) REBATE_INV_DETAIL
+Table: (3) REBATE_INV_DETAIL_NSA
+Table: (4) REBATE_INV_DETAIL_BAL
+Primary Key (1): REBATE_ID
+Primary Key (2): VENDOR_NUM 
+Primary Key (3): DEPT_NUM
+Primary Key (4): CLASS_NUM
+Primary Key (5): INVOICE_NUMBER
+Primary Key (6): SEQ_NO (detail tables)
+On the Rebate Program form, Invoice (header) data is shown on the Inv Tab.
+Invoices are created either On Demand or Systematically during the Distribute process.  There is also a form that will allows you to search for, view, add Comments and Print/Email Invoices.
+ Form name: invoices
+Table: REBATE_ADJUSTMENTS (child of REBATE_VENDOR_DEPT)
+Primary Key (1): REBATE_ID
+Primary Key (2): VENDOR_NUM (this is the AP Vendor Number)
+Primary Key (3): DEPT_NUM
+Primary Key (4): CLASS_NUM (always negative -1)
+Primary Key (5): SEQ_NO
+On the Rebate Program form, the REBATE_ADJUSTMENTS data is show on the Adj Tab.
+Adjustments, which are a direct manipulation of Earnings, can be used on any Rebate Program.  They are used to address issues with Earnings.  There is also a form that will allow you to search for and view Adjustments. 
+Form name: adjustments
+Table: REBATE_AUDIT_LOG (Child of REBATE_PROGRAM)
+Table: REBATE_AUDIT_LOG_ARC (Archived data – after Rebate Program is Closed)
+Primary Key (1): REBATE_ID
+Primary Key (2): SEQ_NO
+On the Rebate Program form, the REBATE_AUDIT_LOG data is show on the Log Tab.
+The Audit log is loaded (for the most part) by Database Triggers. There is also a form that will allow you to search for Audit Log entries but in practice it is not used because after the Audit Log started being archived and the underlying view updated to also use the Archive table, the performance was negatively impacted. 
+This Audit Log table was designed to be Rebate Specific but it also contains entries for Master table changes. In these cases, the Rebate ID = 0   
+Table: REBATE_ALLOCATION (Child of REBATE_VENDOR_DEPT)
+Table: REBATE_ALLOCATION_SKU (Child of REBATE_VENDOR_DEPT)
+Primary Key (1): REBATE_ID
+Primary Key (2): VENDOR_NUM (this is the AP Vendor Number)
+Primary Key (3): DEPT_NUM
+Primary Key (4): CLASS_NUM (always negative -1)
+Primary Key (5): ACTUAL_CLASS (REBATE_ALLOCATION) or SKU (REBATE_ALLOCATION_SKU) 
+Primary Key (6): YEAR
+Primary Key (7): PERIOD
+On the Rebate Program form, the REBATE_ALLOCATION (only) data is show on the Alloc Tab.
+The data in these tables is used by the Cycle Close to apply “actuals” to Agreement’s forecasts.   Even though these tables are on the AP side and part of the Rebate, the AP department does not use this data nor do they use this tab.   These tables were added when the MDSE side was built. 
+Table: REBATE_LINK accessed via the view VW_LINKED_REBATES
+Primary Key (1): REBATE_ID
+Primary Key (2): CHILD_ID
+Primary Key (3): HEAD_ID
+On the Rebate Program form, the VW_LINKED_REBATES data is show on the Links Tab.
+Table: REBATE_TIER (child of REBATE_VENDOR_DEPT)
+Primary Key (1): REBATE_ID
+Primary Key (2): VENDOR_NUM (this is the AP Vendor Number)
+Primary Key (3): DEPT_NUM
+Primary Key (4): CLASS_NUM (always negative -1)
+Primary Key (5): TIER_SEQ
+On the Rebate Program form, the link data is show on the Tiers Tab.
+Tiers may or may not be allowed depending on the rule specified in the Source. When they allowed, they are optional.  Tiers allow you to set up a “sliding” Percent of Cost calculation where the percent changes based on Thresholds.   
+Table: CALCUALTE_RESULT (child of REBATE_VENDOR_DEPT)
+Primary Key (1): REBATE_CALC_ID
+Unique Key (1): REBATE_ID
+Unique Key (2): VENDOR_NUM (this is the AP Vendor Number)
+Unique Key (3): DEPT_NUM
+Unique Key (4): CLASS_NUM (always negative -1)
+Unique Key (5): YEAR
+Unique Key (6): PERIOD
+The History Tab uses the CALCUALTE_RESULT table to show historical Earnings, Accruals and Reclasses
+Table: REBATE_DISC_AMT_BOGO (child of REBATE_VENDOR)
+Primary Key (1): REBATE_ID
+Primary Key (2): VENDOR_NUM 
+Primary Key (3): OFFER_NUM 
+On the Rebate Program form, the Discount data is show on the Tiers Tab.
+The Discount data is only available for the Discount Amount BOGO Source.  The Disc tab is not even displayed unless you are sitting on a Rebate Program with a source of Discount Amount BOGO.
+Comments Tab
+The Comments Tab displays the comments field that is on the REBATE_PROGRAM table.  
+Creating a Rebate Program
+The Rebate Program form (form name: rebate_program) has the facilities to create a Rebate Program.   In the beginning, when it was just AP, the Rebate Program form (and the Upload) is how Rebate Programs were created.   Once the MDSE side was build, the Approval Queue was created so now a majority of Rebate programs via the Approval Queue.   The Rebate Program form’s create process is show below.  Note that there are some variations by Source depending on what is Allowed or Required.  
+The Add button is used to manually create a Rebate Program.  
+ Pressing it will cause an “are you sure” message to appear.  Answering Yes will put the Rebate form into “add mode”. The fields will clear out, many of the buttons disabled and the cursor will be positioned on the Description field (the one to the right of the Rebate ID) and the form will be ready to start accepting input.  
+The form is going to want the following [required] fields entered in order:
+Rebate Description
+Rebate Type (will pull in the Merch Type and Source to display them)
+Category
+Rebate “From” Date – will set the Extract From date using the Rebate Date entered or picked.  
+Rebate “To” Date – will set the Extract “To” date using the Rebate Date entered or picked.
+Extract “From” Date – only if it needs to change
+Extract “To” Date – only if it needs to change 
+The Dates may be entered directly or picked using the Date Selector.  The Rebate Begin Date should be in the period (current or future) in which the Rebate Program will start calculating.  The Rebate Begin date is not normally set in the past (a date from a period prior to the current one) but in DEV, VRS is usually not in the current period so you might need to go back in time to the period that DEV is set to in order to get the Rebate Program to calculate.  
+The Extract Dates default to the Rebate Dates and normally they are left that way.  In the case where the Rebate Program is set up “after the fact” (not set up in time) and it needs to calculate earnings using data from prior periods, then the Extract Begin Date should reflect the Period in which the Rebate Program should have started.   In this case, the calculation will generate the earnings for those prior periods but they will go into the Current Period. 
+Once all the required data has been entered (usually after entering the Rebate “To” date), the Add Vendor button will become enabled.  
+The Add Vendor button must be pressed to continue on to the next step in the setup. 
+When the Add Vendor button is pressed, the Vendor Selector (vrs_lib: SELECT_VENDORS – form name:  vendor_select) will appear in “Single” select mode.  It will initially be empty so the Search button is pressed to populate the list.  The list can be narrowed using the Vendor Name search field prior to pressing the Search button.  Once the list is populated, a Vendor can be selected by press the > button or double-clicking the row.    
+Once a Vendor is selected, pressing the OK button takes you to the next step.   This is where things can start to vary but the next step is picking a Department(s).   Typically, what comes next is an Alert that offers Dept, Class and SKU (if it is allowed).  
+In this case, Department, Class and SKU are all available. When Classes or SKUs are entered, the system backs into the Department. 
+If SKUs are Required, the choice Alert will be by-passed and an Alert asking for the method to Enter SKUs will be offered. 
+In this example, we will pick the Department.  
+When the Dept button is pressed, the Department Selector (vrs_lib: SELECT_DEPT – form name:  dept_select) will appear in “Multiple” select mode.  It will initially be empty so the Search button is used to populate the list.  The list can be narrowed using the Department # or Department name prior to pressing the Search button.  Once the list is populated, one or more Departments may be selected by pressing the > button or double-clicking the row.  The >> button will move all the Departments listed.    
+Once Departments are selected, pressing the OK button takes you to the next step which is the Vendor/Department/Class/SKU setup form (vrs_lib: CALL_VEND_DEPT_DATA – form name:  vend_dept_data).  On this form you can [optionally] provide detail information.   What can be entered will vary by the Source rules.   In this case, for the Department, the Amount per Unit and/or Percent of Cost may be entered.  Vendor info is defaulted — in some cases Alternate Vendor is not allowed. 
+After pressing the OK button on the Vendor/Department/Class/SKU setup form, the setup is basically complete and you will get an “are you sure” message. 
+Note – at this point, the data has not been written to the database so you can abort at this point and the Rebate Program will not exist in the database.   Pressing Yes will create the Rebate Program (Insert rows into the database) and a “confirmation” message will appear to verify that the Inserts were successful. 
+The confirmation displays counts to help you verify that what you entered is correct.  In this case, four departments were added.   After pressing the OK Button, the Rebate Program will navigate to the Rebate Program just created. 
+You can add additional vendors using the Add Vendor button on the Vendors tab.  It will follow the same steps already covered. 
+On the Vend Dept tab you can see the four departments and the Earnings associated with each of them although at this point, the earnings are all 0 because an Extract and Calculation has not yet been run. 
+Recall that Calculations are done at the Vendor / Department Level and you can see that for each department there a Status (or State).  In this case the Status is: No Calculation
+At this point an Extract and Calculate (aka. the E&C) can be run using the Extract and Calculate button. 
+Pressing the Extract and Calculate button will invoke an “are you sure” message.  Pressing the Yes button will schedule an Extract and Calculate for this Rebate Only and you will get a message to this effect. 
+You can check the progress of the E&C on the Extract and Calculate form.  
+Form name: 
+extract_and_calculate
+Once the Stop Date is not blank, the process has finished.  
+On the Rebate Program form, if it is still up after pressing the Extract and Calculate button, once the E&C has finished, you will need to refresh the form using the Refresh button to see the Earnings.
+The Department level status will now say Calculated and will include a timestamp. 
+On the Vend Dept tab, you can see the breakout of Earnings by PMU, Margin, Adv Coop and Other Coop.  Note that the natural state of Earnings is Negative.  When the Earnings are Negative, this means that Dollar General has Earned this money.  
+There are also amounts shown for YTD (year to Date), LY (Last Year), and LTD (Life to Date). LTD and YTD are through the previous period — they do not include the Current period.  When a Rebate is first created these will, of course, be 0.    
+The tab also shows you Total Collected, Total Reclassed, Prepaid and Unpaid.  
+Since this Rebate Program is brand new and has Earnings but no Checks have been entered or Deductions taken, then the Unpaid amount (what the Vendor owes) equals the Earnings.  
+At this point, Checks and “On Demand” Deductions (which represent Payments) may be entered.  A check would be recorded if the Vendor had already sent a check for payment.   If, at this point, AP wanted to get a Deduction into the AP system, they can also set up an “On Demand” deduction.  This allows for the Deduction to be taken in the Current Period.   If the Payment Type on the Vendor is set to Deduction, Systematic Deductions will be generated during the Batching process; however, in practice, the Batches are not Distributed until after the Period End which means that the Deductions will be applied in the following period.   
+*** On Demand Deductions allow monies to be collected in the Current Period ***
+Checks and Deductions will be discussed in more detail after Class and SKU entry are covered. 
+Classes and SKUs 
+When the Class button is pressed, the Class Selector (vrs_lib: SELECT_CLASS – form name:  class_select) will appear in “Multiple” select mode.  It will initially be empty so the Search button is used to populate the list.  The list can be narrowed using the Class #, Department # or Class name prior to pressing the Search button.  Once the list is populated, one or more Classes may be selected by pressing the > button or double-clicking the row.  The >> button will move all the Classes listed. 
+When the SKU button is pressed, an Alert appears that presents a choice between two different ways to enter SKUs
+Manually Enter
+Select from List
+When the Manually Enter button is pressed, the SKU Entry form (vrs_lib: SELECT_SKU_KEY – form name:  sku_key) appears.  This form allows you to manually key in a list of SKUs.  It is useful when someone is working from a list so they already know the SKUs and just want to key them in.  
+When the Select from List button is pressed, the SKU Selector (vrs_lib: SELECT_SKU – form name:  sku_select) will appear in “Multiple” select mode.   It will initially be empty so the Search button is used to populate the list.  The list can be narrowed using various filters at the top prior to pressing the Search button.  Once the list is populated, one or more SKUs may be selected by pressing the > button or double-clicking the row. 
+Adding Checks
+Checks received from Vendors, if they are payments (or pre-payments) for earnings, are recorded in VRS.  They are applied to the Rebate Program(s) that contain the earnings they are paying for.  Since the Calculations are at the Rebate/Vendor/Department level, the check amounts are also recorded at this level.   Checks amounts can be entered using the Enter Checks form in “add mode”.  The Add Check button on the Checks tab invokes the form this way. 
+The Enter Checks form (vrs_lib: ENTER_CHECKS – form name:  enter_checks) works by presenting the list of Vendors and Departments that are present on the Rebate Program.  In this case, there are four Departments for a single Vendor so there are 4 lines available for data entry — one for each Department.  The vendors are not normally going to send separate checks for each Department so generally a single check will be split up into the department level amounts. 
+On the form is it possible to designate the Period. If the Period corresponds with the Current period then recording the check amount will have immediate effect on the amounts you see on Vend Dept Tab.  If the period is a future period, it will not.  
+Example: Record 1,000,000 for Department 100 and 800,000 for Department 102 in the Current Period.  
+*** Note that Checks are entered as Negative Numbers ***
+After adding the check amounts, they show up on the Checks tab. The Delete Check button will delete the check. The Edit Check button will bring up the Edit Checks form in “Edit Mode” but only for the line that is selected.  
+In the example the check amounts were entered for Period 8 which is the Period that VRS is in so the check amounts have an immediate effect on the Vend Dept tab. 
+For each Department, the check amount entered is reflected in the Total Collected. 
+For Department 100, the 1,000,000 represents an overpayment so the Unpaid amount is Positive which means that there is some money left ever. 
+For Department 120, the 800,000 represents an underpayment so the Unpaid amount is Negative which means that there is still money due.    
+In both cases, the check amount also goes into Prepaid because the Current Period Earnings have not been sent to the Retail Stock Ledger therefore, they are not classified yet. 
+The Collected, Prepaid etc. are all amounts that are derived during a Calculation; therefore, a Calculation was run when the Checks amounts were applied. However, it was not a full-blown E&C — it is a slimmed down version called the “Quick Calculate”.            
+*** When Checks are applied, a Quick Calculate is run. ***
+Just like with the E&C, the log entries for the Quick Calculate (called Recalculation Only in the log) can be seen on the Extract and Calculate form. 
+Adding Deductions 
+Deductions are like Checks in VRS in that they pay for Earnings.  Rather than being a payment made by a Vendor to DG, they reduce payments made by DG to a Vendor.  The reduction takes place in the AP system so Deductions are set up in VRS not only to indicate payment but to inform the AP system that it needs to deduct a specific amount from a specific Vendor.  In VRS, there are two types of Deductions:
+Systematic Deductions
+On-Demand Deductions
+Systematic Deductions are generated automatically by the Distribute process when a Vendor on a Rebate Program has a Payment Type of Deduction and there is a balance due. 
+The Amount of the Deduction is determined during the last Calculation run.  The Batching process then uses this amount to create AP Batches.  The Distribute process then “sends” the AP batch to AP.  When the Distribute sends the AP Batch, only then does it create the Deduction (inserts a row in the REBATE_DEDUCTIONS table). This will cause the Deduction to show up on the Rebate Program’s Deduct Tab. The Deduction will not be included in Total Collected etc. until another Calculate is run which will not occur until the end of the Finalize after the period has been rolled.
+In practice, the Batch and Distribute processes are not run until after the Period End (from a Calendar perspective).  Typically, this occurs in the week following the end of the Period.  Because the AP system has a hard cut off on the last day of the Period, Systematic Deductions are almost always for the Period following the Period that VRS is in.   For example, if VRS is in Period 8, Systematic deductions are for Period 9.  From a business perspective, this is costly in terms of the time value of money; therefore, on Demand Deductions have, over time, been used more and more.   
+On Demand Deductions are just what their name implies, they are deductions that are created at the point they are needed.   On Demand Deductions have existing since the beginning and can be created just like Checks using the “On Demand” form that is invokable via the On-Demand button on the Deducts tab.  
+The On Demand Deduction form (vrs_lib: DEMAND_DEDUCTION – form name:  on_demand) works by presenting the list of Vendors and Departments that are present on the Rebate Program.  In this case, there are four Departments so there are 4 lines available for data entry — one for each department. 
+In addition to keying the Deduction Amounts for the Departments, it is also possible to [optionally] create multiple Detail rows to help document what the amounts are for.  When this feature is used, the Sum of the Detail (* -1) must match the amount on the Deduction tab. 
+*** Note that Deductions are entered as Negative Numbers but the Detail is Positive ***
+After adding the Deduction amounts, they show up on the Deducts tab. The Delete button will delete the Deduction. The Edit button will bring up the On Demand Deduction form in “Edit Mode” but only for the line that is selected.  
+At this point, the Deduction has been set up in VRS but it has not been sent to AP.  So, unlike checks, a Quick Calculate is NOT run and the amounts on the Vend Dept tab will not change.  Notice that the Invoice # is blank in the first screen shot above.  Once the Deduction has been sent to AP, there will be an Invoice # associated with the Deduction.  At that point, the Deduction may not be deleted or edited. 
+In order for On Demand deductions to be sent to AP, AP Batches need to be created.  AP Batches for On Demand deductions are created from the Deductions (rows in REBATE_DEDUCTIONS) rather than from the Calculation like Systematic deductions.  Therefore, there are actually two batching process:
+Batch – creates Batches (including AP batches) using the Calculation. Deductions (rows in the REBATE_DEDUCTION table) are created as a by-product of the Distribute (run separately).
+Batch on Demand – creates AP Bathes using Deductions (rows in the REBATE_DEDUCTION table) and also Distributes the AP Batch.  A Quick Calculate is then run for each Rebate Program to update the totals. 
+The two batching process are invoked on the Batch & Distribute form (form name: finalize).
+From the Menu: Rebates / Batch and Distribute
+The Batch process will only look at Calculations that have been Approved. Batch on Demand will pick up any On Demand Deductions that have not been already processed.   
+Aa was stated earlier, On Demand Deductions have been used more and more over time but the manual process of creating them as described above is labor intensive.  Therefore, over time, two additional forms have been developed to facilitate creating On Demand deductions in mass. 
+On Demand 
+On Demand Prepaid  
+The On Demand form (form name: on_deamand_launcher) was developed first and what is does is look for Rebate / Vendors where there are unpaid amounts and presents a list to choose from.  This is accomplished using the view: VW_UNPAID          From the Menu:  Rebates / On Demand
+Using data presented of this form, On Demand deductions can be created and they can be created in mass using the Select button at the end of the row.  Note that this creates the Deductions (Inserts rows in REBATE_DEDUCTIONS).  You still have to run the Batch on Demand process to create the AP Batches and distribute to AP. 
+The On Demand Prepaid form (form name: on_deamand_prepaid) was developed in 2018 and it is used to create On Demand Deductions for Vendors that are Prepaying.   It is not exclusive to certain Rebates like the On Demand form and one of the reasons it was needed is that many of the Rebate Programs that need On Demand deductions for prepaid do not have Unpaid amounts; so, they were not available on the original form.  This form is based on the view: VW_ON_DEMAND                       
+ From the Menu:  Rebates / On Demand Prepaid
+Adjustments
+At this point Earnings Adjustments may also be entered.  When the system was first built, it also supported Accrual Adjustments but they are no longer used.  Adjustments are used to fine tune Earnings.  Earnings are calculated and cannot be directly manipulated.  With the N – No Source you can change the Lump Sum amount and recalculate and since the Lump Sum amount translates directly to the earnings, that is as close as the system gets to allowing you to directly set the Earnings.   In a perfect world Adjustments would not be needed but there are all sorts of business reasons why adjustments are made.   Besides [indirectly] modifying the Earnings, they also serve to document changes to the Earnings.  
+Just like with Checks and Deductions, there is a form invokable from the Rebate Program form.  On the Adj tab, use the Add Adj button to invoke the Enter Adjustments form in “add mode”. 
+The Enter Adjustments form (vrs_lib: ENTER_ADJUSTMENTS – form name:  enter_adjustments) works by presenting the list of Vendors and Departments (and Classes if set up at Class Level) that are present on the Rebate Program.  In this case, there are four Departments so there are 4 lines available for data entry — one for each department. 
+Note also that there are two Tabs, one for MDSE and one for Non MDSE.  This is because Earnings for a given Vendor are either MDSE or non MDSE based on the Earnings Type setting on the Vendors tab.  
+In our example, the Earnings Type for the one Vendor is Mdse (which is the Default) so the Enter Adjustments form comes up with the Mdse Tab active and the Non MDSE tab disabled.  If the Vendor had an Earnings Type of Non Mdse, then the form would have opened with the Non Mdse tab active and the Mdse tab disabled.  If the Rebate Program had multiple Vendors and there was a mixture of Mdse and Non Mdse, then both tabs would be available. 
+Example:  Make an Adjustment on department 102 of 20,202.00 because 800,000 is all the Vendor is willing to pay in this department and we want to force earnings to 800,000. 
+*** In order to reduce Earnings, the amount has to be positive ***
+After adding the Adjustment amounts, they show up on the Edit Adj tab. The Delete Adj button will delete the Adjustment. 
+The Edit button will bring up the Enter Adjustments form in “Edit Mode” but only for the line that is selected.  
+Just like Checks, a Quick Calculate is run. 
+Back on the Vend Dept tab, if you look at Department 102, it now has Earnings of -800,000 and there is an indicator that the Earnings include Adjustments.  Also, the Unpaid is now 0 because the Earnings match the Check Amount that was Entered. 
+Invoices
+When a Vendor owes money (has an Unpaid Amount) or a Deduction is taken, VRS will Insert rows into the Invoicing tables and there are Oracle Reports that use this data to generate PDF’s that can be sent to the Vendor.   The four Oracle Reports are:
+invoices.rdf
+invoices_nsa.rdf
+email_invoice.rdf
+email_invoice_nsa.rdf
+invoies.rdf is used on the Invoices form to manually create PDF’s.   The invoices form can create multiple invoices with a single execution.  
+invoices_nsa.rdf was introduced when the NSA (New Store Allowance) Sub System was built.  This was necessary because additional Invoice detail tables were added specifically for NSA. 
+email_invoice.rdf is used by the nightly process that generates Invoice PDFs and sends an email with the invoice attached to the Dollar General email server.  It is an exact copy of invoices.rdf.   The reason for this is that in the beginning, there was a slight difference because when emailing only one invoice is created and so the report was called slightly differently.   Eventually, a way was found to make this determination in the code so that the two different versions of the invoices report were not needed (see below); however, the email process was already expecting the new name.  
+email_invoice_nsa.rdf is used by the nightly process that generates the Invoice PDF for NSA and sends an email with the invoice attached to the Dollar General email server.  It is an exact copy of invoices_nsa.rdf.
+*** Whenever invoices.rdf or invoices_nsa.rdf are changed, the “email_” versions of these need to be created by copying and then renaming the copied versions. ***
+Here is the code fragment in the report that is used to determine if the report is used for Emailing.  
+:INV_NUM defaults to ‘%’ and :P_PRINT defaults to ‘Y’ but when called during emailing, the INV_NUM is passed In and :P_PRINT set to ‘%’.  :P_PRINT = ‘Y’ is used when called from the Invoices form and :INV_NUM when emailing.  These parameters are used in the Query this way:
+   AND REBATE_INV_HEADER.PRINT_IT LIKE :P_PRINT
+   AND REBATE_INV_HEADER.AP_INV_NUMBER LIKE :INV_NO
+Invoices that are used for Deductions are referred to as “Deduction Notices” but they are created by the same Oracle Reports. There are two verbiage differences between an Invoice and a Deduction Notice:
+For an Invoice
+For a Deduction Notice
+Otherwise, the Invoices are the Same. 
+The data that is present in the Line Item Detail on an Invoice varies by Source.   In the BatchFuncitons Package, you will find an Invoice “Line Function” for Each Source.  NSA and S5S5 also have Line Functions. 
+FUNCTION invoice_detail_no_source
+FUNCTION invoice_detail_ns_per
+FUNCTION invoice_detail_ns_qty
+FUNCTION invoice_detail_ns_rate
+FUNCTION invoice_detail_dc_recv
+FUNCTION invoice_detail_first_cost
+FUNCTION invoice_detail_drop_ship
+FUNCTION invoice_detail_xfer (New in 2019)
+FUNCTION invoice_detail_sales
+FUNCTION invoice_detail_po
+FUNCTION invoice_detail_damage  (Not Used - Damage used to be a Source)
+FUNCTION invoice_detail_disc
+FUNCTION nsa_invoice_detail
+FUNCTION invoice_detail_s5s5
+Invoices can be created programmatically or “On-Demand”.   There are four Invoice Types:
+Invoice
+Deduction (Notice)
+Manual (or On Demand) 
+XRef
+Invoice Types Invoice and Deduction are created programmatically. During the Distribute process, any Calculations with an Unpaid amount that are not paid by Deduction will have an Invoice created. Unpaid Amounts that are paid by Deduction will have Deduction Notices created.  The reason that invoices are not created until the Distribute is that, until a Calculation is Distributed, amounts are subject to change.  
+Recall that the Batch On Demand process also Distributes. In this process, Deductions Notices are also created.   
+Manual Invoice are what the name implies – they are manually generated at the point they are needed. 
+Just like with Checks, Deductions and Adjustments, there is a form invokable from the Rebate Program form for maintaining them.  On the Inv tab, use the Create on Demand Invoice button to invoke the Enter Adjustments form in “add mode”. 
+The On Demand Invoice form (vrs_lib: DEMAND_INVOICE – form name:  od_invoice) allows you to manually create the Invoice Header and the Line Item detail of the Invoice. Invoices are at the Vendor/Dept level, so on this form, you can pick the Department that the Invoice is for.   By the time this form is up, the Vendor has already been chosen.  In the Rebate Program we have been using as an example, there is only one Vendor.  If the Rebate Program had Multiple Vendors, then the Vendor Selector (with just the Vendors on the Rebate Program) would have appeared prior to this form in order to select the Vendor. 
+After adding the Invoice, it will show up on the Inv tab. The Delete On Demand Invoice button will delete the Adjustment and the Edit on Demand button will allow it to be Edited. 
+The XRef Invoice Type are Invoices (Header row only) that are created via the Upload.  XRef invoices cannot be Printed or Emailed.  The are for reference only.  
+Invoices form. 
+The invoices form (form name:  invoices) is where the invoices are displayed, can be Printed and put into the Email Queue for nightly processing. 
+The invoice form has a lot of Search fields and Sorting options to help get the specific invoices displayed in the results area.  This is useful for creating or emailing invoices “en masse”.  
+When NSA was added to VRS, the requirements for invoices were such a departure that the existing Invoice scheme would not work. On the invoices form, three additional Tabs were added that deal specifically with NSA.  The three NSA Tabs are duplicates of the first three tabs but they work specifically with NSA invoice data. 
+It is also possible to add Comments and Address information to an Invoice using the Address/Comments or the NSA Address/Comments tabs.  
+Note – Address information is pulled into the Invoice data from the Vendor Contact tables so normally this feature would only be used to correct address information on an Invoice already created.  
+The same Comment can be added to multiple Invoices using the Comment button in conjunction with the Select checkbox and the end of each row. 
+Printing Invoices
+PDF versions of Invoices can be created directly from the Invoices form using the Print button.  The Print button works in conjunction with the Select checkbox on the end of each row to allow as many invoices to be created as desired.    The actual “Printing” (sending the PDF to the Printer) is not a VRS Function — it is a function of the PDF Viewer associated with the Browser.   When the Print button is pressed, the invoices.rdf (or invoices_nsa.rdf if you are sitting on the NSA Invoices tab) report will be invoked.  
+The way that the report knows which Invoices to print is that, prior to the report invocation, the PRINT_IT column in the REBATE_INV_HEADER table is updated for those rows that are checked.  It is the Report that sets the PRINT_IT flag back.   This is done in the “After Report” Trigger  
+Typically, the PDF Viewers will allow you to either Open or Save. 
+The name of the file by default is rwservlet.pdf so when you Save, the file typically would be renamed.  If you choose Open then you can then View and Print.   
+Emailing Invoices
+The invoices form also facilitates emailing invoices although the actual emailing is done by the DG Email Server. Creating emails on the Email Server is done in batch by a Java program.   The invoices form inserts entries in a Queue (Table: REBATE_EMAIL_INV) that is then read by the Java program that is scheduled to run periodically.  The Java program:   
+Looks for entries that have not been emailed 
+For each one, runs either email_invoices.rdf or email_invoice_nsa.rdf to create the PDF
+Sends a message to the email Server along with the PDF as an attachment 
+Marks the entry as being sent. 
+Java File Name: VRSInvoiceEmail2.java 
+On the invoices form, the entries in REBATE_EMAIL_INV are viewed on the Email Tab. 
+The tab starts out showing only entries that have not been sent.  Once they are emailed, the Emailed column will contain a date.
+Uploading a Rebate Program
+Rebate Programs can be created via the Upload.  The Upload is a combination of the Upload form (form name: upload) and a PL/SQL Package.   There is one Package for the AP side (Package: VRS_UPLOAD) side and another Package for the MDSE side (Package: VRS_MDSE_UPLOAD).  The Upload form displays the Process Log related to an Upload, allows an Upload file to be chosen (using WEB UTIL) and schedules an upload using either the AP or MDSE package (see User Type in the section on Security).  
+The upload supports several “Types” of uploads but the most common and the most complex one is used to create Rebate Programs; however, before discussing the specifics of that, the format of an Upload file needs to be covered. 
+The Upload expects the data to be in a CSV (Comma Separated Values) file and is very particular as to the format. The first column in the first row (i.e., the first 10 characters) in a VRS Upload must contain the following characters:  VRS Upload
+This is the “file identifier” and the Upload checks this and the compare is case sensitive.  If it does not find these exact characters (including the blank between S and U), the following error will be generated. 
+The second column in the first row (after the comma), contains the Upload Type. Each of the Upload Packages (AP and MDSE) support specific Upload Types.  They are:
+AP 
+REBATE (used to Create or Update Rebate Programs)
+SKU
+EARNINGS
+INV
+COMMENT
+STORE
+CHECK
+HISTORY
+NSADIST
+NSASTORE
+NSAEXEMPT
+MDSE
+AGMT
+PLAN
+FCST
+MDSE_SKU
+MDSE_STORE
+DTL_FCST
+TPR_SCHED
+Just as with the file identifier, the Upload Type is verified and if it does not match exactly, the same error that was displayed above will appear.   
+Column 1 on every row after the first one needs to contain one of the following:
+Nothing – the line is skipped.  Is used to put comments, column headings etc. 
+Upload Type – line will be processed by the Upload if it matches the Upload Type on row 1. 
+The reason that the Upload Type has to exist on every line is because originally, the design was intended to incorporate multiple Upload Types being in single file. Ultimately, it was decided to stick with one Upload Type per file but the Upload Type in column 1 stayed. 
+REBATE is the Upload Type that is used when creating a Rebate Program.   
+Column 2 in the REBATE Type data represents the Rebate ID.  When this field is empty, the CSV data is used to create a new Rebate Program. 
+Each Upload Type has a Record Layout associated with it.  Some only have a few fields but some, like the REBATE Upload type, have many (The REBATE Record Layout has 50 fields in it).  For most of the Upload Types, each Record Layout represents data for a single table and may look similar to the table’s definition; however, multiple tables are involved when setting up a Rebate Program.   
+This means that the data included in the REBATE Upload Type’s Record Layout can impact multiple tables.  Recall that at a minimum a Rebate Program has to have at least 1 Vendor and 1 Department.  So, along with the REBATE_PROGRAM table, at a minimum the REBATE_VENDOR and REBATE_VENDOR_DEPT tables will contain new rows when a Rebate Program is created.   
+Fields within the REBATE’s Record Layout tend to fall into groups. For example, if you looked at the first 20 fields, the first 12 go with the REBATE_PROGRAM table and the next 8 go with the REBATE_VENDOR table etc. 
+Also, when creating a Rebate Program, multiple rows in the CSV file can be for a single Rebate Program. The Upload determines that a new row goes with a Rebate Inserted based on a previous row by the absence of any Rebate Program fields (1-12). 
+In this example above, the first row indicates that a new Rebate Program needs to be Created (column 1 is empty) and the next two rows are additional information about the Rebate created using the data on the first row.  They could represent additional Vendors, Departments, SKUs etc.  The data that would be used to determine this is not shown. 
+The REBATE Upload Types has some limitations — not everything on a Rebate can be set up using the REBATE Upload Type.  For example, Stores are not included.  In the case of Stores though, there is an Upload Type called STORES that can be used to upload the Stores. Note – this is also a good example of why you might have wanted to mix Upload Types in a single file; however, that behavior is no longer supported.  If you were to include rows with a STORE Upload Type in a file defined using REBATE, the lines would not process.   You can though, create multiple Rebate Programs using a single upload file.
+The REBATE Upload Type also supports updating Rebate Programs (column 1 contains a Rebate ID for an existing Rebate Program) although in “Update Mode”, the “multiple row” feature is not supported.   
+Deletes are not supported in the Upload. 
+Other AP Uploads
+There are ten other Upload Types that are supported in the AP side Upload.   Briefly, here is what each of them do: 
+Structure of the Logic in the Upload Packages
+The Upload packages originally read the Upload files directly but when UTL_FILE was deprecated, the data from the upload file is now inserted into a temp table (FILE_TRANSFER_TMP) as part of the transfer of the file from the local machine/network.  The main logic is still based on a loop, it is just now a loop through the File Transfer Table.  The basic structure looks like this:  
+In the Introduction lesson (Session 1), there was a diagram that showed a high level view of the process that a Calculation goes through from creation to history.  
+In the next few pages, the forms/processes in the diagram above after the E&C will be discussed in a little more detail.  
+Review Calculations Form
+View: VW_BATCH_REVIEW 
+The Review Calculations form (form name:  review) lists Calculations along with some Earnings Amounts.  The VW_BATCH_REVIEW is an overhead to the CALCULATE_RESULT table used to pull in the Vendor Name and some of the Rebate data not stored on the CALCULATE_RESULT table.   
+The Review Calculations form’s basic function is to set the field: REVIEWED in the CALCULATE_RESULT table.  It can bet set On (value = Y) or Off (value = N) as long as the Calculation has not been Approved (the APPROVED field in the CALCULATE_RESULT = Y).  
+The Review Calculations form has a lot of Search fields and Sorting options to help get the specific Calculations displayed in the results area.  This is useful for setting the Reviewed flag “en masse”. 
+Once the results area contains the desired Calculations, the quickest way to set the flags is to use the Select All button to mark them and then use either the Save (if you want to stay on the form) or the Exit (if you want to leave the form).
+Note that the Checkbox at the end of the row is not just a selector mechanism like it is on many forms, it reflects the actual value of the REVIEWED flag.  So, if the Reviewed flag has already been set and the Unreviewed Only is unchecked, rows that are not Approved but have been Reviewed will show up and will already be checked.  In this case they can be Unchecked and if the changes are Saved then the flag will be turned back off.  
+Approve Calculations Form
+View: VW_BATCH_APPROVAL 
+The Approve Calculations form (form name:  approve) lists Calculations along with Accruals, Reclasses etc. The VW_BATCH_APPROVAL is an overhead to the CALCULATE_RESULT table used to pull in the Vendor Name and some of the Rebate data not stored on the CALCULATE_RESULT table. 
+The Approve Calculations form’s basic function is to set the field: APPROVED in the CALCULATE_RESULT table.  It can bet set On (value = Y) or Off (value = N) as long as the Calculation is Reviewed but has not been Distributed (the SENT field in the CALCULATE_RESULT = Y).  
+The Approve Calculations form has a lot of Search fields and Sorting options to help get the specific Calculations displayed in the results area.  This is useful for setting the Approved flag “en masse”. 
+Once the results area contains the desired Calculations, the quickest way to set the flags is to use the Select All button to mark them and then use either the Save (if you want to stay on the form) or the Exit (if you want to leave the form).
+Note that the Checkbox at the end of the row is not just a selector mechanism like it is on many forms, it reflects the actual value of the APPROVED flag.  So, if the Approved flag has already been set and the Include Approved is checked, rows that are Approved but not Sent will show up and will already be checked.  In this case they can be Unchecked and if the changes are Saved then the flag will be turned back off and if the Calculation is used in any Batches, rows generated from the Calculation will be removed from the Batch Detail.
+The Batching Process
+Batching has already been briefly discussed in the context of Deductions especially with regards to the distinction between the standard Batch process, which creates AP Batches from Calculations, versus the Batch On Demand which creates AP Batches from Deductions.  The batching process discussed here is the standard one which creates RSL, GL and AP batches using Calculations.  This process is invoked using the Batch button on the Batch Distribute form (form name: finalize). 
+The Batching process is in the BatchFunctions package. 
+Package:  BatchFunctions
+Procedure: RUN_BATCH – this is the Batching process.     
+Procedure: SCHEDULE_BATCH – schedules the Batching process (using DBMS_JOB)
+Procedure: BATCH_RUNNING – tests to see if RUN_BATCH is in the DBMS Job Queue
+The RUN_BATCH procedure is really an “overhead” / “traffic cop” procedure that invokes individual Functions and Procedures.  The Steps are:
+Start the Logger 
+Delete Empty Batches (Procedure: delete_empty_batches)
+(Step 1) Create AP Batches (Function: create_ap_batch)
+(Step 2) Create RSL Batches (Function: create_rsl_batch)
+(Step 3) Create GL Batches (Function: create_gl_batch)
+(Step 4) Create Accrual Adjustment Batch (Function:  create_adj_batch) **
+(Step 5) Set Calculations to Batched (Function: set_as_batched)
+Stop the Logger
+** Accrual Adjustments are not used any more.  In the entire life of VRS, back when Accrual Adjustments were supported, only 1 Accrual adjustments has ever been created. 
+Deleting Empty Batches 
+Empty Batches can occur when Calculations are Unapproved.  When Calculations are unapproved, rows generated from the Calculation will be removed from any Batches that they are a part of.   If enough are removed, the Batch can wind up Empty (a Header with no Detail).   This process deletes any Headers for which there is no Detail.  
+Create the Batches 
+The individual Batching Functions (Steps 1, 2, 3) look for Calculations that are Approved (APPROVED flag in CALCULATE_RESULT = Y) but are not Batched (BATCHED flag in CALCULATE_RESULT = Y).    The information contained in the Calculation is then used in conjunction with the Accounting Control Master to understand what Batches are Needed. The following fields in the CALCULATE_RESULT, when they have amounts other than 0, cause batches to be created. 
+DEDUCTIONS – Generate AP Batch
+RSL_PMU_ACCRUAL – Generate RSL Batch
+RSL_MAR_ACCRUAL – Generate RSL Batch
+RSL_PMU_RECLASS – Generate RSL Batch
+RSL_MAR_RECLASS – Generate RSL Batch
+RSL_ADV_ACCRUAL – Generate GL Batch
+RSL_OTH_ACCRUAL – Generate GL Batch
+RSL_ADV_RECLASS – Generate GL Batch
+RSL_OTH_RECLASS – Generate GL Batch
+Accounting and Earnings Type (Mdse versus Non Mdse) differences also drive discrete batches to be created within the RSL and GL types.   
+ Batches can be viewed on the Batches form (form name: batches) 
+The Distribute Process
+The Distribute has already been briefly discussed in the context of Deductions especially with regards to the distinction between the standard Distribute process sending AP Batches versus the Distribute as part of the Batch On Demand process.  The Distribute process discussed here is the standard one which “sends” RSL, AP and GL batches to their respective external systems. This process is invoked using both the Distribute Mdse and the Distribute Non Mdse buttons.   
+Originally there was only a single Distribute; but, after the Earnings Type (Mdse versus Non Mdse) was introduced, eventually there was a request to distribute them individually.   In order to do this, the Batches had to also had to be broken out between Mdse and Non Mdse but instead of having separate batch processes, that change was made inside the individual Create functions.  For the Distribute, there are two sets of Procedures but the Non Mdse Distribute is basically a clone of the Distribute with a slight change to the cursor that drives it.   The Distribute process is in the BatchFunctions package. 
+Package:  BatchFunctions
+Procedure: RUN_DISTRIBUTE – this is the Mdse Distribute process
+Procedure: SCHEDULE_DISTRIBUTE – schedules the Mdse Distribute process (using DBMS_JOB)
+Procedure: DISTRIBUTE_RUNNING – tests to see if RUN_DISTRIBUTE is in the DBMS Job Queue
+Procedure: RUN_DISTRIBUTE_NM – this is the Non Mdse Distribute process     
+Procedure: SCHEDULE_DISTRIBUTE_NM – schedules the Non Mdse Distribute process
+Procedure: DISTRIBUTE_NM_RUNNING – tests to see if RUN_DISTRIBUTE_NM is in the Job Queue
+The RUN_DISTRIBUTE and RUN_DISTRIBUTE_NM procedures are really “overhead” / “traffic cop” procedures that invoke individual Functions and Procedures.  The Steps are:
+Start the Logger 
+Delete Empty Batches (Procedure: delete_empty_batches)
+(Step 1) Create AP Data (Function: create_ap_data)
+(Step 2) Create Invoices (Function: create_rsl_data)
+(Step 3) Create RSL Data (Function: create_gl_batch)
+(Step 4) Create GL Data (Function: create_gl_batch)
+(Step 5) Update Collected (Function:  update_collected)
+(Step 6) Update Sent and Processed flags (Function:  update_calc_and_batch)
+(Step 7) Create AP file (Function: create_ap_file)
+               Send AP Email – (Function: send_mail)
+(Step 8) Create RSL file (Function: create_rsl_file)
+               Send RSL Email (Function: send_mail)
+(Step 9) Create GL file (Function: create_gl_file)
+               Send GL Email (Function: send_mail)
+Stop the Logger
+Create the Data
+The Functions for Steps 1, 3, and 4 read the Batching tables and create the interface data formatted to the receiving system’s specifications.   This data is inserted into the table REBATE_BATCH_FILE.   This table has a VARCHAR2 field that holds the record data.  One row in this table will translate into one record in a file.   This was discussed in the second training session document which covered interfacing.   The create_ap_data has an additional job in that it also calls the function create_sys_deductions to insert rows in the REBATE_DEDUCTIONS table for Systematic Deductions. 
+Create Invoices
+Invoice data is created as part of the Distribute process and this is handled in the create_invoices function.  For Calculations that are Batched but not Sent and have a Total Accrual Amount (TOTAL_ACCRUAL in CALCULATE_RESULT <> 0) and are marked to be Printed (CREATE_INVOICE flag in CALCULATE_RESULT = Y), a row will be inserted into the REBATE_INV_HEADER table and then the function invoice_detail (or invoice_detail_nsa if dealing with NSA) is called.  The Invoice Detail functions use the source to determine which “Line Function” to call.  The Line Functions insert the data into REBATE_INV_DETAL and REBATE_INV_DETAIL_BAL. 
+Note that the CREATE_INVOICE in the CALCUALTE_RESULT is set to ‘Y’ for Systematic Invoices, not Deduction Notices.   The Deduction Notices are created in create_sys_deductions (which is called from create_ap_data) and has similar logic to what was described in the previous paragraph. 
+Invoice data is not always necessarily created during the Distribute because there is another consideration: Frequency 
+Frequency is defined at the Rebate / Vendor level and can be seen on the Vendors Tab. 
+There are 3 options for Frequency
+Period 
+Quarter 
+End of Rebate 
+Frequency determines when Systematic Invoices and Deductions are created.  Period is the default and, in this case, they will be created every time the Distribute is run.   If Quarter is in effect, then they will only be created in a Period that represents the end of the Quarter (periods 3,6,9 and 12).  If End of Rebate is in effect, they will be created in the Period and Year that matches the Rebate Program’s Rebate End Date.  Note that Frequency is used by the Calculation and controls whether the CREATE_INVOICE is set to Y or DEDUCTIONS contains an amount. 
+Update Collected 
+Once Calculations have been distributed the REBATE_VENDOR_DEPT table is updated for the Total Checks and Deductions.  This basically picks up Deductions that have now been processed.  
+Update Sent and Processed flags
+Once Calculations have been distributed, they are marked as Sent (SENT in CALCULATE_RESULT = Y) but there is also a “Processed” flag in the Batch header that is set (PROCESSED in REBATE_BATCH = Y) which tells the system that the Batch has been processed.  
+Create the Files (which no longer creates the files) 
+The Functions for Steps 7, 8, and 9 are companions to the Create functions and their original intent was to take the data from REABTE_BATCH_FILE table and produce the interface files used to communicate changes to the external systems.   But during the deprecation of UTL_FILE, this functionality was removed and instead of creating the files, another table called REBATE_BATCH_FILE_TMP (which includes the file name) is loaded using the data in REBATE_BATCH_FILE.   REBATE_BATCH_FILE_TMP is basically a clone of REBATE_BATCH_FILE with the file name added.   Part of the functionality of the Create File functions is the creation of the file name and even though the file is no longer created here, the logic to create the file name remains.  This too was discussed in the second training session document which covered interfacing.
+Sending an Email 
+Steps 7, 8, and 9 also include sending an email to the Computer Operators with instructions on what to do to facilitate getting the interface files imported into the external systems. The “send” functionality is encapsulated in a function called send_mail which uses the UTL_SMTP to send the email. 
+The Finalize Process
+The Finalize process Closes the Period and is the last thing done during the current period and when it has successfully completed, the AP side of VRS will be in a new Period. This process is invoked using the Close the Period button.   
+The Finalize process is in the BatchFunctions package.
+Package:  BatchFunctions
+Procedure: RUN_FINALIZE – this is the Finalize process
+Procedure: SCHEDULE_FINALIZE – schedules the Mdse Distribute process (using DBMS_JOB)
+Procedure: FINALIZE_RUNNING – tests to see if RUN_FINALIZE is in the DBMS Job Queue
+The RUN_FINALIZE procedure is really an “overhead” / “traffic cop” procedure that invokes individual Functions and Procedures.  The Steps are:
+Start the Logger 
+(Step 1) Move to History (Function: move_to_history)
+(Step 2) Update Buckets (Function: update_buckets)
+(Step 3) Update the Previous Price (Function: update_prev_price)
+(Step 4) Close Rebate Programs (Function: close_programs)
+(Step 5) Roll the Period (Function: roll_the_period)
+*** at this point the Finalize is “technically” finished — i.e., in the next period *** 
+The other steps have been added to the Finalize over time
+Run a Quick Calculate for all Active Rebate Programs (Function: run_calculate)
+Run the Class and SKU Allocations (Function: call_allocations)
+Archive data (Function: archive_allocations)
+Stop the Logger
+Move to History
+This function goes to the CALCULATE_RESULT and all the source specific CALCULATE tables and sets the Year and Period to the Current Year and Period. 
+Update Buckets
+This function updates the YTD and LTD fields in the REBATE_VENDOR_DEPT table. 
+Update Buckets
+This function updates the PREV_PRICE_INFO table to reflect active Rebate program’s Calculation info (Amount per Unit and Percent of Cost).  This is for Rebate programs that have a Sourced source. 
+Close Rebate Programs 
+This function sets the CLOSED_DATE in the REBATE_PROGRAM table for Rebate Programs that have passed the Rebate End Date and have no outstanding Accruals and Reclasses. 
+Roll the Period 
+This sets the CALENDAR_INFO (Sequence #1 and #2) in the Parameter Table to the next Period and Year. 
+ The Quick Calculate
+RUN_CALCULATE is called in “Quick Calculate Mode” for all Active Rebate programs.  What this does is insert a row into the CALCULATE_RESULT table (creates a Calculation) for each Vendor / Department on each active Rebate program.  The REBATE_VENDOR_DEPT table is also updated.  This is so that, when you are looking at the Vend Dept tab, the information will accurately reflect the current state.  This is mostly so that Deductions that have been Distributed will be taking into account.  
+Class and SKU Allocations
+Until the end of 2018, Class and SKU Allocations were created during the Calculation and on the Rebate program form when Adjustments were added.  This was moved to the end of the Finalize to help gain some performance.  Since the primary purpose for Class and SKU Allocations is to apply Actuals in the Cycle Close, they are not needed until the week following the AP Finalize.
+Archive Data
+Fairly early on in the life of VRS, in order to boost performance, archive versions of the Source specific CALCULATE tables (for Sourced sources) where created and once a Rebate Program is Closed, rows are inserted into the archived tables and delete from the source table. This keeps the row counts down and hence increases performance.   
+The Process Logger
+In describing the previous 3 processes, the first and last step in each was starting and stopping the logger.  There are two types of logging in VRS:
+Audit Logging 
+Process Logging
+This section addresses Process logging.  The process logging is in the package:  LogFunctions
+Package: LogFunctions
+FUNCTION logs_start
+PROCEDURE process_log 
+PROCEDURE error_log
+PROCEDURE logs_flush
+PROCEDURE logs_finish
+There are a set of tables associated with process logging.  They are:
+BATCH_PROCESS_LOG_HDR
+BATCH_PROCESS_LOG
+BATCH_ERROR_LOG
+The LogFunctions and the table work in tandem with each other. 
+To use this package, you have to “start” a logger and there can only be one “per session” active.  This reason for this is that the log messages are written into an array (not directly to the Detail Tables) and then only written (and committed) into the Detail Tables when either the Flush or the Finish (which calls the Flush) is called.  
+Because the Finish and the Flush both have a commit, you have to be strategic as to how you use them.   Generally, here is the strategy to use:
+Wrap the entire process in an Exception Handler
+Before any statement related to the process, start the logger.  
+If there are logical places where a commit is needed, call the Flush — it will do the commit. 
+After the last statement in the process, close the Logger. 
+In the Exception handler
+Do a rollback, if needed. 
+Call a Process Log with a message to indicate that there was an error
+Call the Error Log
+Close the Logger
+Here is what it looks like in PL/SQL
+The Logger Names (the first argument in the Start), are predefined in the LogFunction’s Package Spec:
+extract_log_name      VARCHAR2 (30) := 'Extract';
+calculate_log_name    VARCHAR2 (30) := 'Calculate';
+batch_log_name        VARCHAR2 (30) := 'Batch';
+distribute_log_name   VARCHAR2 (30) := 'Distribute';
+finalize_log_name     VARCHAR2 (30) := 'Finalize';
+deduction_log_name    VARCHAR2 (30) := 'Deduction';
+upload_log_name       VARCHAR2 (30) := 'Upload';
+load_log_name         VARCHAR2 (30) := 'Load';
+mdse_log_name         VARCHAR2 (30) := 'MDSE';
+reports_log_name      VARCHAR2 (30) := 'Reports';
+queue_log_name        VARCHAR2 (30) := 'QUEUE';
+fcst_engine_log_name  VARCHAR2 (30) := 'FcstEngine';
+nsa_log_name          VARCHAR2 (30) := 'NSA';
+The Logger Names tie to the BATCH_PROCESS_LOG_DAYS rows in the Parameter table where the Logger Name = the Text Data.   This is used to control how long Log entries are kept before they are purged. 
+Process logs are displayed on a variety of forms and the form on which they appear depends on the Logger Name.  
+History Extracts
+History Extracts are Oracle Reports that do not have a Paper Layout (i.e., they do not produce a PDF).   These are much more prevalent than reports that produce a PDF.  The reason: it is typically the data that is wanted and as a CSV be viewed and manipulated by Excel. The History Extracts are run from the Extract History Extract form.
+Form Name: history_extracts
+The Extract History form reads the Parameter Table (REBATE_PARAMETRS) where the Parameter Sequence Number is -1.  This means that the History Extracts are defined in the Parameter table:
+This was done to make is easy to “hook” a new History extract into the system.  All you have to do is develop the Oracle Report and then add an Entry into the Parameter table.   The Text data is the actual Oracle Report name less the .RDF extension.   The Extract History form uses the Number to sort the entries when displayed.   Note that not every “CSV only” Oracle report is invoked from here – there are places like on the NSA and S5S5 Dashboards where these types of Oracle Reports are also run.  
+Reports
+Reports are Oracle Reports that have a Paper Layout (i.e., they produce a PDF as well as a CSV).   The Reports are run from the Reports form.
+Form name: vrs_reports
+Note – the original name of the form was reports but then one day a name conflict occurred with a form from a different system deployed in the same location on the Linux server so the name was changed. 
+The Reports form reads the Parameter Table where the Parameter Sequence Number is -2.  This means that the Reports are defined in the Parameter table:
+This was done to make is easy to “hook” a new Report into the system.  All you have to do is develop the Oracle Report and then add an Entry into the Parameter table.   The Text data is the actual Oracle Report name less the .RDF extension.   The Reports form uses the Number to sort the entries when displayed. 
+Inquiry Forms
+There are several forms in VRS that are Inquiry Only — they do not do maintenance.  Most of them are invoked from the Inquires menu but there is one on the Rebates menu.
+Accounting Transaction
+Accrual History
+Actual Buckets
+Aged Rebates Receivables 
+Prepaid
+Period Acct Summary
+Accounting Transaction Inquiry
+Form Name: acct_trans_inq
+View:  VW_BATCH_TRANSACTIONS
+The Accounting Transactions come from the Batching table.  The VW_BATCH_TRANSACTIONS view unions several queries (one for each type AP, RSL and GL) together to provide the source for the results. querying.   
+This form is useful for determining the total amounts sent to the External Systems within a given period or year. 
+Accrual History
+Form Name: accrual_history
+View:  VW_ACCRUAL_HISTORY
+The Accrual Data comes from the Calculation (CALCULATE_RESULT) and the “Accrual” Adjustments from the Adjustments table (REBATE_ADJUSTMENTS).  The VW_ACCRUAL_HISTORY view unions several queries (one based on CALCULATE_RESULT and one based on REBATE_ADJUSTMENTS and then expanded when SBT was added) together to provide the source for the results. 
+This form is useful for determining the Total Accrual by Period and Year.  Since Accrual Adjustments are no longer supported, the Adjustments are always 0.   The Accrual Adjustments have never been removed from the Form or the View and are a good candidate for removal if a request comes up to change this form.  Might even speed up the response a bit. 
+Actual Buckets
+Form Name: buckets
+Table:  CALCUALTE_RESULT
+This form gives you the most direct look at the CALCULATE_RESUULT table that you can get in VRS.   Due to the number of fields (although it is certainly not all of them) it is trying to display, it uses a “single record” view.  The < and > buttons will navigate between rows when there are multiple rows in the results.   
+This can be a useful form for a Developer to use when trying to troubleshoot in production.   One nuance to be aware of is that the Search fields (Ex: Rebate ID AP #, etc.) do double duty and are loaded with results after the Search button is pressed.  Because of this you lose knowledge of the fields used to do the search and also you normally want to Reset before doing another Search to clear the fields out. 
+Aged Rebates Receivable
+Form Name: aged_inquiry
+Function:  BatchFunctions.GET_AGED_REPORT_TEST  
+Database Function: GET_AGED_REPORT 
+The data on this form comes from the CALCULATE_RESULT table but it took more logic than could easily be put into a view to get the aged ranges into a single row; so, there is a Database Function called GET_AGED_REPORT that has the actual logic in it.  The GET_AGED_REPORT_TEST in BatchFunctions is an overhead to GET_AGED_REPORT and was necessary to facilitate passing parameters.  It dynamically builds the query used to access GET_AGED_REPORT. 
+This is a good form to study if you need do to develop a form that uses a Function as a data source.  
+Note, the Column headings are dynamically built when the results are displayed so when the form first comes up, you do not see them. 
+Prepaid
+Form Name: prepaid_inquiry
+View:  VW_PREPAID_REPORT
+The Prepaid Data comes from the Calculation (CALCULATE_RESULT). In this case the view’s query uses Case Statements to derive amounts that cannot be pulled directly. 
+The form is used to determine Prepaid Amounts by Period and Year. 
+Period Acct Summary
+Form Name: acct_summary
+View:  VW_PERIOD_ACCOUNTING
+The Accounting Summary Data comes from the Calculation (CALCULATE_RESULT). In the View’s query there are many Unions used to come up with the data – roughly 1 per field (the Sub Totals and Totals are handled on the form).  Unlike most forms though, the form does not use the View directly as a data source.  There is a call in the WHEN-NEW-FORM-INSTANCE trigger to a Program Unit that queries the View and loads the fields on the form. 
+This from is used to get the Total Accrual, Reclass and Reversals broken out by PMU, Margin, Adv Coop and Other Coop.  Remember – VRS does not do the Reversals, it is only showing what they will be in the external systems. 
+Tiers, Linking, Sub Systems and Vendor Contacts
+This section will briefly mention areas not previously covered including the 3 Sub Systems:
+Damages
+NSA
+S5S5
+Tiers
+Tiers allow you to set up a “sliding” Percent of Cost calculation where the percent changes based on Thresholds.   Tiers may or may not be allowed depending on the rule specified in the Source. When they allowed, they are optional.   In the current set of rules, Tiers can be used on all the Sourced sources except Discount Amount BOGO and the new Store Transfers.  The Tier Functions are called (Procedure: CALL_TIER_CALCULATE) from the Source Specific Calculate Functions when Tiers are present. 
+Currently there are 4 Tier Types 
+Pre-Defined Ranges
+Pre-Defined Levels
+Growth
+Excess
+Pre-Defined Ranges (Example – over 3 periods)
+From and To Dollar Amounts create a Range within which a Percent of Cost is defined. 
+A Percent of Cost is associated with each Range
+No True-Up is done
+Period 1 – Receipts 15,000
+Calculation: 15,000 * .01 = 150.00 Earnings  
+Period 2 – Receipts 10,000
+Calculation: (5,000 * .01) + (5000 * .02) = 50 + 100 = 150.00 Earnings
+Period 3 – Receipts 15,000
+Calculation: (5,000 * .02) + (10000 * .03) = 100 + 300 = 400.00 Earnings
+Total Earnings:  150 + 150 + 400 = 700
+Pre-Defined Levels (Example – over 3 periods)
+End Range (at the Level break) is used to define the threshold
+A Percent associated each Level is specified – it is used once the threshold amount is reached 
+True-Up is done (next percent is applied to previous amounts)
+Period 1 – Receipts 15,000
+Threshold is not reached: Earnings = 0
+Period 2 – Receipts 10,000
+Calculation: (10,000 * .01) + (15,000 * .01 [True Up]) = 100 + 150 = 250.00 Earnings
+Period 3 – Receipts 15,000
+Calculation: (15,000 * .03) + (25,000 * .02 [True Up]) = 450 + 500 = 950.00 Earnings
+Total Earnings:  250 + 950 = 1,200      or     40,000 * .03 = 1,200
+Growth (Example – over 3 periods after the growth is reached.   Last Year YTD = 100,000)
+The YTD from the previous Year is Needed  
+A Percent Growth and a Percent of Cost define the thresholds for each tier 
+True-Up is done
+Period 7 YTD Receipts is 96,000 (no Earnings up to this point)
+Period 8 – Receipts 15,000 
+Calculation: 111,000 * .01 = 1,110.00 Earnings  
+Period 9 – Receipts 5,000
+Calculation: (5,000 * .02) + (111,000 * .01 [True Up]) = 100 + 1,110 = 1,210.00 Earnings
+Period 10 – Receipts 6,000
+Calculation: (6,000 * .03) + (116,000 * .01 [True Up]) = 180 + 1,160 = 1,340 Earnings
+Total Earnings:  1,110 + 1,210 + 1,310 = 3,660     or     122,000 * .03 = 3,660
+Excess (Example – over 3 periods)
+A Dollar Amount that must be “exceeded” defines the threshold
+A Percent of Cost is associated with threshold – amount after threshold has percent applied to it. 
+A Date rage that equates to a Period or Periods is specified   
+True-Up is Not done
+Period 1 – Receipts 15,000
+Calculation: 5,000 * .01 = 50.00 Earnings (15,000 – 10,000 = 5,000 in Excess)  
+Period 2 – Receipts 15,000
+Calculation: 3,000 * .02 = 60.00 Earnings (15,000 – 12,000 = 3,000 in Excess)
+Period 3 – Receipts 10,000
+Calculation:  10,000 * .02 = 200 (the whole 10,000 is in Excess)
+Total Earnings:  50 + 60 + 200 = 310
+Linking
+It is possible in VRS to link rebate programs together.    The links can work a couple different ways.  One way is that all the “child” rebates tie back to a single “parent” rebate.
+Table: REBATE_LINK
+View: VW_LINKED_REBATES
+Another way the links can occur is sequential or some variation of Sequential.  Either way there is a Rebate ID that is the head (not linked to anything) of the chain. 
+When a Rebate is the “head”, you can tell on the tab because the “Linked to” is empty. Also, in the upper left-hand corner of the Rebate Program corner, it will say: Linked 
+If the Rebate is a “child” then in the upper left-hard corner it will say: Linked to ID: with the Rebate ID it is linked to.  
+Other than supporting the linking of the Rebates, there is not much in VRS (other than the view that the Tab uses) that takes advantage of the links.  There was a “Linked” earnings section in the view that underlies the Review screen but that was removed in 2018.  There is still a “linked earnings” done in the Calculation but the results are not used. 
+The AP department uses linking to identify related Rebates.  This can help them to proactively catch certain types of issues.  
+Vendor Contacts
+Both the AP side and the MDSE Side have Vendor Contacts – separate set of tables.   On the AP Side: 
+Table:  REBATE_CONTRACT
+Primary Key: VENDOR_NUM
+Table:  REBATE_CONTRACT_DEPT
+Primary Key 1: VENDOR_NUM
+Primary Key 2: DEPT_NUM
+Form: vendor_contract
+The Vendor Contact information on the AP side is used to store Email and Address information and is used when Invoice data is created.  It is possible to store this information at the Department level as well.   In some larger companies, different departments are in different locations.  When Department level data exists, it will override the Vendor Level data for that one Department.   Invoices are created at the Rebate / Vendor / Department Level so the address information can vary for a single vendor. 
+Note – there must be an email address defined here in order for invoices to be emailed.  The presence (*) or absence (no *) of an email address can be seen on the Invoices form. 
+Sub Systems
+The AP side of VRS has 3 “sub” systems
+Damages 
+NSA (New Store Allowance)
+S5S5 (Spend 5 Save 5)
+Each of these has its own set of tables, packages and forms.  Each was added to deal specifically with deriving earnings for a particular business purpose.   In the case of both NSA and S5S5 they have calculation engines specific to them.   Damages does not do the final calculation but provides information to help determine the earnings. 
+Damages
+Table: REBATE_DMG_ACTUAL
+Table: REBATE_DMG_ACTUAL_PO_SUM
+Table: REBATE_DMG_ACTUAL_SUBTOT
+Table: REBATE_DMG_ACTUAL_SUBTOT_OLD
+Table: REBATE_DMG_COMPARISON
+Table: REBATE_DMG_COMP_PO_SUM
+Table: REBATE_DMG_RECEIVER_INFO_SUMM
+Package: DAMAGEFUNCTIONS
+Form: damages_actual
+Form: damages_compreason
+There are two Damage processes that are scheduled to run at night. 
+Actual Damages History Load (DAMAGEFUNCTION.damages_actual)
+Damages Compare History Load (DAMAGEFUNCTION.damages_comparason)
+Actual Damages runs each night and the Compare runs one a month. Their runs can be seen on the Extract and Calculate form. 
+Both of the forms are built on functions that are in the DAMAGEFUNCTIONS Package:
+Source for damages_actual:  DAMAGEFUNCTIONS.get_actual_damage_inq
+Source for damages_compreason:  DAMAGEFUNCTIONS.get_comp_damage_inq
+The actual load gets the damages data from the following tables in the IBS schema
+Table: MARKDOWN_HEADER
+Table: MARKDOWN_DETAIL
+Table: TRANSGEN_HEADER
+Table: TRANSGEN_DETAIL
+Table: DCTRANS_HEADER
+Table: DCTRANS_DETAIL
+Table: POS_MKDN_ACBC_HEADER
+Table: POS_MKDN_ACBC_DETAIL
+NSA (New Store Allowance)
+Table: NSA_AUDIT_LOG
+Table: NSA_CALC
+Table: NSA_CALC_RECEIPT
+Table: NSA_CALC_RECEIPT_SPLIT
+Table: NSA_CALC_SKU
+Table: NSA_CALC_SKU_TMP
+Table: NSA_CALC_SPLIT_SKU
+Table: NSA_CALC_VENDOR
+Table: NSA_CALC_VENDOR_SPLIT
+Table: NSA_CHECK_VENDORS
+Table: NSA_DROPSHIP
+Table: NSA_DROPSHIP_ARC
+Table: NSA_EXEMPT_CLASS
+Table: NSA_EXEMPT_SKU
+Table: NSA_EXEMPT_SKU_TMP
+Table: NSA_INBOUND
+Table: NSA_ONHAND
+Table: NSA_ONHAND_ARC
+Table: NSA_PERIOD_COUNTS
+Table: NSA_RECEIPTS_USED
+Table: NSA_REPL_SKU
+Table: NSA_REPL_SKU_TMP
+Table: NSA_SECOND_DC
+Table: NSA_SKU_TMP
+Table: NSA_STORES
+Table: NSA_STORE_EXEMPTION
+Table: NSA_STORE_EXEMPTION_TMP
+Table: NSA_TRANSFERS
+Table: NSA_TRANSFERS_ARC
+Table: NSA_VENDOR
+Table: NSA_VENDOR_CLASS
+Table: NSA_VENDOR_DEPT
+Table: NSA_VENDOR_REPL_DEPT
+Table: NSA_VENDOR_REPL_DEPT_TMP
+Table: NSA_VENDOR_SKU
+Table: NSA_VENDOR_SKU_TMP
+Table: NSA_VENDOR_SPLIT
+Table: NSA_VENDOR_SPLIT_SKU
+Table: NSA_VENDOR_SPLIT_SKU_TMP
+Package: NSA_FUNCTIONS
+Form: nsa_audit_log
+Form: nsa_dashbo
+Form: nsa_log_viewer
+Form: nsa_sku_class_settings
+Form: nsa_vendor_settings
+Report:  nsa_distributor
+Report:  nsa_period_history
+Report:  nsa_new_sku
+Report:  nsa_period_sku
+Report:  nsa_period_store
+Report:  nsa_period_summary
+Report:  nsa_receipts_used
+Report:  nsa_vend_dept_summary
+NSA is accessed via the New Store Allowance Dashboard.  Menu: Rebates/NSA Dashboard  
+The Dashboard is basically a mechanism for launching all the various pieces of NSA. 
+The buttons on this form do one of the following:
+Launch a Process
+Launch a Form
+Launches an Oracle Report (CSV only – no PDF)
+The Calculate Period NSA button launches the NSA Calculation Engine.  Like other processes a process log is created. The log entries can be viewed from the Dashboard using the View Process Log button.
+The result of the NSA Calculation goes into a N – No Source rebate program.  This is what the Update Rebate button on the Dashboard does. 
+Based on the original design, there is supposed to be one NSA Rebate Program per Year with all the Vendors on the one Rebate Program.   In practice there are other NSA Rebate Program created but these are not loaded using the NSA Calculation.      
+The NSA calculation goes through a series of Steps and it is very complex but basically what is it is trying to do is figure out which SKUs from each Vendor have been ordered and are carried in each store. Each period there is a list of Stores uploaded that represent the “new” Stores. Basically, the Vendors are helping DG with the cost of opening new (or resetting/remodeling existing) stores but only if some of their SKUs are going to be sold in the store. 
+The are many complicating factors but the simplified version of the calculation goes like this:
+For each “New” Store, a given Vendor is willing to give a specified rate for up to a certain number of SKUs that are placed in each store.   The Default # of SKUs is 17 and the standard Rates are:
+New Store — 27.5
+Reallocation — 27.5
+Remodel — 21
+So, let’s assume there are 25 new stores and 100 Vendors participating using the defaults and that in every case there is more than 17 Items provided by each of the Vendors.  The calculation is:
+ (25 * 17 * 27.5) = 116,87.50 per Vendor * 100 = 1,168,750.
+S5S5 (Spend 5 Save 5)
+Table: S5S5_1010_DATA
+Table: S5S5_1010_EXTRACT
+Table: S5S5_AUDIT_LOG
+Table: S5S5_CALCULATION
+Table: S5S5_CALC_RESULT
+Table: S5S5_CALC_VENDOR_DEPT
+Table: S5S5_CALC_WORK
+Table: S5S5_CONTRACT_CLASS
+Table: S5S5_CONTRACT_DEPT
+Table: S5S5_CONTRACT_MASTER
+Table: S5S5_CONTRACT_SKU
+Table: S5S5_CONTRACT_VENDOR
+Table: S5S5_EVENTS
+Table: S5S5_EVENT_CALC
+Table: S5S5_EVENT_MASTER
+Table: S5S5_EVENT_VENDOR
+Table: S5S5_OFFER_NUMBERS
+Table: S5S5_OVERRIDES
+Table: S5S5_SKU_EXCLUSIONS
+Table: S5S5_SKU_TO_VENDOR
+Table: S5S5_VENDOR_SKU_TO_VENDOR
+Package: S5S5_FUNCTIONS
+Form: ss_1010_data
+Form: ss_audit
+Form: ss_client_add_attachment
+Form: ss_client_attachments
+Form: ss_contract_maint
+Form: ss_dashboard
+Form: ss_event_maint
+Form: ss_vendor_override
+Report: ss_event_summary
+Report: ss_trans_detail
+Report: ss_trans_detail_sbt
+Report: ss_trans_summary
+S5S5 is accessed via the S5S5 Dashboard.  Menu: Rebates/S5S5 Dashboard  
+The Dashboard is basically a mechanism for launching all the various pieces of S5S5.
+The buttons on this form do one of the following:
+Launch a Process
+Launch a Form
+Launches an Oracle Report (CSV only – no PDF)
+The Calculate button launches the S5S5 Calculation Engine.  Like other processes a process log is created. The log entries can be viewed from the Extract and Calculate form.  There are two entries that are created: one for the Calculation (Rebate ID = S5S5 Calculate) and one for the Rebate (in the Example below: Rebate ID = 78448).  The Rebate ID entries can be found by using S5S5_Calcuate as the User ID.  
+The result of the S5S5 Calculation goes into a N – No Source rebate program.  The creation and loading of the Rebate Program are part of the Calculation but the loading of the Rebate can be independently run using the Lump Sum button on the Dashboard.
+Based on the original design, there is generally one S5S5 Rebate Program per Period with all the Vendors on the one Rebate Program.   In practice there is occasionally a second one generated to pick up differences generated by new vendor Contracts.        
+The S5S5 Calculation uses Discount data loaded from 1010 (loaded into VRS tables at night) in conjunction with specific Events (defined on the Dashboard) and Vendor Contracts (defined on the Dashboard) to derive the Calculation.   The calculation is basically a Percent (which comes from the Contract) times the Discount (from the 1010 Discount data).    
+Basically, the vendors are helping to pick up the cost of discounting the Product.  Moving more product is good for DG but it is also good for the Vendors which is why they contribute. 
+S5S5 supports Vendor Overrides which basically use one Vendor in place of another.  It also supports the idea of gong back to a previous Calculation and picking up extra dollars in the case where a new Vendor Contract has been added.  This is where the additional Rebates come from. 
+The Parameter Table
+There are many places in VRS where values are “externalized” rather than being hard-coded.  This allows for changes to be made directly in the application rather than having to make a system modification.  In some cases, these values may change between environments.   For Example: the name of the Report Sever is externalized and it needs to vary depends on whether you are running on Production or DEV etc.     This externalization is done via the Parameter Table.  
+Table name: REBATE_PARAMETERS
+The table is made up of:
+Primary Key Part 1 (PARAMETER_KEY) which is a VARCHAR2(25). 
+Primary Key Part 2 (PAREMETER_SEQ) which is a NUMBER(3)
+One field to hold Text Data (PARAMETER_CHAR which is a VARCHAR2(512)
+One field to hold a Date (PAREMETER_DATE which a DATE
+One field to hold a Number (PARAMETER_NUM) which is a NUMBER
+Recently added, a comment field (COMMENTS) which is a VARCHAR2(512)
+The table was designed to hold either a Single Value or an Array of values.   The Sequence Number is what facilitates being able to create an array of values.  Over time, the amount of data in the Rebate Parameter table has grown significantly and it is used in a variety of different ways.   
+*** You have to understand the Context in which Parameter Table Entries are used ***
+Single Value – many of the values in the Parameter Table hold a single value.   In these cases:
+Parameter Key – contains a Unique Identifier. 
+Parameter Seq – Contains a 0  
+Depending on the data type, you use either the Text, Date or Number field.    
+In the Form Functions Package, there are 3 functions that can be used to retrieve a single value. 
+FUNCTION GET_PARAMETER_CHAR(key_in VARCHAR2, seq_in NUMBER := 0) RETURN VARCHAR2;
+FUNCTION GET_PARAMETER_NUM(key_in VARCHAR2, seq_in NUMBER := 0) RETURN NUMBER;
+FUNCTION GET_PARAMETER_DATE(key_in VARCHAR2, seq_in NUMBER := 0) RETURN DATE;
+Single Value Example:
+A slight variation to this would be to hold more than one value (Ex: and Character and a Number) in a single row. 
+Array Value – arrays are simulated by using a combination of the Parameter Key and the Parameter Seq.   In these cases:
+Parameter Key – contains a Unique Identifier. 
+Parameter Seq – Contains different values to force uniqueness.  
+This is very useful when you need to add list of values into a Query.  For Example: you may need to limit data by Transaction Type but there are more than one that you need to use. Over time additional Transaction Types might be added and when this occurs, you just need to add rows to the Parameter table and no code changes are necessary.  
+Sometimes, when you see data set up this way, it is used to group a Parameter that has multiple values but is not necessarily used as Array. The Sequence Number is either used to distinguish a specific row or just to keep the Primary Key unique.  In the Example below, the Text Data is the Class and the Number is the value associated with the Class. 
+Other Common Scenarios (but by no stretch a complete list)
+Here are some examples of ways the Parameter table has been used.  
+Oracle Reports (Covered in the Reports and History Extracts sections as well)
+Parameter Seq = -1   AP Reports: Oracle Report (with Paper Layout)
+Parameter Seq = -2   AP History Extracts: Extract Oracle Report (no Paper Layout)
+Parameter Seq = -3   MDSE Reports:  Oracle Report (with Paper Layout)
+Parameter Key – display name of the Report
+Parameter Char – actual name of the RDF less the extension
+Number – Sort Order on the Form where reports are displayed
+Dummy (aka Shadow) Users (covered in the Security section as well)
+Sometimes it is useful to be able to set up a user id to play a different role in a specific context that is different from what their Security Group Allows.  Ex:  being able to act as a Buyer even though you are set up with an AP Security Group. 
+Parameter Key – user id 
+Parameter Seq – 100
+Parameter Char – Security Group
+Number – VRS APP ID which changes by Environment
+View Location (recently added) 
+When Sharepoint was taken out of the mix, in order to view the data stored in BLOBS, the BLOB data was written to a location defined on the user’s machine.  Issues arose due to differences in individual computers. To solve this, individuals can now choose their own location.  This information is stored in the Parameter Table. 
+Parameter Seq = -500
+Parameter Key – user id 
+Parameter Char – location on Local Machine
+Analyst (Recently added) 
+There was a request to be able to support grouping Rebate Programs by Analyst.  This was mostly handled by added a column to the Merch Type but there was a need to have a Category Override.  The Category Override feature was implemented in the Parameter Table. 
+Parameter Seq = -400
+Parameter Key – Class
+Parameter Char – two Character Analyst identifier
+Also, part of the solution was implemented in the Database Function: GET_ANALYST
+Values for Drop Down lists
+Starting at Sequence Number 100 (through 108 currently), there are values used to populate dropdown list. 
+Parameter Seq >= 100
+Parameter Key – Value
+Parameter Char – Description
+Example:  100 is UOM
+VRS_LIB procedure LOAD_COMBO can be used to load using these entries. 
+Attaching Files
+When the MDSE side was built, there was a request to be able to attach the Contract (a physical file) to the Agreement. Because Sharepoint was the official document repository, an interface to Sharepoint was built.  This interface is a standalone Java program that runs constantly that periodically queries a VRS table (MDSE_AGMT_ATTACH) and takes a file stored in a BLOB and sends it to Sharepoint.  Two forms were developed (client_attachments and add_client_attachment) which served as the interface to the MDSE_AGMT_ATTACH table and used Web UTIL to transfer a file into a BLOB field in the table. 
+Eventually there was a request to be able to attach files to a Rebate Program’s Vendor on the AP side.  One issue was that the MDSE_AGMT_ATTACH table was AGREEMENT_ID driven (AGREEMENT_ID is part of the Primary Key) — the original design had been specific to the request; so, changes had to be made to the table to accommodate matching a file to a Rebate Program’s Vendor. To this end, the REBATE_ID and VENDOR_NUM were added to the table (and allowed to be NULL) and the two forms were cloned to create the forms client_attachments_ap and client_add_attachment_ap and a call to these forms was hooked into the Rebate Program form.  The new forms dealt with rows that pointed to files for Rebate Programs and the original forms for files that where for Agreements.  
+When NSA came along, there was a similar request to attach a file to Vendors defined in NSA. Since VENDOR_NUM was already in the Table, rows for NSA used the Vendor Number but left the REBATE_ID NULL in order to distinguish between files attached for a Rebate Program and files attached for NSA. 
+Then S5S5 came along and there was a request to attach files to the S5S5 Vendor Contract data so CONTRACT_PK was added to the Table to identify files for S5S5 and the forms were cloned again to create ss_client_attachments and ss_client_add_attachment.
+At some point concerns grew over the amount of data that Sharepoint was housing and there was an expressed desire to stop using Sharepoint to store VRS files and to store them directly in the database.  So, early in 2018 the approach to attaching files was changed.  The original design already supported getting a file into a BLOB but then the BLOB data was removed once the file was in Sharepoint.  In the new approach, the BLOB would remain and not be sent to Sharepoint.  To accomplish this, a new table was created (REBATE_ATTACHMENTS) effectively cutting the Java program out of the mix without having to do anything to it and eventually it will not be run anymore. During installation the new table was loaded from the previous table.  Since there was a new table, a new form (rebate_attachments) was introduced to maintain the new REBATE_ATTACHMENTS table.  
+The new table (REBATE_ATTACHEMNTS) did not keep the dependency on the AGREEMENT_ID that the original table had but it does use a similar concept to match a file to its intended owner. It uses the same 4 fields (AGREEMENT_ID, REBATE_ID, VENDOR_NUM and CONTRACT_PK) to do the matching.  All these fields allow NULLs so it is the presence or absence (a NULL) of data in these fields that identifies the owner. This is critical to understand if you are going to manually manipulate or write code that deals with the data in this table.  Here is a grid that defines how the fields are used. 
+*** In REBATE_ATTACHMENTS, if an ID field is not being used, it needs to contain NULL, not 0 ***
+All the files from the original table are still stored in Sharepoint so now there is a bifurcated approach where some files (created using the original approach) are stored in Sharepoint and some are stored in BLOBs.  Files stored in Sharepoint are very simple to display from an Oracle form using Oracle Form’s function web.show_document. All you have to do is pass the Sharepoint URL (which is stored in the table) and the file will be rendered in the Browser.   In the new approach, the viewing of the file stored in the BLOB was the main challenge that had to be overcome.  This was accomplished by using Web UTIL to reverse the process and take the file from the BLOB and send it to a location on the requestor’s machine and then construct a URL to pass into web.show_document.  This approximated that way that Sharepoint handled viewing the file but the main issue in this approach was where to transfer file. 
+Originally files were written to the H:\ drive because everyone was supposed to have this mapping available to them. This caused some angst over storing too much data on the network plus it turned out that the rendering of the file varied (and sometimes did not work for certain file types) based on a given user’s configuration and whether they had windows 7 or 10.   There is a “temporary” location where files can be stored locally but getting this location via the Web UITL functions would not work; so, using the Parameter table, the concept  of user defined locations was introduced (See View Locations in the Parameter Table section).   
+The Approval Queue
+When the MDSE side was built, one of the goals was to have Rebate Programs created directly from the Agreement(s) that they represent.   From a business perspective, the VRS Agreement(s) and the Rebate Program should reflect the business arrangement between DG and the Vendor. The Rebate Program is what generates the Earnings defined by the Agreement; therefore, it should be possible to create the Rebate Program from the Agreement(s).  Within VRS, it is the Approval Queue that uses Agreements to create Rebate Programs.  
+Form name: ap_approval                  Menu:  Dashboards / Acct Approval Queue
+The Approval Queue is one of the most complex forms in the system and the task of creating it was made more difficult because the MDSE side was designed with no consideration for how the AP side worked.  It is the Approval Queue that reconciles the differences between the MDSE side design and the AP Side design. When invoked, the Queue (for short) starts off of the Queue tab.
+Queue Tab
+View: VW_AP_QUEUE_TAB_1
+Once of the common (and hardest to overcome) misconceptions about the Approval Queue’s Queue tab is that it is driven by AGREEMENT_ID.   It is NOT, it is driven by FCST_PROGRAM_ID (aka. the Forecast ID). The Forecast ID is the Primary key of MDSE_FCST_PROGRAM which is the parent of MDSE_VENDOR_AGREEMENT (the Agreement table).  Typically, there is a one-to-one relationship between these two tables but there are three Merch types (ADVCOOP, DGRACING and COMMTG) that allow multiple Agreements to be grouped using the Forecast ID. In the Queue these are called ***Multiple Agreement Forecast***.  Note In the screen shot above that this term is used for the Vendor Name.  It is to handle these that the Queue is Forecast ID driven.    
+*** The Queue Tab is Forecast ID driven, NOT Agreement ID driven ***
+Rows that are not Multiple Agreement Forecast do indicate a specific Agreement. The Agreements for a Multiple Agreement Forecast are shown on the Agmts Tab which is typically disabled. The Agmt tab becomes enabled when the current row is a Multiple Agreement Forecast in order to list the Agreements.  Of the three Merch Types that support grouping Agreements, only ADVCOOP is still used. Note — these three were dubbed the “Ugly Sisters” during development because they complicated the design and they are still referred to that way sometimes.  
+VW_AP_QUEUE_TAB_1 is an extremely complex view but basically it uses the Agreement Status to control what shows up in the Queue.  Typically, only Agreements with these two Agreement Statues show up in the Queue:
+BUYREV – Agreement Revised After AP Approval
+PDAAPP – Pending AP Approval
+The view also unions together several sets of Queries in order to support the Radio buttons (Appr, New, Multiple, Existing, and UnAppr). In addition to these Radio buttons there are a variety of Filters (the latest added is Analyst) to help isolate rows that are of interest. 
+The Color Coding of the Begin Date (Red and Yellow) is based on the period that the date is in:
+Red (In the Past) – Date is in a Period prior to the Current Period 
+Yellow (Getting Close) Date is in the Current Period
+The Find button at the top right of the form brings up a Search form that returns a Forecast ID into the Fcst ID filter.  This will also “force” an Agreement or Multiple Forecast Agreement into the Queue regardless of Status. 
+The select checkboxes at the end of each row work in conjunction with the Attachments button and pull up all of the Agreement(s) Attachments so they can be Viewed. 
+The Create Prg button just takes you to the Header Tab which is really an extension of the Queue tab (data comes from VW_AP_QUEUE_TAB1) and displays (and in some cases allows to be Edited) the detail of the current row selected on the Queue tab.
+Header Tab
+The Header tab is where the process for creating Rebate Programs is invoked.  In the Screenshot below, this is done with the Create AP Rebate Program button. 
+If you happened to be sitting on an Agreement that is already attached to a Rebate Program, the Button label is Update AP Rebate Program. 
+Either way, the button invokes the process that uses the Queue entry to Create or Update a Rebate Program and then change the Agreement Status such that it will no longer show up in the Queue.  There is a section at the end that discuses the Agreement Process in detail. 
+The Map Agmt to Rebate button allows an existing Agreement to be “mapped” (the Agreement ID added to the REBATE_VENDOR).  This is one reason why an Agreement might be forced into the Queue. 
+Agmt Tab
+View: VW_AP_QUEUE_TAB_3
+The Agmts tab is used to view the Agreements on a Multiple Agreement Forecast.  It is only Enabled when the current row on the Queue tab is a Multiple Agreement Forecast.   
+The Agreements for the Multiple Agreement Forecast picked on the Queue tab are displayed.  This is mostly used to verify that all the Agreements on an AD Event are ready before creating the Rebate Program.  The Agmts Tab also has the Attachments and Map features.  You can also individually Comment, Mark as Reviewed or reject Agreements. 
+Disc Tab
+Table: MDSE_AGMT_DISC_BOGO
+The Disc tab is only available (enabled) when the row on the Queue Tab represents an Agreement with a Discount Amount BOGO source.  Used to review the Discount information.  Data is Read Only.  
+Comments Tab
+View: VW_AP_QUEUE_COMMENTS
+Allows comments to be viewed and Added. Note – These comments are stored in the Agreement’s Audit Log: MDSE_AGMT_LOG.  This view is an overhead to this table.   
+Class Detail Tab
+View: VW_AP_QUEUE_DEPT (retrieves DEPT_NUM then CLASS_NUM is determined real-time)
+If an Agreement or the Agreements on a Multiple Agreement are set up using Classes, this tab will be enabled. Data is Read Only.  
+SKU Detail Tab
+View: VW_AP_QUEUE_SKU
+If an Agreement or the Agreements on a Multiple Agreement are set up using SKUs, this tab will be enabled. Data is Read Only.  The Check for Overlap feature was introduced here.
+Price Review Tab
+View: VW_AP_QUEUE_REVIEW
+if an Agreement is a TPR or Scanback, this tab is usually Enabled.  If the Agreement is tried to Rebate Program, the CCR flag has to be set too in order for the Tab to be enabled. 
+Waiting Tab
+Table: AP_QUEUE_INCLUDE
+This is the first tab not tied to a row on the Queue tab.  It shows the data in the AP_QUEUE_INCLUDE table.  These typically represented Agreements already attached to Rebate Programs so their status will not bring them into the Queue but they need to come in to allow the Rebate Program to be Updated.  Used with No Source (N Source) Agreements that last longer that one period. 
+Rebates Tab
+View: VW_AP_REBATE_PROGRAM
+If the row on the Queue tab is for an Agreement that is tried to a Rebate’s Vendor then this tab will be enabled.   Lists the Rebate / Vendor(s) that the Agreement is tied to and any differences.   
+Acct Only Tab (Rebates in AP but have no Agreement in MDSE)
+View: VW_AP_QUEUE_AP_ONLY
+This Tab lists Rebate Programs that are not tied to an Agreement. Used to map and create Agreements from Rebate Programs.  Initially was used to populate Agreements when MDSE was first introduced.  The Create Agreement and Create Selected (create “en masse”) buttons invoke this feature.
+Log Tab
+Table: AP_QUEUE_LOG (contains the Logger’s Process ID’s for things done in the Queue).  Used in conjunction with the Log Detail Tab. These logs can also be seen from the MDSE Log Viewer.  
+Log Detail Tab
+Table: BATCH_PROCESS_LOG
+Shows the detail log messages of the row selected on the Log Tab. 
+The Create/Update Process
+The Queue’s primary purpose is to create Rebate Programs from Agreements.  Most of the tabs covered in the previous pages are used by AP to review the Agreement data before Creating or Updating a Rebate Program; but ultimately, the Agreement data will be used either in the Creating or Updating of a Rebate Program or Rejected back to the Buyer.  Either way the goal is to get the Agreements processed and out of the Queue.  In essence the Queue is a “work” queue. 
+In terms of Creating / Updating, the Queue can do the following:
+Create Rebate / Vendor (Insert into REBATE_PROGRAM and/or REBATE_VENDOR and other “child” tables) 
+Update Rebate Program (Field Level Updates) 
+Map an Agreement to a Rebate Program (Update AGREEMENT_ID on REBATE_VENDOR)
+Un-Map and Agreement form an AP Program (Set AGREEMENT_ID to NULL on REBATE_VENDOR)
+Create an Agreement(s) from an AP Program
+The first two are used in the normal work flow.  The last three are used to handle exceptional situations. 
+Create Rebate / Vendor
+When the current row on the Queue tab is for an Agreement that is not tied to Rebate Program, the button on the Header tab will have the Label:  Create AP Rebate Program. 
+When this button is pressed then there will be one of two dialogs presented:
+A straight “are you sure”
+Or, there is logic that looks to see if there is a Rebate Program that already exists to which the Agreement’s Vendor can be added and offers the choice between creating a new Rebate Program or include in an existing Rebate Program
+When the Include in Rebate Choice is picked, there is the possibility that there is more than one candidate so in this case there is a list presented.  
+At some point, if you do not get it initially, the standard “are you sure” should be presented and once you press the Yes button, a REABTE_PROGRAM row (if applicable based on the choices) and a REBATE_VENDOR row and pertinent “child” table rows will be inserted.   At the end of the process, a recently added choice to navigate to the Rebate Program just created will be presented. 
+There are other options that may present themselves depending on the Merch Type and other factors.  For Example, No Source and No Source Period Agreements will cause this form to appear.  
+When the current row on the Queue tab is for a Multiple Agreement forecast, the “Include” option is not available. In this case though, there will be multiple Vendors inserted into the Rebate Program Created.   It is also possible for multiple Rebate Programs to be created.  This is due to the Primary Key on the REBATE_VENDOR table.   Because VEND_NUM is part of the Primary Key, a given VENDOR_NUM can only exist once per Rebate ID. 
+But this limitation is not true on the MDSE side.  In the relationship between MDSE_FCST_PROGRAM and MDSE_VENDOR_AGREEMENT, there is no restriction on including the same Vendor multiple times.  So, if the same Vendor does exist multiple times on a Multiple Agreement Forecast, during Rebate Program creation, additional Rebate Programs will be created if necessary. 
+Update Rebate Program
+There are situations where the Agreement is already tied to a Rebate Program.  When this is the case, on the Queue tab you will see an * to the left of the row and on the Header tab the “create” button’s label will read:  Update AP Rebate Program. 
+ When the Update button is pressed there is a form that appears that lists the changes that will be made. 
+Once the OK button is pressed the changes (which can include Inserts) will be applied. 
+Map an Agreement to a Rebate Program
+There are situations that arise where the Agreement and the Rebate Program with the Agreement’s Vendor already exist but are not related (The AGREEMENT_ID is not on the REBATE_VENDOR’s row).  In order tie them together, the Queue offers a “Map” function.  Usually when this occurs, the Agreement has to be forced into the Queue because the Agreement Status will most likely be one that would not normally cause the Agreement to show up in the Queue.
+An Agreement can be “forced” into the Queue using the Find button while sitting on the Queue tab. Once the Agreement is in the Queue then the “Map” function can be called.  One place the map function is called is from Map Agmt to Rebate button on the Header tab. 
+In order to do the mapping, a Rebate Program / Vendor has to be chosen. When the Map Agmt to Rebate button is pressed, there are two choices that determine how the list of Rebate / Vendor choices is built.  
+The Vendor on Agmt is the more restrictive of the choices.  What it actually means is that when the list of Rebate / Vendors is generated, only those with the same Vendor will be in the list.  The All Vendors means that the Vendor Number will not be considered when building the list.  
+The Mapping may also be done from the Acct Only tab.
+In this case, it is the Rebate Program that is being mapped to an Agreement so it is a list of Agreements that is generated.   When the Map Rebate to Agmt button is pressed, you get the same two options
+In this case, the Vendor on Rebate option indicates that only the Vendor Number for the Row that is selected will be used when looking for Agreements while the All Vendors will use all Vendors on the Rebate Program.   After this choice is made then other choice is offered:
+The Not Mapped Only means that only Agreements that are not already tied to an Agreement are included while Include Mapped means that that being tied to a Rebate Program will not be considered. 
+Un-Map an Agreement to a Rebate Program
+There are situations that arise where it is discovered that the Agreement is tied to the Rebate / Vendor in error.  In this case the relationship between the Agreement and the Rebate / Vendor needs to be broken by removing the AGREEMENT_ID from the REBATE_VENDOR. In order to do this, the Queue offers an “Un-Map” function.  Usually, when this feature needs to be used, the Agreement has to be forced into the Queue because the Agreement Status will most likely be one that would not normally cause the Agreement to show up in the Queue. 
+The Un-Map function is on the Rebates tab which is enabled when the row on the Queue tab is pointing to an Agreement that is tied a Rebate / Vendor. 
+Create Agreement(s) from an AP Program
+Agreements can be created from Rebate Programs and this feature is found on the Acct Only Tab via the two buttons Create Selected and Create Agreements. 
+Database Function: MDSE_CREATE_AGMT_FROM_AP
+The Create Agreement button creates an Agreement using the row (Rebate / Vendor) that is selected.  The Create Selected works in conjunction with the checkbox at the end of the row and allows multiple Agreements to be created at once. 
+This feature was included because when the MDSE side was introdcued and because it was built after the AP side had been built and been in use for a couple of years, there needed to be a way to get the Agreements for the existing Rebate Programs into system without having to manually enter them all.  
+The PL/SQL code that does this was externalized from the form and is in the Datbase Function: MDSE_CREATE_AGMT_FROM_AP.   All the other creating and mapping code covered in the previous pages is in the form itself.  The Create Agreement button calls the Program Unit CREATE_AGMT_FROM_AP and it is what calls MDSE_CREATE_AGMT_FROM_AP.   The Create Selected button loads up a table AP_QUEUE_CREATE such that each row contains a Rebate ID and Vendor Number and then schedules a call to MDSE_FormFunctions.MDSE_CREATE_AGREEMENTS which is an overhead to  MDSE_CREATE_AGMT_FROM_AP.
+AP versus MSDE
+The Creating of Agreements along with the mapping on the Acct Only tab are the only features of the Queue that were intended to be used by the MDSE side.  All of the other features of the Queue are for AP.  As such, when the Queue was built, it included logic that looked at the User Type (See Security Section) and if a person was a MDSE user, all they had access to was the Acct Only tab and AP users had access to everying but the Acct Only tab. 
+In the Queue there is a concept of a “Test” mode that by-passes the check for the User Type and allows both AP and MDSE access to all tabs.  The Queue is still run in Test mode in Production to this day.  
+Security
+The security model that is used within VRS is called “Menu Level” Security.  What this means in the context of VRS is that the menu controls which forms are accessible and when accessed, the “mode” they are invoked in (Query Only or Non Query Only).  There are 3 tables involved:
+Table: (1) REBATE_FORMS 
+Table: (2) REBATE_FORMS_GROUPS
+Table: (3) REBATE_GROUPS
+The REBATE_FORMS table contains a list of Forms that are invokable from the Menu.  It contains the form name as well as a reference to the Menu Object that represents the form’s menu option. 
+The REBATE_GROUPS table contains a list of Security Groups (users are assigned to Groups).  These groups have to exit in VRS_SECURITY (covered shortly) in order for the Security to work.    
+The REBATE_FORMS_GROUPS is an Intersect table that facilitates a many-to-many relationship between REBATE_FORMS and REBATE_GROUPS.  
+For the REBATE_FORMS table, rows are manually inserted whenever a new Menu Level form is introduced into the system.  When this is done, rows have to also be inserted into the REBATE_FORMS_GROUPS table as well.   The rest of the maintenance is managed by the Security form. 
+Form Name: security 
+The Security form will do the Following Maintenance
+Maintenance the Group
+Add a Group (must exist in VRS_SECURITY or will have no effect)
+Delete a Group 
+Edit the Group Name
+Change the Group’s User Type (AP or Mdse)
+Modify the Group/Form Authorization Type (REBATE_FORMS_GROUPS table) 
+There are three Authorization Types:
+Maintenance – Form is called in No Query Only Mode  
+Read Only – From is called in Query Only Mode
+No Access – Menu option be grayed out. 
+From the Form’s Help System:
+NO_QUERY_ONLY (The default.) Oracle Forms will run the indicated form in normal mode, allowing the end user to perform inserts, updates, and deletes from within the called form. 
+QUERY_ONLY Oracle Forms will run the indicated form in query-only mode, allowing the end user to query, but not to insert, update, or delete records.
+User Type (AP or Mdse)
+When the Mdse side was built, the concept of User Type was added at the Security Group level.  The idea is that a given user (who is assigned to a to a Group) either works for AP or MDSE (Merchandising/ FPA).  This setting is only used in three places:
+Upload Form (Menu:  Rebates / Uploads) 
+Reports Form (Menu: History / Reports)
+Approval Queue (Menu: Dashboards / Acct Approval Queue) 
+In the Approval Queue, User Type controls which Tabs are available. In the Upload and Reports forms, the User Type was used so that two versions of the forms were not necessary. In the case of the Upload, there are different Packages for AP versus Mdse (VRS_UPLOAD and VRS_MDSE_UPLOAD). 
+in the case of Reports, there are AP Reports and there are Mdse Report although there are not very many MDSE reports invoked from the Reports form. 
+Having the wrong User Type does not usually come up in Production; however, it comes all the time in DEV or TEST when someone is trying to research an issue with the Upload.   Most Developers are set up as VRS_ADMIN and by default VRS_ADMIN is an AP user.  The problem usually occurs when some tries to upload a MDSE side Upload file and the VRA_ADMIN Group is set to AP User.   The Upload is going to tell you that the file is invalid which, technically speaking, it is from the packages point of view.  The real problem is that the wrong package is being used.   Before testing a MDSE side file you have to make sure that the group you log in as, is set to the MDSE user type.   Then what usually happens is that someone on the AP side (who is not set up as a VRS_ADMIN) tries to test an AP file and now they start getting the same error because the Package being used does not match the file being upload. 
+*** Always, always, always check the User Type before testing an Upload File ***
+VRS Security
+Users that are allowed to log in to VRS have to be set up in VRS_SECURITY (i.e., the “real” VRS_SECURITY).  The “real” VRS_SECURITY is accessed via a view in in the PPROXY11G database. VRS has its own a view called VRS_SECURITY which uses rows from the REBATE_PARAMETER table and the synonym VRS_SECRURITY_VIEW which points to the view VRS_SECURITY_VIEW_V in DATA_FEEDER.  DATA_FEEDER’s VRS_SECURITY_VIEW_V points to the view in the PPROXY11G database.
+The reason that the REBATE_PARAMETER table was introduced was to allow “Ghost” users to be created.  Ghost users are set up in REBATE_PARAMETERS using:
+Seq: -100 
+Parameter Key: User ID
+Text Data: Security Group
+Number: APP_ID (which varies between Prod, DEV and Test) 
+Ghost users cannot log in (since they are not in the “real” VRS_SECURITY table) but they can be used to set up Buyers, GMMs and DMMs.  This was done originally to hold open a spot when someone leaves the company.  The original issue that drove this was when a GMM left.  
+Besides solving a legitimate production issue, this is extremely useful for developers when they are testing in the MDSE side of VRS because you can use this feature to set yourself as a Buyer even though you are in the VRS_ADMIN group.  Buyers have to be in the VRS_MDSE_BUYER group to be created. 
+VRS Security in DEV
+In the DEV and TEST databases, a VRS_SECURITY_TMP table is used.  There is a change made in the VRS_SECURITY view that is in the REBATE_OWNER schema to take advantage of this table. The Synonym VRS_SECURITY_VIEW is replaced with the table VRS_SECURITY_TMP. 
+This was done so that a developer can manipulate the Security Group that VRS thinks you are in.  You still have to be set up in the “real” VRS_SECURITY in order to get in to VRS but the determination of the Security Group will come from the VRS_SECURITY_TMP table.  
+VRS_SECURITY has several columns but there are only 3 that are relevant:
+APP_ID  
+RSPON_NAME 
+PERSON_NAME
+The APP_ID is just a number but it varies by environment (Prod, DEV, TEST etc.).   Early on whenever Prod was copied back over to DEV and TEST, the APP_ID (which is externalized in the Parameter table) was not changed and this caused issues when logging in. 
+The RESPON name is the Security Group.  The GROUP_NAME in the REBATE_GROUPS table needs to match the RESPON_NAME in VRS_SECURITY in order for a person to log in and be assigned to a Security Group. 
+PERSON_NAME is a person’s Single Sign-On / Windows User ID.  
+Note how these are the same 3 pieces of information that are set up when creating a Ghost user. 
+Logging in and Multiple Entries for the same person in VRS_SECURITY
+Over the years there are certain individuals that have been added to VRS_SECURITY multiple times.   This can be seen when logging into VRS: there is a Connection Profiles form that can appear. 
+The entries displayed on this from come from the “real” VRS_SECURITY table (which varies by environment); therefore, if there are multiple entries here, there are multiple entries in the”real” VRS_SECURITY.  This form is NOT part of VRS but instead is what starts VRS by invoking the vendor_rebate form.  The group that is picked here is NOT passed into VRS!!!  
+Most people assume that picking the group here will ensure that they are logged into VRS in the group that they picked but that is NOT the case.  VRS uses the SSO (Single Sign-On) User ID to query VRS_SECURITY to determine a person’s Security Group (VRS lib function: get_login_group) but the problem is, when there is more than one entry in VRS_SECURITY, the last row retuned in the query’s results wins. 
+How it all ties together
+When the vendor_rebate form (which hosts the main_menu) is invoked, Step 1 of the Menu Level Security kicks in and the Menu Items are either Enabled or Disabled.  When a form is invoked via the menu, Step 2 kicks in and the mode (Maintenance or Read Only) is determined.    
+Security considerations when creating or maintaining a form
+When a form is called in QUERY_ONLY mode (READ_ONLY = ‘Y’), the forms environment itself will not allow the form to Insert, Update etc.; however, the forms environment has no way of knowing which Buttons and other objects may need to be disabled, made invisible or what different logic paths may be involved.   All these considerations need to be handled by the person creating or maintaining the form.   For the most part, this means making sure any buttons that allow maintenance (Ex: Save, Add SKU etc.) need to be Disabled in Read Only (aka. Query Only) mode.  At the Item level, if the form contains Non Data base Items they might need to be disabled if they give the impression that they can be used to change the data that is presented. 
+When creating a form for VRS, there are two CHAR parameters that should be created: 
+USERID
+READ_ONLY (Y or N)
+For Menu Level forms these Parameters are required because the Menu creates a Parameter list containing these Parameters and if they do not exist, the form will have an error during invocation.  On Sub forms (Non Menu Level forms) the READ_ONLY may not be needed if it is invoked from a Button that is only enabled when Read Only = N. USERID may not be needed either but most Sub forms handle data entry and thereby Insert or Update into the database and therefore need the User ID.  It’s better just to always have them there just in case they might be needed at some point. 
+The Calculation
+The heart and soul of the AP side of VRS is the Calculation. Recall that the term Calculation can be used as a Verb or a Noun.   The focus of this section is on the verb – the Calculation “process”.   The results of a Calculation (the noun) are stored in the CALCULATE_RESULT table and in the section following this one there is a detailed description (field by field) of the CALCULATE_RESULT table and REBATE_VENDOR_DEPT (which contains the “current” values of a lot of the CALCULATE_RESULT fields).
+The Calculation is generally thought of as the E&C (which is a valid way to think about it) but technically it is the C part of the E&C. The Extract and Calculate are really two separate processes but the Calculate is dependent on the Extract having already been run.  In the beginning they were run separately but that was changed early on such that they run together as one process and the Calculate is called from the Extract.  It is still possible to run just the Calculate for a single Rebate Program.    
+Extract – BatchFunctions.RUN_EXRACT (this is the Extract Code)
+                 BatchFunctions.SCHEDULTE_EXTRACT (schedules the E&C)
+                 BatchFunctions.EXTRACT_RUNNING (test to see if already running)
+Calculate – BatchFunctions.RUN_CALCULATE (this is the Calculate Code)
+                     BatchFunctions.SCHEDULE_CALCULATE (Schedules the Calculate)
+                     BatchFunctions.CALCULATE_RUNNING (test to see if already running)
+The Extract calls Source specific Extract functions and they do the Inserts into Source specific “CALCULATE” tables.  See the ERD at the end of this section. 
+One difference between the Extract and the Calculate is that the Extract works at the Rebate ID Level and the Calculation works at the Rebate ID / Vendor / Department level.  When the Calculate is called from the Extract, it is called after the Extract has finished for a given Rebate ID and passes the Rebate ID into the Calculate which then loops through the Vendor / Departments.    
+When the Calculate runs, it invokes the Source specific Calculate function and it uses the individual “CALCULATE” table(s) loaded by the Extract.  It is the Calculate function, not the Source Specific Calculate function, that Inserts into the CALCULATE_RESULT. 
+Conceptually all the Source specific Calculate functions do the same thing. They go through the Source Specific Calculate Table (or tables) and come up with the total PMU, Margin, [and only when applicable] Adv Coop and Other Coop for the Vendor / Department that they were called with.  These summary numbers are then returned to the Calculate.      
+When SBT was introduced, the Source Specific Calculations also retuned the SBT Portion of the Earnings.  When the SBT version (ex: PMU SBT) = 0 then PMU and PMU Non SBT is the same.  When there is SBT then PMU Non SBT = PMU – PMU SBT.
+Once the PMU, Margin, Adv Coop and Other Coop amount are known, the Calculate checks to see if the Cap had been exceeded and if so, caps the earnings and then the most pivotal function in system is called:  BatchFunctions.CALCULATE_BUCKETS
+The Calculate Buckets is what determines most of the values that you see in the CALCULATE_RESULT table — including but not limited to:
+Collected Amounts (Check and Deductions)
+Accruals
+Reclasses
+Earnings (PMU, Margin, Adv Coop and Other Coop)
+Adjustments 
+YTD and LTD Amounts 
+At a high level, the Calculate logic looks like this:
+When SBT was introduced (much to the consternation of the author who would not have done it this way because it creates a multitude of issues [when the ALL option is used] that have to be solved in other ways plus it makes future maintenance a nightmare), CALCULATE_BUCKTS was cloned twice to create an SBT and a Non SBT version.   
+*** if CALCULATE_BUCKETS is changed, the SBT and Non SBT version must be changed as well ***
+Re-Calculation
+There is a process called Re-Calculation that handles a particular business scenario that occurs when the Amount per Unit or the Percent of Cost changes after the Rebate Program has been active for more than one Period.  From a business perspective, the difference caused by the change needs to be “Trued-Up” and the difference included in the current Period’s earnings. 
+The term True-Up is used to describe this reassessment of earnings and is used in a variety of context but the term Re-Calculation is a very specific process that can occur during the Calculation.  There are Re-Calculation functions that exist for the No Source Rebates but the one being described here is done for the Rebates that have a “Sourced” Source that use the Amount per Unit and Percent of Cost. This excludes the Discount Amount BOGO source which has a special set of Calculation parameters – it does not use the standard Amount per Unit and Percent of Cost.   
+During the Finalize, a table called PREV_PRICE_INFO is loaded and this table is used to determine if there have been changes in the Amount per Unit or Percent of Cost.  This determination is done in a function in the BatchFunctions package called CHECK_PRICING which is called by the participating Source Specific Calculation functions. When it finds where an Amount per Unit or Percent of Cost has changed, it loads the “Trued-Up” amounts into a Source Specific “RECALC” tables.  
+Archiving
+During the Finalize, many of the Source Specific Calculate tables have rows that are “moved” (Inserted into a different table and deleted from the existing table) into tables called “Archive” cable.  From an Oracle perspective, these are just regular tables.  They are called” Archive” tables because they are preserving the data but are not used by the Calculation. This is mentioned here not because it is part of the Calculation but because most of the tables involved are the Source Specific Calculation tables.  For the Sourced source, they tend to accumulate a log of data. 
+The “Archiving” occurs once a Rebate Program is Closed.  Note that there is an issue that occurs with respect to Archived data.   There is a feature on the Rebate Program form that will allow a Rebate Program to be “Unclosed”.   All this feature does is set the “Closed” date back to NULL but then when the Rebate Program is closed again, any archived data gets lost.  This is due to some code that was added (although not by the author but his guess is that it was done to solve Unique Key violation Issues) and this code deletes any existing rows in the Archive table for the Rebate being archived.  This means that any data archived the first time is lost.  A very short-sighted solution to be sure and has not been addressed as of the writing of this document. 
+Here is the list of Archive Table
+CALCULATE_SKU_DC_RECV_ARC
+CALCULATE_SKU_DISCOUNT_ARC
+CALCULATE_SKU_DROP_SHIP_ARC
+CALCULATE_SKU_FIRST_COST_ARC
+CALCULATE_SKU_PO_ARC
+CALCULATE_SKU_SALES_ARC
+CALCULATE_SKU_XFER_ARC
+CALCULATE_STORE_ARC
+REBATE_AUDIT_LOG_ARC
+NSA_ONHAND_ARC
+NSA_TRANSFERS_ARC
+NSA_DROPSHIP_ARC
+Source | Description | Notes
+R | Receipts - Domestic | 
+S | Sales | 
+D | Drop Ships | 
+B | Receipt & Drop Ship | (Pseudo Source) Combines Receipts and Drops
+F | Receipts - Import (First Cost) | Imported Product – Costed differently
+C | Discount Amt/BOGO | 
+P | Purchases | Not really used
+Source | Description | Notes
+N | No Source | Dept and Class Level Only Direct Entry of Earnings
+E | NS - Period | Just like No Source but divides by # of Periods to get Period Earnings.
+Q | NS - Quantity | SKU Level Only (Qty * Units or Qty * Units * % of Cost)
+T | NS - Rate | SKU Level Only (Rate * Sides * Stores)
+function BeforeReport return boolean is
+begin
+    IF :INV_NO <> '%' THEN
+  	:P_PRINT := '%';
+    END IF;
+    return (TRUE);
+end;
+function AfterReport return boolean is
+begin
+  UPDATE REBATE_INV_HEADER
+     SET PRINT_IT = 'N',
+         PRINTED = 'Y',
+         INV_ORDER = NULL,
+         INV_LAST_PRINTED = sysdate
+   WHERE PRINT_IT = 'Y'
+     AND AP_INV_NUMBER LIKE :INV_NO;  
+  return (TRUE);
+end;
+Upload Type | Description
+SKU | Allows SKUs to be added to a Rebate Program and SKU fields to be Updated.
+EARNINGS | Allows Lump Sum Amounts at either the Department or Class level to be Updated.
+INV | Allows an Invoice Header to be Inserted (INV Type: XREF)
+COMMENT | Allows the Comment on the REBATE_PROGRAM table to be Updated.
+STORE | Allows Stores to be added to a Rebate Program.
+CHECK | Allows Checks to be added to a Rebate Program - runs a Quick Calculate.
+HISTORY | Similar to REBATE but Rebate Programs Inserted are already Closed. Inserts enough CALCULATE_RESULT data to show historical earnings.
+NSADIST | Allows Distributor SKUs to be added and assigned to the correct Distributer or updated to point to a different distributor.
+NSASTORE | Allows Stores to be added to the Current Period’s NSA Store list and existing store information to be updated.
+NSAEXEMPT | Allows Exempt SKUs to be Added or the Comment on an Exempt SKU to be updated.
+. . .
+
+   seq_no   batch_process_log_hdr.process_id%TYPE;
+
+BEGIN
+
+  seq_no := LogFunctions.logs_start (Logger Name,
+                                     User Id,
+                                     Detail Message)
+  . . .
+
+  LogFunctions.logs_flush (seq_no, NULL);
+
+  . . .
+
+  LogFunctions.process_log (‘Process Complete’);
+  LogFunctions.logs_finish (seq_no, ‘Complete’);
+
+EXCEPTION WHEN OTHERS
+THEN
+
+  ROLLBACK;
+  LogFunctions.process_log ('Process Abended.');  
+  LogFunctions.error_log ('Error in Process: ');
+  LogFunctions.logs_finish (seq_no, 'Abended');
+
+END;
+Logger Name | Form where the Log Entries can be seen
+Extract | Extract and Calculate
+Calculate | Extract and Calculate
+Batch | Batch & Distribute (finalize)
+Distribute | Batch & Distribute (finalize)
+Finalize | Batch & Distribute (finalize)
+Deduction | Batch & Distribute (finalize)
+Upload | Upload
+Load | Extract and Calculate
+MDSE | MDSE Log Viewer
+Reports | MDSE Log Viewer
+QUEUE | MDSE Log Viewer and Approval Queue
+FcstEngine | MDSE Log Viewer
+NSA | NSA Dashboard – View Process Log button
+Tiers | From | To | Percent
+Tier 1 | 0 | 20,000 | 1%
+Tier 2 | 20,000.00 | 30,000 | 2%
+Tier 3 | 30,000.00 | 40,000 | 3%
+Tiers | From | To | Percent
+Tier 1 |  | 20,000 | 1%
+Tier 2 |  | 30,000 | 2%
+Tier 3 |  | 40,000 | 3%
+Tiers | Growth % | Percent | 
+Tier 1 | 10% | 1% | 
+Tier 2 | 15% | 2% | 
+Tier 3 | 20% | 3% | 
+Tiers | Dollar | Percent | Period
+Tier 1 | 10,000 | 1% | 1
+Tier 2 | 12,000 | 2% | 2 and 3
+Tier 3 | 13,000 | 3% | 4
+Owner | Agreement ID | REBATE_ID | VENDOR_NUM | CONTRACT_OK
+Agreement | X |  |  | 
+Rebate / Vendor |  | X | X | 
+NSA Vendor |  |  | X | 
+S5S5 Contract |  |  |  | X
+Table: CALCULATE_RESULT
+
+This table holds the results of a “Calculate” (the C in E&C).  A record in this table defines a “Calculation”.  It is Calculations that are “reviewed”, “approved”, “batched” and “sent/distributed”.  The “Calculation” can change each time a “Calculate” is run during the Period.  Ultimately though, it is preserved and written to history.  It from this data that “batches” are created.  This is the source for both the Review and Approval screen. | Table: CALCULATE_RESULT
+
+This table holds the results of a “Calculate” (the C in E&C).  A record in this table defines a “Calculation”.  It is Calculations that are “reviewed”, “approved”, “batched” and “sent/distributed”.  The “Calculation” can change each time a “Calculate” is run during the Period.  Ultimately though, it is preserved and written to history.  It from this data that “batches” are created.  This is the source for both the Review and Approval screen.
+REBATE_CALC_ID | Unique identifier of the record. Used to relate to the Batch records created from this data. When a Calculation is “unapproved”, this is used to delete the Batch records.
+REBATE_ID | PK (1) The Rebate Program
+VENDOR_NUM | PK (2) the AP Vendor within the Rebate.
+DEPT_NUM | PK (3) Department within the Rebate and Vendor.
+CLASS_NUM | PK (4) The Class within the Department.  Note – always (-1) which means all Classes in the Department.  The original intent was to bae able to support Department and Class Level but that never occurred.
+YEAR | PK (5) The year in which this calculation took place.  Note: 0 indicates the current period (not in history yet).
+PERIOD | PK (6) The Period in which this calculation took place.  Note: 0 indicates the current period (not in history yet).
+The term “Accrual” as used in the next 4 fields (and later on) means how much money is owed at the point in time the calculate process is run. Also, the ADV and OTH fields are misnamed because they actually go to GL and not RSL.   The next 9 fields are the source for the Batch Detail records.  These are all set when the Calculation is run. | The term “Accrual” as used in the next 4 fields (and later on) means how much money is owed at the point in time the calculate process is run. Also, the ADV and OTH fields are misnamed because they actually go to GL and not RSL.   The next 9 fields are the source for the Batch Detail records.  These are all set when the Calculation is run.
+RSL_PMU_ACCRUAL | The PMU Accrual amount from which the PMU Accrual batch record is created.
+RSL_MAR_ACCRUAL | The Margin Accrual amount from which the PMU Accrual batch record is created.
+RSL_ADV_ACCRUAL | The Advertising Accrual amount from which the PMU Accrual batch record is created.
+RSL_OTH_ACCRUAL | The Other Accrual amount from which the PMU Accrual batch record is created.
+RSL_PMU_RECLASS | The PMU Reclassification amount from which the PMU Reclassification batch record is created.
+RSL_MAR_RECLASS | The Marin Reclassification amount from which the Margin Reclassification batch record is created.
+RSL_ADV_RECLASS | The Advertising Reclassification amount from which the Advertising Reclassification batch record is created.
+RSL_OTH_RECLASS | The Other Reclassification amount from which the Other Reclassification batch record is created.
+DEDUCTIONS | The Deduction amount sent to AP. This will contain a value when there is an Accrual (DG is owed money) and the Payment Type is ‘D’ (payment will be made using Deductions).  Systematic Deductions only.  This does not include On Demand Deductions.
+The following 4 (REV_) fields were added to help with the Period Accounting Summary form.  They basically hold the prior period’s Accruals and this makes it easy to simulate the “reversing” effect which is how most people seem to want to view the Accruals.  In reality, VRS simply calculates the total owed and sends an Accrual.  It does not “reverse” anything — the reversal happens in RSL and GL. | The following 4 (REV_) fields were added to help with the Period Accounting Summary form.  They basically hold the prior period’s Accruals and this makes it easy to simulate the “reversing” effect which is how most people seem to want to view the Accruals.  In reality, VRS simply calculates the total owed and sends an Accrual.  It does not “reverse” anything — the reversal happens in RSL and GL.
+REV_PMU_ACCRUAL | The PMU Accrual amount from the previous period. Used to “simulate” a reversal.
+REV_MAR_ACCRUAL | The Margin Accrual amount from the previous period. Used to “simulate” a reversal.
+REV_ADV_ACCRUAL | The Advertising Accrual amount from the previous period. Used to “simulate” a reversal.
+REV_OTH_ACCRUAL | The Other Accrual amount from the previous period. Used to “simulate” a reversal.
+TOTAL_CHECKS | The Total Life to Date Checks Recorded in the Vendor Rebate system.  Set from the REBATE_VENDOR_REBATE table the “Calculate”.  It is NOT set when a Check is recorded.
+TOTAL_DEDUCT | The Total Life to Date Deductions recorded in the Vendor Rebate system.  Set from the REBATE_VENDOR_REBATE table the “Calculate”.  It is NOT set when a Deduction is “sent”.
+TOTAL_CHK_EARN | The amount of Life to Date “earnings” that have been applied (reclassified) against Checks recorded.
+TOTAL_DED_EARN | The amount of Life to Date “earnings” that have been applied (reclassified) against Checks recorded.
+PERIOD_ACCRUAL | The Total Period “Accrual”. How much of the Total Accrual is actually for this period. In Phase 1 the Period Accrual Amount that appeared on an invoice.  Invoices were done differently in Phase 2 – they followed a more “Balance” forward approach.
+TOTAL_ACCRUAL | The Total “Accrual”.  The Total Accrual is simply the difference between the Lift to Date earned versus Life to Date Collected.  Since RSL and GL “reverse” any previous accruals, this represents the total amount accrued and sent to RSL (PMU and Margin) and GL (Adv and Other)
+CURR_PMU | Current Period PMU Earnings without any adjustments.
+CURR_MAR | Current Period Margin Earnings without any adjustments.
+CURR_ADV | Current Period Advertising Earnings without any adjustments.
+CURR_OTH | Current Period Other Earnings without any adjustments.
+CURR_PMU_EADJ | Current Period total PMU Earnings Adjustments.
+CURR_MAR_EADJ | Current Period total Margin Earnings Adjustments.
+CURR_ADV_EADJ | Current Period total Advertising Earnings Adjustments.
+CURR_OTH_EADJ | Current Period total Other Earnings Adjustments.
+CURR_PMU_AADJ | Current Period total PMU Accrual Adjustments.
+CURR_MAR_AADJ | Current Period total Margin Accrual Adjustments.
+CURR_ADV_AADJ | Current Period total Advertising Accrual Adjustments.
+CURR_OTH_AADJ | Current Period total Other Accruals Adjustments.
+CUR_ADJ | Absolute Value of the sum of all the Current Adjustments.  Used to set “Yes” if there are any Adjustments.
+PRIOR_YEAR_TOT | Review Screen – Prior Year End of Year Total – set from ELY_EARNED in the REBATE_VENDOR_DEPT table when the record is created.
+PRIOR_YEAR_YTD | Review Screen – Prior Year’s Year to Date – includes the Current Period.  Set from YTD_EARNED in the CALCUATE_RESULT from a year earlier.
+CURR_YEAR_YTD | Review Screen – Current Year’s Year to Date – includes the Current Period.
+CURR_PERIOD_TOT | Review Screen – Current Period’s total earnings including Adjustments.  PMU, Margin, Adv and Other are all included.  Same as CUR_EARNED in REBATE_VENDOR_DEPT.  In Phase 2 this really should have been modified to only include PMU and Margin since it is strictly for the Review Screen but instead, new fields were added to hold just the PMU and Margin portion.  See the PM_ (PMU _ Margin) and the AO_ (Adv and Other) Phase 2 fields.
+YTD_PMU | Approve Screen – Year to Date PMU earnings net of adjustments and including the current period.
+YTD_MAR | Approve Screen – Year to Date Margin earnings net of adjustments and including the current period.
+YTD_ADV | Approve Screen – Year to Date Advertising earnings net of adjustments and including the current period.
+YTD_OTH | Approve Screen – Year to Date Other earnings net of adjustments and including the current period.
+YTD_ADJ | Approve Screen – Absolute Value of the sum of all the Adjustments – used to set the “Yes” if there are any Adjustments.
+YTD_EAR | Approve Screen – Total Year to Date Earnings including the current period.
+LTD_EAR | Total Life to Date Earnings including the current period.
+BEG_PREPAID | Approve Screen – the Beginning Prepaid Balance – set from the Ending Prepaid from the Previous period.
+PER_PREPAID | Approve Screen – the amount o prepaid at the beginning of the period.
+CUR_EARNED | Approve Screen – The Amount earned to which prepaid was applied. Or, another way to say it: the amount reclassed.
+END_PREPAID | Approve Screen – The Amount of Prepaid and the end of the period.
+PAYMENT_TYPE | The Payment Type at the time this “Calculation” was created.
+DEDUCT_FREQ | The Deduction Frequency at the time this “Calculation” was created. Either ‘P’ Period, ‘Q’ Quarter or ‘E’ End of Period.
+REVIEWED | Indicates if this “calculation” has been reviewed.  Set on the Review screen.  Set back to ‘N’ when a calculation is done.
+REVIEWED_DATE | Has a Date / Time when REVIEWED is ‘Y’.  NULL when ‘N’.
+APPROVED | Indicates if this “calculation” has been approved.  Set on the Approve screen.  If set to ‘Y’,the “calculate” routines will by-pass updating this record and it will be excluded from the Review screen.
+APPROVED_DATE | Has a Date / Time when APPROVED is ‘Y’.  NULL when ‘N’.
+BATCHED | Indicates that “batch” records have been created. om the Review screen.
+BATCHED_DATE | Has a Date / Time when BATCHED is ‘Y’.  NULL when ‘N’.
+SENT | Indicates if the “batched” records created from this “Calculation” have been sent.  If set to ‘y’, the “Calculation” can no longer be changed.  If set to ‘N’, the “batch” records can still be recalled by “un-approving” the “Calculation”.
+SENT_DATE | Has a Date / Time when SENT is ‘Y’.  NULL when ‘N’.
+REBATE_UPDATED | This is set during the Period Close to indicate that the Period Data has been “rolled” on the REBATE_VENDOR_DEPT record.
+DEDUCTION_CREATED | Set to ‘Y’ when a Deduction is Created.  A Deduction will only be created if the DEDUCITONS amount is not zero.
+DED_SEQ_NO | Used to relate this record to the Deduction created in the REBATE_DEDUCTIONS table.
+CREATE_INVOICE | Set to ‘Y’ to let the System know s Systematic Invoice needs to be created. This should only be set if the Period Accrual is not zero.  Note – this does NOT include Deduction Notices.
+INVOICE_CREATED | Set to ‘Y’ once a Systematic has been created.
+INVOICE_NUM | The Invoice # (Not the AP Invoice Number) if INVOICED_CREATED = ‘Y’
+IP_VENDOR_NUM | The IP (Island Pacific) Vendor Number.
+DATE_CREATED | Date row was Inserted.
+USERID_CREATED | User ID in effect when the row was Inserted.
+DATE_UPDATED | Date row was Updated.
+USERID_UPDATED | User ID in effect when the row was Updated.
+The following fields were added for Phase 2. Originally only the AO_ versions were going to be added and the 4 original fields (same name without the prefix – see above) were going to be modified to only include PMU and Margin.  Decided to leave the original 4 fields so that they include PMU, Margin, Adv and Other in case they were being used already.   One problem in terminology is that in some contexts Earnings includes Adv and Other and in some it does not.  Eventually it was realized that LTD totals were also necessary, not for the Review screen but for other purposes. | The following fields were added for Phase 2. Originally only the AO_ versions were going to be added and the 4 original fields (same name without the prefix – see above) were going to be modified to only include PMU and Margin.  Decided to leave the original 4 fields so that they include PMU, Margin, Adv and Other in case they were being used already.   One problem in terminology is that in some contexts Earnings includes Adv and Other and in some it does not.  Eventually it was realized that LTD totals were also necessary, not for the Review screen but for other purposes.
+PM_PRIOR_YEAR_TOT | Review Screen – PMU and Margin Only (and Adjustments)
+PM_PRIOR_YEAR_YTD | Review Screen – PMU and Margin Only (and Adjustments)
+PM_CURR_YEAR_YTD | Review Screen – PMU and Margin Only (and Adjustments)
+PM_CURR_PERIOD_TOT | Review Screen – PMU and Margin Only (and Adjustments)
+PM_LTD_TOT | Life to Date PMU + Margin including Current Period.
+AO_PRIOR_YEAR_TOT | Review Screen – Adv and Other Coop Only (and Adjustments)
+AO_PRIOR_YEAR_YTD | Review Screen – Adv and Other Coop Only (and Adjustments)
+AO_CURR_YEAR_YTD | Review Screen – Adv and Other Coop Only (and Adjustments)
+AO_CURR_PERIOD_TOT | Review Screen – Adv and Other Coop Only (and Adjustments)
+AO_LTD_TOT | Life to Date Adv + Other including current period.
+The following LTD files were added right before going live for Phase 2.  They were included to support the Pre-Paid Query report.  Loaded from the REBATE_VEND_DEPT table. | The following LTD files were added right before going live for Phase 2.  They were included to support the Pre-Paid Query report.  Loaded from the REBATE_VEND_DEPT table.
+LTD_PMU_RECLASS | LTD Reclass for PMU Only – through Previous Period
+LTD_MAR_RECLASS | LTD Reclass for Margin Only – through Previous Period
+LTD_ADV_RECLASS | LTD Reclass for Adv Coop Only – through Previous Period
+LTD_OTH_RECLASS | LTD Reclass for Other Coop Only – through Previous Period
+EARNINGS_TYPE | Added during the Non MDSE project.
+After the Non MDSE project, the table was not modified again until the SBT project.   For the SBT project the number of fields almost tripled because there are now SBT and Non SBT Versions of most of the fields listed above.  The field names are the same but prefixed with SBT_ or NSBT_.   For each field that has a companion SBT and NSBT field the following arithmetic statement should be true:  SBT_ version + NSBT_ Version = Original Version. | After the Non MDSE project, the table was not modified again until the SBT project.   For the SBT project the number of fields almost tripled because there are now SBT and Non SBT Versions of most of the fields listed above.  The field names are the same but prefixed with SBT_ or NSBT_.   For each field that has a companion SBT and NSBT field the following arithmetic statement should be true:  SBT_ version + NSBT_ Version = Original Version.
+Table: RBATE_VENDOR_DEPT
+
+This table is part of the setup but also holds the current earnings, collected and total buckets.  This is the source of the data that is on the Vend/Dept and Totals tabs on the Rebate Program form. | Table: RBATE_VENDOR_DEPT
+
+This table is part of the setup but also holds the current earnings, collected and total buckets.  This is the source of the data that is on the Vend/Dept and Totals tabs on the Rebate Program form.
+REBATE_ID | PK (1) The Rebate Program
+VENDOR_NUM | PK (2) the AP Vendor within the Rebate.
+DEPT_NUM | PK (3) Department within the Rebate and Vendor.
+CLASS_NUM | PK (4) The Class within the Department.  Note – always (-1) which means all Classes in the Department.  The original intent was to bae able to support Department and Class Level but that never occurred.
+IP_VENDOR_NUM | The IP (Island Pacific) Merchandising Vendor Number
+AMT_PER_UNIT | The current setting for Amount Per Unit at the Department Level
+PCT_PER_UNIT | The current setting for Percent of Cost at the Department Level
+CALCULATE_UOM | The current setting for Unit of Measure (E – Each or C – Case) at the Department Level.
+TOTAL_CHECKS | Total Dollar amount of all Checks ever recorded including those recorded in the current period.
+TOTAL_DEDUCT | Total Dollar amount of all Checks ever taken up to and including on Demand Deductions distributed in the current period.
+TOTAL_CHK_EARN | Total Dollar amount of Checks reclassified up through the prior period.
+TOTAL_DED_EARN | Total Dollar amount of Deductions reclassified up through the prior period.
+LTD_COLLECTED | Total Dollar amount of All Checks Received and Deductions ever taken up to an including Checks recorded in the current period and On Demand Deductions distributed in the current period.
+LTD_RECLASSED | Total Dollar amount of Checks and Deductions reclassified up through the prior period.
+LTD_PREPAID | Life to Date Prepaid – if LTD Collected is greater than LTD Earned, then this will have an amount.
+LTD_UNPAID | Amount that is currently owed.
+CUR_EARNED | Current Period Earnings – includes PMU, Margin, Adv and Other Coop and any Earnings Adjustments.
+CUR_PMU | Current Period PMU Earnings without any adjustments.
+CUR_MARGIN | Current Period Margin Earnings without any adjustments.
+CUR_ADV_COOP | Current Period Advertising Earnings without any adjustments.
+CUR_OTH_COOP | Current Period Other Earnings without any adjustments.
+CUR_ADJUST | Absolute Value of the Sum of the current Adjustments.
+YTD_EARNED | Year to Date Earned – includes PMU, Margin, Adv and Other Coop.  Does not include Current period.
+YTD_PMU | Year to Date PMU Earned – Does not include Current period.
+YTD_MARGIN | Year to Date Margin Earned – Does not include Current period.
+YTD_ADV_COOP | Year to Date Adv Coop Earned – Does not include Current period.
+YTD_OTH_COOP | Year to Date Other Coop Earned – Does not include Current period.
+YTD_ADJUST | Absolute Value of YTD Adjustments.
+ELY_EARNED | Earning s Last Year – includes PMU, Margin, Adv and Other Coop
+ELY_PMU | End of Prior Year PMU – prior Year
+ELY_MARGIN | End of Prior Year Margin – prior Year
+ELY_ADV_COOP | End of Prior Year Adv Coop – prior Year
+ELY_OTH_COOP | End of Prior Year – Other Coop prior Year
+ELY_ADJUST | Absolute Value of the End of Year Adjustments.
+LTD_EARNED | Year to Date Earned – includes PMU, Margin, Adv and Other Coop.  Does not include Current period.
+LTD_PMU | Life to Date PMU Earned – Does not include Current period.
+LTD_MARGIN | Life to Date Margin Earned – Does not include Current period.
+LTD_ADV_COOP | Life to Date Adv Coop Earned – Does not include Current period.
+LTD_OTH_COOP | Life to Date Other Coop Earned – Does not include Current period.
+LTD_ADJUST | Absolute Value of LTD Adjustments.
+LTD_PMU_RECLASS | Life to Date PMU Reclassed - Does not include Current period.
+LTD_MAR_RECLASS | Life to Date Margin Reclassed - Does not include Current period.
+LTD_ADV_RECLASS | Life to Date Adv Coop Reclassed - Does not include Current period.
+LTD_OTH_RECLASS | Life to Date Other Coop Reclassed - Does not include Current period.
+YEAR | Year that the Last Calculation was done.
+PERIOD | Period that the Last Calculation was done.
+ACTIVE | If ‘N’ then Calculations are no longer done on the Vendor / Department.
+DATE_CREATED | Date row was Inserted.
+USERID_CREATED | User ID in effect when the row was Inserted.
+DATE_UPDATED | Date row was Updated.
+USERID_UPDATED | User ID in effect when the row was Updated.
+The following 4 Lump Sum fields were in Phase 2 when the concept of No Source was added. 
+In Phase 2 the concept of Excluding SKUs and Tiers was added. | The following 4 Lump Sum fields were in Phase 2 when the concept of No Source was added. 
+In Phase 2 the concept of Excluding SKUs and Tiers was added.
+LUMP_PMU_AMT | Department Level PMU Lump Sum Amount used with the N – No Source and E – No Source Period sources.
+LUMP_MAR_AMT | Department Level Margin Lump Sum Amount used with the N – No Source and E – No Source Period sources.
+LUMP_SUM_ADV | Department Level Adv Coop Lump Sum Amount used with the N – No Source and E – No Source Period sources.
+LUMP_SUM_OTH | Department Level Other Coop Lump Sum Amount used with the N – No Source and E – No Source Period sources.
+EXCLUDE_SKUS | Y / N flag that when set to Y works in conjunction with the SKUs in the department flagged to change the meaning of the SKUs.  In this case, all SKUS in the Department are pulled except the ones listed.
+TIER_TYPE | Defines the Tier Type (E – Excess, P – Pre-defined Ranges, L – Predefined Levels, G – Growth) and when NOT NULL Tiers are in effect.
+TIER_LAST_YEAR | Used with Growth to entered Last Year’s earnings.
+For the SBT project the number of fields almost tripled because there are now SBT and Non SBT Versions of most of the fields listed above.  The field names are the same but prefixed with SBT_ or NSBT_.   For each field that has a companion SBT and NSBT field the following arithmetic statement should be true:  SBT_ version + NSBT_ Version = Original Version. | For the SBT project the number of fields almost tripled because there are now SBT and Non SBT Versions of most of the fields listed above.  The field names are the same but prefixed with SBT_ or NSBT_.   For each field that has a companion SBT and NSBT field the following arithmetic statement should be true:  SBT_ version + NSBT_ Version = Original Version.
+Glossary | Glossary | Glossary
+Term | Description
+Accounting Control Master | A set of Tables within VRS that contain information used when interfacing to external systems.
+Accrual | The act or process of accumulating an increase.  In the case of VRS, the increase is a reference to rebate earnings. VRS submits entries to record accrued rebates in the Retail Stock Ledger and General Ledger.  Accrued funds have been earned, but not collected.
+Agreement ID | Unique Identifier of an Agreement.  Agreement IDs are generated using an Oracle Sequence and as such they have no intrinsic meaning. Agreement IDs are visible in the system and can be used to look up and identify a specific Agreement.
+AP # | Accounts Payable Vendor Number.  When the Vendor Number is referenced on the AP side of VRS, it is the AP # that is being referred to.
+Approval Queue
+aka. “The Queue” | Form that facilitates the creation of Rebate Programs from Agreements.  It is the bridge between the AP and the MDSE sides of the system.
+Audit Log | Within VRS, a table that contains information relating to changes made to key tables.  In AP, these are mostly tables relating to a Rebate Program; therefore, it is changes being made to a Rebate Program that are being logged.  Most audit log entries are created by database triggers.
+Batch on Demand | An invokable process within VRS that looks for On Demand Deductions that have not been taken and batches and distributes them.
+Batches | Groupings of data created from Approved Calculations (or Deductions in the case of On Demand) that are used to interface to external Systems.  Since there are 3 systems (RSL, AP and GL), these are also the three “Types” of Batches created.
+Batching Process | An invokable process within VRS that looks at Approved Calculations and generates Batches.
+BOGO | Buy One Get One – used generally to refer to a Conditional Promotion where the consumer buys a product(s) and receives additional product(s) (same or different SKU) either free or at some discount. SKUs within the BOGO may be of the same type (Mdse or Non Mdse) and can fall in different departments.  Cross Mdse BOGOs contain SKUs of different departments.
+Calculation | Within the context of VRS, this term is used as both a verb and a noun.  As a verb it refers to process of generating the earnings, accruals etc. using either external or internal data. As a noun it refers to the result of the calculation process.  For example: calculations (the noun) are Reviewed, Approved and Batched.  
+The Calculation can be thought of as a synonym for the Extract and Calculate (E&C) process or as just the C in E&C.   In this context it is generally referred to as the Calculate.
+Category | Category is a grouping Mechanism used on the AP side to group Rebate Programs together independent of the Merch Type.
+CoOp | Advertising CoOp: Advertisements by retailers that include the specific mention of manufacturers, who in turn repay the retailers for all or part of the cost of the advertisement. An “Other” CoOp was added in case there was Non Adv funding sharing expenditures that needed to be recorded.  CoOp monies are sent to the General Ledger and offset expense (SG&A).
+Cross Mdse | A Conditional Promotion where the customer buys a product and receives one or more products or for a discounted price (BOGO), and the SKU’s are a mixture of Mdse and Non Mdse items.
+CSV | Extension used with a Comma Separated Values file. CSV files are used a lot in VRS because they can be read directly by Excel.  CSV files are used to Upload data into VRS (created using Excel) and both Reports and History Extracts can produce CSV files (read and manipulated by Excel).
+Damages | Product that has been damaged at the Store or the DC.   Vendors help cover the cost of damages so the AP side has a sub system (called Damages) that acquires Actual Damages in a batch process run at night and has inquiry forms that help to determine what the Earnings Amount should be.
+Deduction | A decrease in Payment to offset money owed.  Deductions are the preferred payment method.
+Deduction Notice | An invoice that is used when a Deduction is taken from a Vendor.   Rather than being a statement of charges, it is a notification that the money owned has deducted from a future payment.  As such, the Vendor does not owe the money.
+Discount | An amount subtracted from the regular price when purchased by a consumer.  It is the amount of money that a consumer saves with respect to paying regular price.
+Distribute Process | An invokable process within VRS that looks at Batches derived from Calculations and creates “interface” files for the external systems: RSL, AP and GL.
+E&C | (short for Extract and Calculate) – the processes that generates the “Calculation”
+Earnings | Within VRS, earnings represent monies that DG has “earned” from a Vendor based on a performance as defined in an agreement.
+Earnings Adjustment | Modifications to Earnings to change the amount.  Used when the calculated earnings are not what the vendor needs to be charged.
+Extract | This is the E portion of the E&C (Extract and Calculate).   The Extract acquires the data for the calculation (either external or Internal) and loads the source specific calculation tables in preparation for the Calculate.
+Finalize | The AP side invokable process that “Closes the Period”.  During the Finalize, among other things, Calculations are moved to History.
+Flash Sales | A system that reports up-to-date store sales.  Not part of VRS but VRS provides data via a view to the Flash Sales.
+FMB | Extension of an Oracle Forms “binary” file.  This is the “editable” version of the form.  Called Binary because it contains both Text and Binary.  Is maintained by the Forms Builder.
+FMX | Extension of an Oracle Forms “executable” file.  This is the executable version of the form.
+Forecast ID | The Forecast ID is the Primary key on the Table that is the parent to the Agreement Table. Agreements can be grouped together under a single Forecast ID  if it is supported by the Merch Type.  Ex:  ADVCOOP
+GL | Stands for: General Ledger – Within VRS, this is a reference to an external General Ledger that VRS interfaces to.  VRS sends “Coop” amounts (monies that will be collected but will not reduce Cost of Goods because they are treated as an expense) to the General Ledger
+Inquiry Form | A form used to query targeted information.  Very similar to a report but the output is on a form.  Inquiry forms do not perform maintenance but generally have a fair amount of ability to select and sort.
+Invoice | Within standard terminology, can be used as a noun or verb.  An invoice, the noun, is a statement of charges and the verb means to “send” an invoice.  Within VRS, can either refer to the underlying data that makes up an invoice or the PDF created that is sent or emailed to the Vendor.  Invoices (the data) are produced ad a by-product of the Distribute and they can also be manually created.
+IP # | IP (Island Pacific) Vendor Number.  This is the Merchandising Vendor Number. The MDSE side of VRS uses the IP #.
+Margin | Within VRS, merchandise rebates that were earned in a prior year but are recorded in the current year. Margin is accounted for as 100% profit for the Buyers as opposed to being capitalized into inventory.
+MDSE | Stands for Merchandise – Within VRS is a reference to the part of the system used by FPA and Merchandising to Create and Maintain Agreements and to Forecast Earnings.
+Merch Type | Originally called Report Type, is used to group Rebate Programs and Agreements together for purposes of reporting.  The MDSE side of VRS is driven by Merch Type is the same way that the AP side is driven by Source.
+MMB | Extension of an Oracle Forms Menu “binary” file.  This is the “editable” version of the menu.  Called Binary because it contains both Text and Binary.  Is maintained by the Forms Builder.
+MMX | Extension of an Oracle Forms Menu “executable” file.  This is the executable version of the menu.
+Multiple Agreement Forecast | This is a reference to the scenario where multiple Agreements are grouped under a single Forecast ID.  This is controlled at the Merch Type Level and there are only three Merch Types that allow this:  ADVCOOP, COMMTG and DGRACING.
+Non Mdse | This is a reference to products like Gift Cards, machine rental etc.  Non Mdse items are not owned inventory.  Non Mdse items include Prepaid items such as phone cards.
+Parameter Table | Table in the REBATE_OWNER Schema (REBATE_PARAMETERS) used to externalize values so that they do not have to be hard-coded.
+PLL | Extension of an Oracle Forms PL/SQL Library “binary” file.  This is the “editable” version of the menu.  Called Binary because it contains both Text and Binary.  Is maintained by the Forms Builder.
+PLX | Extension of an Oracle Forms PL/SQL Library “executable” file.  This is the executable version of the PL/SQL Library.
+PMU | Purchase Mark Up – Within VRS, current year rebate earnings contribute to Gross Profit and are therefore referred to as PMU.
+Prepaid | Context 1: This refers to products that have an amount (fixed or variable) that is activated when the product is sold.  Sales of prepaid items create a liability to a third-party provider (vendor).
+Context 2: Within VRS, refers to monies paid in advance of being earned.
+Process Log | Within VRS, a set of tables that contain information that pertain to “batch” processes that have been run.  Process log entries are generated by a “logger” which has to be started and finished as part of a batch process.  Process log entries are generally viewed on the form that has the ability to invoke the process.
+Promotion | A program offered by the Vendors to the consumer whereby they may purchase products at a discounted cost.  Conditional promotions (e.g. a BOGO) require a specific action in order to get the discount.
+RDF | Extension of an Oracle Reports file.  Stands for Resource Description Framework which is a report specification originally designed as a metadata data model.
+Re-Calculation | Within VRS, a concept within the Calculation that looks for changes to calculation parameters and adjusts the earnings (does a True-Up) accordingly.
+Rebate ID | Unique Identifier of a Rebate Program.  Rebate IDs are generated using an Oracle Sequence and as such they have no intrinsic meaning. Rebate IDs are visible in the system and can be used to look up and identify a specific Rebate Program.
+Rebate Program | Within VRS on the AP side, this is the container for the information used to calculate earnings for one or more Vendors for a specified amount of time.  Outside of VRS this can be a reference to the agreement established with the Vendor. In VRS this is called an Agreement.
+Rebate Type | Rebate Types are used to group together the Source, Merch Type and Accounting information.  Rebate Programs tied to a specific Rebate Type.
+Rate Per Redemption | A Conditional Promotion where the earnings are calculated as the number of times a condition is met within a transaction and is multiplied by a redemption rate.  Note: this does not include or refer to manufacturers’ coupons which are processed as tender.
+Report Type | The Report Type is used to group Rebate Programs (and Agreements) together for purposes of reporting.  When the MDSE side was built, its name was changed to be Merch Type.
+Reclassification 
+“Reclass” for short | Accounting Definition: moving an amount from one [GL] account to another. In the case of VRS, it means that accrued earnings have been paid for by a Vendor and these funds need to be re-classified into another account to record earnings.
+RSL | Acronym for the Retail Stock Ledger.  Within VRS, this is a reference to an external Retail Stock Ledger that VRS interfaces to.  VRS sends Accruals and Reclassifications to the Retail Stock Ledger.
+Source | Indicates the type data (Sales, Receipts etc.) that is used to do a calculation.  Sources are broken into two types:
+Source – uses an external source for calculated data
+No Source – uses only data set up on the Rebate Program to Calculate
+SSO User ID | SSO stands for Single Sign-On.  The SSO User ID is the one that everyone uses to log into Windows.   It is also used to log into VRS and must exist in VRS Security before someone can access the system.
+True-Up | In Accounting this means to match or reconcile balances with the help of an adjustment.  Within VRS there are instances where True-ups are done programmatically with respect to Earnings and occur due to changes made to calculation parameters (a Re-Calculation) or as a result of passing a threshold (Tiers).
+User Type | Within VRS, this is a designator attached to a Security Group that denotes whether the users in the group use the AP side or the MDSE side of VRS.
+VRS | Acronym for the Vendor Rebate System
+VRS Security | A table maintained by the Security Department (by Environment) that determines if a specific SSO User ID has access to VRS.  The Security Group to which a User ID is assigned is also specified in this table.  VRS access this table indirectly via a view of the same name (VRS_SECURITY) in the REBATE_OWNER scheme.

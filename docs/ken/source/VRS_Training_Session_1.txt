@@ -1,0 +1,103 @@
+VRS – the Vendor Rebate System was built to track, calculate and record “Vendor Rebates”. 
+A Rebate is monies given by another party based [usually] on performance.  In this case, the other parties are the Vendors that Dollar General buys product from; hence, the term Vendor Rebate.    In this context, performance represents (including but not limited to):
+Product bought from a Vendor during a specified Time Frame
+A Vendor’s Product sold during a specified Time Frame
+VRS also records other monies contractually agreed to be paid by vendors so not everything in VRS, strictly speaking, is a Rebate. 
+The best way to think about VRS is to view it as two separate systems sharing a database combined on a single menu that interface to each other.    The two sides of the system are MDSE and AP. 
+The top-level menu options divide the system into the two component parts.  
+There is one exception – the Approval Queue
+The Approval Queue (called Acct Approval Queue on the Menu) is used mostly by the AP Side although there is a bit of MDSE side functionality in it.   The Approval Queue is the “bridge” between the two systems.   The Approval Queue turns Agreements into Rebate Programs.
+There are other components to VRS like the Vendor Portal (which sits outside the firewall) and the Linux and 1010 scripts invoked via the Opcon scheduler.  These interact with VRS at the data layer.  In other words, they talk to the database. 
+Each side of this system (at the highest and broadest of levels) has basically two primary Functions:
+MDSE
+FPA forecasting (which produces) Management Reporting (used by the FPA Dept)
+Creation and maintenance of Agreements (used by the MDSE dept, aka. the Buyers)
+AP
+Rebate Creation/Maintenance including [most importantly] the Calculation of Earnings 
+Interfacing Calculated data to External Systems 
+RSL
+AP
+GL
+In the case of MDSE, the FPA Forecasting portion of the system has not been maintained or used and the management reporting is done outside of the system.  There are components of the FPA Forecasting where the bare minimum is executed because the system will not function without them but the entirety of the work necessary to provide Manage Reporting is not done.   
+VRS – including the Portal
+When thinking of the two sides of the System, think of them this way:
+MDSE = Agreements (made with a Vendor and are contractual and legally binding)  
+Vendor Portal = Vendor Submissions = 1 or more Agreements 
+AP = Rebate Programs (generate Earnings)
+The Vendor Portal is, technically speaking, part of the MDSE side of the system.   It also facilitates creating Agreements but it is used by the Vendors whereas VRS “proper” is used by Dollar General Associates.  Only a small subset of Merch Types can be created by the Portal.  The Portal does use VRS’s database but during Agreement creation, Agreements are not seen in VRS proper – they are created using a separate set of tables. The last step when creating a Portal Agreement (when it is accepted), copies the Agreement(s) to the same tables that are used for Agreements in VRS Proper such that now they will show up. 
+The Portal has the ability to group Agreements together and it uses the Contract feature (a grouping mechanism) of the MDSE side of the system to do this.  Because VRS Proper does not create Agreements using this feature, it is better to think of the Portal as creating Vendor Submissions (which contain one or more Agreements) rather than thinking of it as creating Agreements.  The reason for this is because it is a useful distinction when looked at the Approval Process.  
+Approval Process
+Agreements must be Approved before they are allowed to have Rebate Programs created from them.  The approval process is referred to as: Move Forward.  For Agreements created in VRS Proper, it is the Agreement that is moved forward.  In the case of Agreements created from the Portal, it is the Vendor Submission that is moved Forward.   And, in the case of the Vendor Submission, it is not referred to as being moved forward (although that is what is really occurring), it is referred to as being Accepted. 
+Agreement Status
+Agreements have a status (called the Agreement Status) and the flow of the Agreement through the system is controlled by the Status.  Depending on how an Agreement was created (VRS Proper or via a Portal Submission), its initial status is different:
+VRS Proper Created: Pre-Negotiation 
+Portal Created: Submitted by Vendor 
+Usually a buyer, or the buyer’s delegate, will create the Agreement in VRS Proper after they have negotiated the specifics of the Agreement with the Vendor.  The Agreement starts off as Pre-Negotiation but then is “Moved Forward” and either goes to Pending AP Approval (will be seen by the Approval Queue) or it may need additional approval by a DMM or GMM and this will be indicated by Statues as well (Pending DMM Approval, Pending GMM Approval etc.) 
+When a Vendor creates a Submission, they are contractually bound but the Buyer still has to accept it before Dollar General is bound.  The Agreement(s) created from the Submission start off as Submitted by Vendor but once the Submission is “Accepted”, the Agreement(s) are “Moved Forward” and either go to Pending AP Approval or may need additional approval by a DMM or GMM. 
+Once an Agreement has a Status of Pending AP Approval, it is visible to the Approval Queue. After the Approval Queue successfully creates a Rebate Program from the Agreement, the Agreement’s Status is set to Assigned to AP Rebate Program. At that point the Agreement is no longer visible to the Queue. 
+AP Side - Rebate Program
+The AP side of VRS maintains Rebate Programs.  A Rebate Program at a minimum has the following:
+At least 1 Vendor (but it may have multiple)  
+At least 1 Department for each Vendor (but there may be multiple)
+Rebate Programs may be created from Agreements but they can also be created directly in the AP side of VRS.   A Rebate Program’s Vendor may or may not tie back to an Agreement.   Since a Rebate Program can contain multiple Vendors, it can tie back to multiple Agreements. 
+*** It is the Rebate Program’s Vendor that is aware of the Agreement, not the other way around ***
+An Agreement’s unique identifier is called the Agreement ID.  The Agreement ID is stored as part of a Rebate Program’s data.   
+A Rebate Program’s unique identifier is called the Rebate ID.  The Rebate is NOT stored as part of an Agreement’s data.
+This means that Agreements (for the MDSE side) and Rebate Programs (for the AP side) are not at the same level. In other words, 1 Agreement does not equal 1 Rebate Program.  You could think of the Agreement as being subservient to the Rebate Program.  The diagram below depicts how they are related at the data level.  Note – the actual table and field names are used. 
+Rebate Programs are created in order to calculate earnings and these earnings translate into real dollars collected (in advance or after the fact) from the Vendors.   To understand the AP side, you have to understand the concept of the Calculation.
+Calculation
+Understanding the concept of the “Calculation” is the key to understanding the AP side and how the data flows.   
+In order to understand why this is so, it is necessary to understand (within the context of VRS) what a Calculation is. The term Calculation (aka. Calculate) is used in two contexts:
+As a Verb – the process that derives the calculated data 
+As a Noun – the result of a Calculation. 
+From a data perspective, the results of a Calculation are stored in a table called CALCULATE_RESULT which will be covered in detail in a separate session. The thing to remember is:
+There is ONE Calculation (noun) per Period for each Rebate / Vendor / Dept.  You can run the Calculation (verb) as many times during the period as you want but when the Period is Closed, there will only be the one (noun) Calculation.  On a Rebate Program with one Vendor and one Department, this means that you will have one row in the CALCUALTE_RESULT table for each period that the Rebate Program is Active. 
+The process that that generates the Earnings is called the Extract and Calculate (E&C for short).  Technically speaking, the Extract and the Calculate are two separate processes but they are almost always run [and they are thought of] as if they are a single process.   The thing to remember here is:
+The Extract works at the Rebate level. 
+The Calculation works at the Rebate / Vendor / Dept level. 
+The Extract is the piece that reaches out to the external sources (if applicable) and “extracts” the data and pulls it into VRS.  The Calculate uses the Extracted data to derive the earnings.  Below is an example of how this would flow using Sales. 
+When a Rebate Program is first created, there are no Calculations associated with it.  An E&C must be run in order to generate them.  In AP, it is the Calculation (not the Rebate Program) that moves through various states; therefore, it is the Calculation that flows through the system.  Once an initial E&C is run, there will be a Calculation for each Vendor / Department combination on the Rebate Program.  In the simplest case there is only one but it is very common to have multiple. 
+*** Calculations are done at the Rebate / Vendor / Dept level.  ***
+ The states that a Calculation goes through are:
+Calculated (initial State) 
+Reviewed 
+Approved 
+Batched 
+Distributed
+Up through the Batched State, the Calculation can be moved back to the point where it is just Calculated.  But once it is Distributed, that is it for the current period. 
+As mentioned earlier, there is one Calculation for each Vendor/Department combination on a given Rebate and for each Period the Rebate Program is active.   This means that there are Year and Period fields in the Calculated Data.  
+*** For the Current Period Calculation – the Year and Period are 0 ***
+When a Calculation is Moved to History (by the Finalize process) that is when it is assigned the “real” year and period.  If a Calculation is current and in any other state other that Distributed, it is subject to change.  
+In summary
+Calculations are Reviewed (changes the State to Reviewed)
+Calculations are Approved (changes the State to Approved)
+Calculations are used to create Batches – the Calculations involved are set to Batched
+Batches are Distributed – the Calculations involved are set to Distributed
+Calculations are Moved to History (Period and Year are set) when the Period is Finalized.  
+Conclusion – High Level Data flow 
+There is obviously a lot of data associated with VRS that was not touched on by this document but the purpose was to give a very high-level overview in order to understand the basic purpose and flow.  Distilled down to the essence of what was covered, here is the flow: 
+Glossary of Terms 
+AP (Accounts Payable) – Within VRS (context 1) this is a reference to the part of the system used by the Accounts Payable department to Create and Maintain Rebate Programs for the purpose of calculating earnings which translate into money owed Dollar General by the Vendors.  AP (context 2) is also a reference an external Accounts Payable system that VRS interfaces to.  VRS sends Deduction request (a reduction in the amount DG owes the Vendor) to the AP system.  
+Agreement – within VRS, this is the container for the information relating to the Contractual Agreement between Dollar General and a Vendor.   
+Agreement ID – Unique Identifier of an Agreement.  Agreement IDs are generated using an Oracle Sequence and as such they have no intrinsic meaning. Agreement IDs are visible in the system and can be used to look up and identify an Agreement.
+Agreement Status – a field in the Agreement data that controls the flow of the Agreement through the System. 
+Approval Queue – an Oracle form invoked from the VRS Menu that displays Agreements and creates Rebate Programs from them. It is the Primary interface (although not the only one) between the MDSE side of VRS and the AP side of VRS. 
+Batches – groupings of data created from Approved Calculations that are used to interface to external Systems.  Since there are 3 systems (RSL, AP and GL), these are also the “Types” of Batches created. 
+Batching Process – an invokable process within VRS that looks at Approved Calculations and generates Bathes.
+Calculation – reference to both the act and the result of generating Earnings.  There is one Calculation (result) per Vendor/ Department on a Rebate Program for each period in which the Rebate Program is active.  The Calculation (process) generates Earnings as well as a lot of additional information as a by-product of generating the Earnings.  It can be run as many times during the current period as needed. 
+Distribute Process - an invokable process within VRS that looks at Batches where the Calculations used to Create the Batches are Approved but not Batched and creates files that are used to interface to the systems: RSL, AP and GL. 
+E&C (short for Extract and Calculate) – the processes that generates the “Calculation”
+Finalize – the AP side invokable process that “Closes the Period”.  During the Finalize,  amoung other things, Calculations are moved to History. 
+GL (General Ledger) – Within VRS, this is a reference to an external General Ledger that VRS interfaces to.  VRS sends “Coop” amounts (monies that will be collected but will not reduce Cost of Goods because they are treated as an expense) to the General Ledger
+MDSE (Merchandise) – Within VRS is a reference to the part of the system used by FPA and Merchandising to Create and Maintain Agreements and to Forecast Earnings. 
+Rebate ID – Unique Identifier of a Rebate Program.  Rebate IDs are generated using an Oracle Sequence and as such they have no intrinsic meaning. Rebate IDs are visible in the system and can be used to look up a identify a Rebate Program.   
+Rebate Program – within VRS, this is the container for the information used to calculate earnings for one or more Vendors for a specified amount to time.  Outside of VRS this can be a reference to the agreement established with the Vendor and has a similar meaning to what an Agreement is within VRS.  
+RSL (Retail Stock Ledger) – Within VRS, this is a reference to an external Retail Stock Ledger that VRS interfaces to.  VRS sends Accruals (monies owed DG) and Reclassifications (Prepaid monies now Earned) are sent to RSL.
+State (of a Calculation) – represented be several fields in the Calculated data, controls the flow of the Agreement through the System. 
+Vendor Portal – Internet Accessible Web Application written in Java running under Tomcat that is used by Vendors to create Agreements. 
+VRS Proper – the parts of VRS developed using Oracle Tools (PL/SQL, Forms and Reports)
+VRS (acronym for Vendor Rebate System)
+AP
+First 4 Menu Options | 
+MDSE
+Last 5 Menu Options | 

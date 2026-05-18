@@ -1,0 +1,198 @@
+VENDOR REBATE SYSTEM
+Current State Analysis & Frictionless Replacement Architecture
+Prepared by TPG Partners  ·  April 2026  ·  Confidential
+Executive Summary
+The Vendor Rebate System (VRS) is a mission-critical financial application that Dollar General has operated for well over a decade. It manages the full lifecycle of vendor rebate agreements — from contractual negotiation through earnings calculation, invoicing, and disbursement to the GL, AP, and RSL financial systems. VRS processes earnings across thousands of active rebate programs and touches virtually every vendor relationship in DG's merchandising and accounts payable operations.
+TPG Partners has maintained and extended VRS throughout its life. This document presents two deliverables:
+A frank assessment of the current system's design, architecture, and friction points.
+A full replacement architecture built around modern workflow principles, cloud-native infrastructure, and — critically — an analytics layer that mines the transaction intelligence already resident in DG's 1010 database.
+Current State Analysis
+2.1  System Architecture Overview
+VRS is a two-sided application sharing a single relational database, operating inside DG's corporate network. The two sides — MDSE and AP — serve different user populations with different mental models of the same underlying data.
+2.2  Data Model Assessment
+The underlying data model is the strongest part of VRS. Several design decisions that appear complex on the surface are well-reasoned:
+The three-level hierarchy (Rebate Program → Rebate Vendor → Rebate Vendor Dept) correctly represents that earnings are calculated at the vendor/department intersection, not at the program level.
+The one-calculation-per-period-per-vendor/dept rule enforces clean financial period boundaries and supports reliable historical extract.
+The source-driven AP architecture (R, S, D, B, F, C, N, E, Q, T) correctly models the fundamentally different data origins and calculation mechanics of each rebate type.
+The Rebate Type as an intermediary between Source, Merch Type, and Accounting Control is an elegant normalization that avoids a combinatorial explosion of configuration.
+The Approval Queue as a formal handoff gate between MDSE and AP prevents rebate programs from being created without a corresponding agreement record, maintaining referential integrity at the business process level.
+2.3  UI & Navigation Assessment
+The current application reflects late-1980s / early-1990s WIMP (Windows, Icons, Menus, Pointer) design paradigms. This is not a stylistic criticism — it is an architectural observation with operational consequences.
+2.3.1  Menu-Centric Navigation
+The system entry point is a top-level menu bar, not a contextual dashboard. Users must know in advance which form they need and navigate to it explicitly. There is no concept of 'what needs my attention right now' surfaced at the entry point. The MDSE side hosts three separate dashboards (including the Buyers Dashboard), but they are destinations rather than an integrated home surface.
+2.3.2  Form Proliferation
+Logically related operations are spread across separate forms with no guided sequencing between them. A routine period-close operation requires an analyst to navigate and operate the following distinct forms in order:
+Extract & Calculate form (or wait for overnight Opcon batch)
+Review Calculations form (set Reviewed flag)
+Approve Calculations form (set Approved flag)
+Batch & Distribute form — create batch, distribute, handle on-demand deductions, run Finalize
+Invoices form — print or email invoices (which queues an external process)
+Each step requires independent navigation. There is no persistent state showing where the analyst is in the period-close sequence, no indication of blockers, and no summary of what remains. A missed step is discovered only when the next step fails or when a downstream system reports missing data.
+2.3.3  The Rebate Program Form
+The Rebate Program form is the most-used AP surface and is actually well-conceived: a single form with tabs covering all aspects of a program without requiring multi-location navigation. The rewrite should preserve this 'single coherent record' principle and extend it — adding real-time calculation status, earnings trend, and check/invoice status directly to the program view.
+2.3.4  The Approval Queue
+The Queue functions as a list of pending agreements awaiting AP action. It correctly serves as the bridge between MDSE and AP but lacks modern work-management features: no aging indicators, no prioritization by value or urgency, no bulk actions, no analyst workload visibility, and no escalation tracking. High-value agreements waiting for queue action look identical to low-value ones.
+2.4  Workflow Friction Inventory
+2.5  Integration & Infrastructure
+VRS interfaces with three external financial systems (RSL, AP, GL) via batch exports driven by the Accounting Control Master. It also receives scheduled data feeds via Opcon-managed Linux and 1010 scripts. Several architectural observations:
+The batch export architecture is reliable but introduces overnight latency. Intra-day recalculation requires manual intervention.
+The invoice email path (load queue → external process → email server → attach PDF) is a multi-hop fragile chain with no delivery confirmation surfaced to the analyst.
+The Vendor Portal operates outside the firewall on a separate table set with a copy-on-acceptance model. This is a workaround that limits portal functionality to a small merch type subset.
+The 1010 database — which holds the receipts, sales, and drop-ship transaction records that feed sourced rebate calculations — is accessed only via the Extract process. Its analytical potential is entirely untapped within VRS.
+2.6  Summary: What to Keep, What to Replace
+Frictionless Replacement Architecture
+3.1  Design Philosophy
+The replacement system is designed around three principles:
+Workflow-first, not form-first. The system guides users through sequences of related actions rather than requiring them to navigate between independent forms.
+State is always visible. Every record in the system shows exactly where it is in its lifecycle, what the next action is, and who owns it. Users never have to infer state from the absence of data.
+The 1010 database is a first-class data source. The system treats transaction intelligence as an asset, not merely as an E&C input. This is the highest-value differentiator of the rewrite.
+3.2  Technology Stack
+3.3  Application Structure
+The replacement application is organized around five primary surfaces, each designed for a specific user population and workflow:
+3.3.1  Home: The Period Health Dashboard
+The entry point is not a menu — it is a period health dashboard that answers the question 'what needs my attention right now?' for both AP analysts and MDSE buyers. It surfaces:
+Current period status: E&C completion rate, calculations pending review/approval, batches not yet distributed, period close readiness.
+Approval Queue summary: count by aging tier (0-2 days, 3-5 days, 6+ days), total estimated value pending.
+Agreement pipeline: agreements in each status stage, DMM/GMM approvals outstanding.
+Anomaly alerts: rebate programs where current-period pace deviates significantly from historical average (powered by 1010 analytics).
+My work: agreements and programs assigned to the logged-in user, with outstanding actions highlighted.
+3.3.2  Agreements (MDSE Workflow Surface)
+The Agreements surface replaces the MDSE menu options with a unified workflow view. Key improvements:
+Agreement records display a visual status timeline (Pre-Negotiation → Pending DMM → Pending GMM → Pending AP Approval → Assigned) with the current position highlighted. The next available action is always one click away — no 'Move Forward' navigation required.
+The Buyers Dashboard is integrated directly into the Agreement list view as a filter/grouping, not a separate form. Buyers see their agreements; delegates see assigned agreements; DMMs/GMMs see their approval queues.
+New agreements are created through a guided wizard (vendor → merch type → source → rate structure → departments → dates → review) rather than a flat form, with validation at each step.
+Attachment management is native to the agreement record.
+3.3.3  Approval Queue (The Bridge)
+The Approval Queue becomes a proper work-management surface:
+Items are sorted by age and estimated value by default. Configurable by analyst.
+Each queue item shows: vendor, merch type, buyer, agreement value, days waiting, and a one-click preview of key terms without navigating away.
+Bulk actions: approve multiple low-value agreements of the same merch type in a single operation.
+The analyst assigns themselves, optionally attaches to an existing rebate program, and approves — creating the Rebate Program in one action. The Agreement status updates atomically.
+Rejected items return to MDSE with a required reason code and optional note, creating a documented audit trail.
+3.3.4  Rebate Programs (AP Workflow Surface)
+The Rebate Program detail view is the core AP workspace. It preserves the tabbed structure Ken correctly identified as well-conceived, and extends it:
+3.3.5  Period Close Workflow
+Period close is the highest-friction operation in the current system. The replacement surfaces it as a guided checklist with persistent state:
+E&C Status — shows count of programs with no calculation run for current period, with 'Run All' trigger and per-source breakdown.
+Review — programs with calculations not yet reviewed, sorted by value. Inline flag-setting without form navigation.
+Approve — programs reviewed but not yet approved. Bulk approve by merch type or analyst.
+Batch — create RSL, AP, and GL batches. Blockers shown inline (e.g., unapproved calculations, missing accounting control entries).
+Distribute — distribute batches to downstream systems. Status per batch (queued / in-flight / confirmed / error).
+Finalize — period close with confirmation gate. Shows what will be locked. Rolls period counter.
+Each step shows a completion percentage and a list of blocking items. An analyst can see at a glance that 'Period P05 is 94% ready to close — 3 calculations still pending approval' without navigating to any form.
+3.4  The 1010 Analytics Layer
+This is the highest-value component of the rewrite and the clearest differentiator in any proposal to Dollar General.
+3.4.1  What Is in the 1010 Database
+The 1010 database holds the raw transaction records that feed sourced rebate calculations: domestic and import receipts (sources R and F), sales (S), and drop-ships (D). At billions of records, this is effectively the complete purchase and sales history of DG's vendor relationships. The Extract process currently reads from 1010 to compute period earnings — but that is the only use made of this data within VRS.
+3.4.2  Analytics Capabilities
+By connecting a read replica of 1010 to the new platform (with appropriate materialized views to avoid query load on transactional systems), the following capabilities become available:
+Pace-to-Target Tracking. For each active sourced rebate program, compute the implied year-end earnings based on current-period run rate versus the contractual tier structure. Surface this on the Rebate Program detail and on the home dashboard. Analysts and buyers can see which programs are on track, which are under-performing, and which are approaching tier thresholds.
+Tier Threshold Alerts. When a program's cumulative receipts or sales approach a tier boundary (within, say, 5%), flag it for the AP analyst and the buyer. This creates an opportunity for DG to either accelerate purchasing to hit the higher tier or to communicate with the vendor proactively.
+Year-over-Year Vendor Performance. For each vendor, show current-year receipt and sales volume versus prior year by department. Deviations exceeding a configurable threshold (e.g., ±15%) are flagged as anomalies for analyst review — these often indicate data quality issues, vendor supply problems, or agreement misclassification.
+Forecast vs. Actual. The MDSE side currently has an unused FPA forecasting module. The new system replaces this with a data-driven forecast derived directly from 1010 transaction pace, producing a more reliable earnings projection than the manually-entered FPA approach.
+Agreement Value Validation. When a buyer creates an agreement with an estimated annual value, the system can cross-reference historical 1010 data for that vendor and department to validate whether the estimate is plausible given actual purchase volumes. Outliers (estimated value far above or below historical pace) are flagged before the agreement reaches the Approval Queue.
+Vendor Portfolio View. An executive-level view showing all active programs by vendor, with total earnings to date, pace-to-target, and open invoice aging. Useful for vendor business reviews and for identifying vendors where the rebate structure may need renegotiation.
+3.5  Vendor Portal Redesign
+The current Vendor Portal is architecturally isolated (shadow tables, copy-on-acceptance, limited merch type support). The redesign makes it a proper self-service surface:
+Vendors authenticate via a dedicated portal (separate subdomain, SSO or vendor-specific credentials).
+Vendors can view all their active rebate programs — read-only access to program status, current-period earnings, and invoice history. This alone reduces inbound inquiry volume to the AP team significantly.
+Vendor agreement submission is expanded to all merch types that support portal creation, not a limited subset.
+Submissions use the same underlying Agreement table as VRS proper — no shadow tables, no copy-on-acceptance. A submission creates an Agreement in Submitted by Vendor status directly, visible immediately in VRS.
+Vendors receive email notifications when their submissions are accepted or rejected, with reason codes for rejections.
+Optional: vendors can view their 1010-derived pace-to-target data (receipt/sales volumes against rebate thresholds) — a feature that currently requires a phone call to get.
+3.6  Integration Architecture
+3.7  Security & Roles
+The replacement system implements role-based access control aligned to the existing organizational structure:
+3.8  Phased Delivery
+Given the financial criticality of VRS, a phased delivery approach is recommended:
+Phases 1 and 2 overlap intentionally — the data model is shared, and core infrastructure (auth, database, job scheduling) is built in Phase 1 and extended in Phase 2. The 1010 analytics work in Phase 3 is additive and does not require changes to Phase 1/2 functionality.
+Proposal Positioning
+4.1  Why This Is the Right Moment
+Several factors converge to make a VRS rewrite proposal timely:
+Ken Banks, the system's primary architect and institutional knowledge holder, is retiring in January 2027. This is both a risk (knowledge transfer) and an opportunity (fresh architecture without legacy design constraints).
+The 2017 Usability Enhancement project documented dozens of user-identified friction points that were never addressed. Business users have been waiting for improvements for years.
+DG's competitive environment requires faster, more accurate rebate management. Delays in calculation or invoicing represent real float costs on hundreds of millions of dollars in annual rebate earnings.
+The 1010 database has never been leveraged as an analytical asset within VRS. Competitors like Prometheus Group (GWOS-AI + RapidAPM) are moving toward analytics-integrated rebate management. This is a window to leapfrog rather than match.
+4.2  TPG's Unique Position
+TPG Partners has maintained VRS for over a decade. This is a significant advantage:
+Deep domain knowledge of the rebate lifecycle, data model, and financial system integrations — no learning curve on business requirements.
+Existing relationships with the DG AP and MDSE teams who use the system daily.
+Documented institutional knowledge of edge cases, known issues (e.g., ADVCOOP VRS Export bug), and subsystems (NSA, S5S5) that any new vendor would need months to discover.
+Credibility: TPG built the system that DG depends on. A proposal from TPG carries inherent confidence that the replacement will work.
+4.3  Key Messages for the Pitch
+Bottom line
+VRS is architecturally sound at the data model level but operationally aged at the UI and workflow level. A rewrite is not merely a modernization exercise — it is an opportunity to convert a cost-center application into a revenue-intelligence platform.
+Side | Primary Users & Function
+MDSE | Buyers, buyer delegates, DMMs, GMMs. Manages vendor agreements — the contractual record of what a vendor has committed to pay.
+AP | AP analysts. Manages rebate programs — the operational record of calculated earnings, invoicing, and financial system exports.
+Recommendation
+Preserve the data model in its essential form. The rewrite should be a UI and workflow transformation, not a data model reinvention. The 1010 transaction database, however, should be brought into the architecture in a way the current system does not support.
+Area | Current Friction | Impact
+Period close | 5 separate forms, manual sequencing, no progress state | High
+Agreement approval | Move Forward is a form action with no visual status progression | Medium
+Approval Queue | Flat list, no prioritization, no bulk action | High
+E&C invocation | Manual per-rebate or batch nightly via Opcon — no period health view | High
+Calculation review | Separate form from approval; no inline adjustment workflow | Medium
+Invoice delivery | Email path loads an external queue; delivery status invisible to user | Medium
+Vendor Portal | Shadow tables, limited merch types, no vendor earnings visibility | High
+Reporting | VRS Export intertwined with FPA forecast (known bug in ADVCOOP) | Medium
+1010 data | Not surfaced in VRS at all — billions of transaction records unused | Very High
+Keep | Replace
+Three-level program/vendor/dept data hierarchy | Menu-centric navigation model
+One-calculation-per-period-per-vendor/dept rule | Multi-form period-close sequence
+Source-driven AP architecture (all source codes) | Flat Approval Queue without work management
+Rebate Type as Source × Merch Type intermediary | Separate Review and Approve forms
+Accounting Control Master structure | External invoice email queue process
+Approval Queue as MDSE→AP bridge concept | Shadow-table Vendor Portal architecture
+Agreement status progression logic | Manual E&C invocation without period health view
+Opcon batch scheduling integration | VRS Export entangled with FPA forecast data
+The 1010 Opportunity
+DG's 1010 database contains billions of receipt, sales, and drop-ship records. This is not merely calculation input — it is a longitudinal record of vendor performance against rebate commitments. Surfacing this data within VRS transforms it from a calculation engine into a vendor intelligence platform: pace-to-target tracking, anomaly detection, forecast vs. actual variance, and early warning for at-risk agreements. No current VRS competitor offers this natively.
+Layer | Technology | Rationale
+Frontend | Next.js 15 / React 19 / TypeScript | Server components, streaming, type safety
+Styling | Tailwind CSS + shadcn/ui | Design system consistency, rapid iteration
+API layer | tRPC or REST (Next.js API routes) | End-to-end type safety, thin client
+ORM | Prisma | Type-safe DB access, migration management
+Primary DB | PostgreSQL (Azure or AWS RDS) | Proven, VRS data model maps cleanly
+Vector / search | pgvector extension | Semantic search on agreements and programs
+1010 analytics | Read replica + materialized views | Non-blocking analytical queries at scale
+Job scheduling | Temporal.io or AWS Step Functions | Replaces Opcon for E&C and batch jobs
+Auth | Azure AD SSO / SAML | DG corporate identity integration
+Notifications | Email (SendGrid) + in-app | Invoice delivery, approval routing, alerts
+Deployment | Azure App Service or AWS ECS | Container-based, CI/CD pipeline
+Tab | Enhancements over current system
+Program Header | Agreement linkage shown inline; source locked with explanation; tier visualization
+Vendors & Depts | Earnings components (PMU/Margin/AdvCoop/OtherCoop) shown as running totals with period comparison
+Calculations | Period progress bar: open → E&C run → reviewed → approved → finalized. Run E&C inline. Adjustment workflow inline.
+1010 Intelligence | NEW: pace-to-target chart, receipt/sales trend vs. prior year, anomaly flags from 1010 data
+Checks & Deductions | Check application workflow; deduction reason codes; aging for unapplied checks
+Invoices | Invoice delivery status (sent/opened/paid/overdue); re-send action; PDF preview inline
+Process Log | Full audit trail with user, timestamp, action type, and delta values
+Implementation Note on 1010 Scale
+At billions of records, direct query against 1010 for analytical purposes is inadvisable on the transactional replica. The recommended approach is a daily materialized summary table (vendor × department × source × fiscal period → receipt/sales/drop-ship totals) that is computed overnight and indexed for fast VRS queries. This summary table is small relative to the raw 1010 volume and can be queried in milliseconds. The raw 1010 data remains available for drill-down on specific rebate programs when needed.
+Integration | New Approach
+RSL / AP / GL export | Retained batch model; replaces Opcon scripts with Temporal.io workflows. Delivery confirmation and error surfaced in UI.
+1010 data ingest | Nightly materialized summary via scheduled job. Raw drill-down via parameterized read-replica query.
+E&C scheduling | Temporal.io replaces Opcon for E&C batch. Manual trigger remains available from UI.
+Invoice delivery | SendGrid replaces external email queue. Delivery status (sent/bounced/opened) returned to VRS and displayed on invoice record.
+Vendor Portal | Same database, separate auth layer. No shadow tables.
+DG Identity | Azure AD SSO for all internal users. Role-based access (Buyer, Delegate, DMM, GMM, AP Analyst, AP Manager, Read-Only).
+Role | Capabilities
+AP Analyst | Full access to rebate programs, calculations, batching. Manage own assigned programs.
+AP Manager | All AP Analyst capabilities plus approve calculations, finalize periods, manage analyst assignments.
+Buyer | Create/edit agreements in own portfolio. Initiate Move Forward. View Approval Queue status.
+Buyer Delegate | Same as Buyer for assigned portfolios.
+DMM / GMM | Approve agreements in their approval chain. View portfolio dashboards.
+Vendor (Portal) | View own programs and invoices. Submit portal agreements. No access to VRS proper.
+Read-Only | View all records, no write access. For finance, audit, executive use.
+Phase | Scope | Timeline
+Phase 1 | Core AP: Rebate Programs, Calculations, Period Close workflow, Batch & Export. Full feature parity with current AP side. | Months 1-4
+Phase 2 | Core MDSE: Agreements, Buyers Dashboard, Approval Queue redesign, Vendor Portal redesign. | Months 3-6
+Phase 3 | 1010 Analytics Layer: materialized summaries, pace-to-target, tier alerts, YoY variance, forecast. | Months 5-8
+Phase 4 | Vendor portal self-service earnings view, executive portfolio dashboard, advanced anomaly detection. | Months 7-10
+Message 1: This is not a UI refresh
+The rewrite collapses a multi-form, menu-driven application into a workflow-guided platform that reduces the steps required for period close from five separate form navigations to a single checklist surface. That is a material productivity improvement for the AP team.
+Message 2: The 1010 data is money on the table
+DG currently holds billions of transaction records that are used only to compute period earnings. The new system surfaces this data as vendor intelligence: pace-to-target tracking, tier threshold alerts, and agreement value validation. This is a capability no other system in DG's portfolio currently provides.
+Message 3: Knowledge transfer is de-risked
+By building the replacement now, while Ken Banks is still available for consultation, DG avoids the scenario where the system's primary architect departs and the replacement project must proceed without institutional knowledge. The rewrite IS the knowledge transfer.

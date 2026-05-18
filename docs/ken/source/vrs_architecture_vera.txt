@@ -1,0 +1,137 @@
+
+
+VRS · Replacement Architecture
+
+  VRS · REPLACEMENT ARCHITECTURE
+
+  Role-lens model · vendor bubble field · Ask Vera · click any node for description
+
+  
+    
+  
+
+  
+  VRS replacement — role-lens architecture with Ask Vera
+
+  
+  Authentication
+  Azure AD SSO · role assigned
+
+  
+  Vendor bubble field
+  Size = earnings · color = health · pulsing ring = queue pending
+
+Filter: merch type,
+period, analyst, status
+
+Role determines the lens — same bubble, different view and context menu
+
+  
+  AP analyst
+  Calc · invoice · batch
+
+  
+  Buyer / delegate
+  Agreements · status
+
+  
+  DMM / GMM
+  Approve · reject
+
+  
+  AP manager
+  Portfolio · period close
+
+  
+  Read-only
+  View · drill down
+
+All roles have access to Ask Vera — persistent chat surface, role context injected automatically
+
+  
+  Unified vendor relationship model
+  Vendor · agreements · rebate programs · calculations · invoices · 1010 data
+  Role filter shapes context menus and visible data — not navigation structure
+  Approval queue = notification state on bubble, not a separate destination
+
+vendor lifecycle
+All status transitions visible on the bubble — no separate navigation required
+
+  
+  Agreement
+  Created · pre-neg
+
+  
+  Approval flow
+  DMM/GMM if needed
+
+  
+  Queue action
+  Bubble ring · AP assigns
+
+  
+  Rebate program
+  E&C · review · approve
+
+  
+  Finalized
+  Batch · invoice · GL/AP/RSL
+
+  
+  Period close workflow
+  Guided checklist: E&C → review → approve → batch → distribute → finalize
+
+  
+  Vendor portal
+  Self-service · live earnings
+
+  
+  1010 analytics layer
+  Pace-to-target · tier alerts · YoY variance · anomaly flags · nightly materialized summaries
+
+colors
+bubbles
+
+  
+  Ask Vera — Vendor Earnings & Rebate Advisor
+  LLM intelligence layer · persistent chat on every screen · role context injected automatically
+
+  
+  Architecture (Frosti pattern)
+  Phase 1: intent routing
+  Identifies data · selects SPs / 1010
+  Phase 2: synthesis
+  Executes · formulates answer
+  or recommendation
+  GPT-4o · Azure AI Foundry
+  ~200 SPs + 1010 summaries
+
+  
+  Question taxonomy by role
+  AP analyst: period status · open items · queue
+  Buyer: tier pace · what-if on rate structures
+  DMM/GMM: approval backlog · risk profile
+  Manager: earnings at risk · analyst workload
+  All roles: vendor summary · contract rationale
+  Proactive: uncaptured agreements · anomalies
+  tier restructure · renewal alerts
+
+Data sources: rebate programs · agreement history · 1010 analytics · invoice aging · calc history · ACM · queue state
+
+  
+  Next.js · TypeScript · Tailwind · Prisma · PostgreSQL · Azure AD · Temporal.io · SendGrid · Azure AI Foundry (Vera)
+
+Canvas
+
+Role lenses
+
+Agreement / 1010
+
+Queue (notification)
+
+Financial output
+
+Ask Vera (AI)
+
+VRS Replacement Architecture · TPG Partners · April 2026 · Confidential — click any node for description
+

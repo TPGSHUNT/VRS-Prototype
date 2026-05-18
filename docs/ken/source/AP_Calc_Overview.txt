@@ -1,0 +1,149 @@
+This document is an overview of how Calculations are done on the AP side of VRS.  
+Sources
+The first thing that is critical to understand is the concept of Source.  The AP side is “driven” by source.  Many of the rules, the way things are approached, even how lines show up on an invoice are controlled by Source.  This is in contrast to the MDSE side which is driven by Merch Type. 
+Sources fall into two groups:
+Sourced
+No Source
+The “Sourced” sources are:
+Sourced means that the data (Cost, Units etc.) used in the calculation comes from an “external” source.   Rebate Programs that are sourced have to pull the data into the system in order to run a Calculation. 
+The “No Source” sources are:
+No Source means that there is not an external source. Everything needed exists inside the system and is defined on the Rebate Program itself. These can be thought of as “Fixed” amount Rebate Programs. NS-Quantity and NS-Rebate use formulas (Ex: Rate * Sides * Stores) but this still yields a fixed amount.   The N - No Source is the ultimate fallback that is used when earnings have to be calculated by something other than the standard calculation engine. There are specialized subsystems within VRS that do very complex calculations (NSA and S5S5 are examples), but in the end, they put the earnings into a N – No Source Rebate Program.  
+The sources are defined in the table:  REBATE_SOURCE.  This is not a table that is maintainable by VRS because adding a new Source requires a tremendous amount of system modification.  New sources are not added very often although a new Source (X – Store Allocations), is being added in 2018. 
+Rebate Program
+The AP side of VRS maintains Rebate Programs.  A Rebate Program at a minimum has the following:
+At least 1 Vendor (but it may have multiple)  
+At least 1 Department for each Vendor (but there may be multiple)
+From a data perspective, this is how a Rebate Program is set up:
+Table: REBATE_PROGRAM 
+Primary Key: REBATE_ID (which is a field that the users sees).  This is just an incremented sequence number, it has no intrinsic meaning. 
+On the Rebate Program form, the data in this table is show at the top of the form. 
+A Rebate Program uses a specific Source (Discount Amt/BODO in the example above) and the Source may not be changed because it controls so many other aspects of the Rebate Program.  This is a by-product of the earlier statement that the AP side is Source driven. 
+Table: REBATE_VENDOR (child of REBATE_PROGRAM)
+Primary Key (1): REBATE_ID
+Primary Key (2): VENDOR_NUM (this is the AP Vendor Number)
+On the Rebate Program form, the data in this table is show on the Vendors Tab.
+In this example there is only 1 Vendor but a Rebate Program may have many Vendors.  Note that it is to the REBATE_VENDOR that an Agreement is tied.
+Table: REBATE_VENDOR_DEPT (child of REBATE_VENDOR)
+Primary Key (1): REBATE_ID
+Primary Key (2): VENDOR_NUM (this is the AP Vendor Number)
+Primary Key (3): DEPT_NUM
+Primary Key (4):CLASS_NUM (always negative -1. -1 means that a row is defined at the Department Level.  The system was never modified to use the Class Level once it was realized what this really meant) 
+On the Rebate Program form, the data in this table is show on the Vend Dept Tab.
+The Vend Dept tab is where you can see the Earnings. Earnings are the ultimate output of the Calculation.  Note that the natural state of Earning is negative.  Earnings have 4 component parts.  
+PMU – normal earnings 
+Margin – earnings from a Previous year recorded in the current Year
+Adv Coop – Specific to ADVCOOP. Represents the cost of the AD covered by the Vendor.  PMU is only recorded on an ADVCOOP if the vendor pays an amount greater than the cost of an AD. 
+Other Coop – works like ADVCOOP but used for other Merch Types. 
+The earnings component determines how the funds are recorded on RSL or GL.  
+The Calculation is going to be covered in a section below but one important take away from this is that the Calculation is at the Rebate / Vendor / Department level.  NOT at the Rebate Level. 
+Table: CALCULATE_RESULT (child of REBATE_VENDOR_DEPT)
+Primary Key (1): REBATE_ID
+Primary Key (2): VENDOR_NUM (this is the AP Vendor Number)
+Primary Key (3): DEPT_NUM
+Primary Key (4): CLASS_NUM (always -1)
+Primary Key (5): YEAR
+Primary Key (6): PERIOD
+Note – technically the Primary key is the REBATE_CALC_ID.
+Calculation
+The CALCULATE_RESULT table is the most import table in the whole of the AP side of VRS.  This is because this is where the Calculation is stored. 
+In order to understand why this is so, it is necessary to understand (within the contest of VRS) what a Calculation is. The term Calculation (aka. Calculate) is used in two contexts:
+As a Verb – the process that derives the calculated data 
+As a Noun – the result of a Calculation. 
+From a data perspective, the results of a CALCULATION are stored in the CALCULATE_RESULT table.  The thing to remember is:
+There is ONE Calculation (noun) per Period for each Rebate / Vendor / Dept.  You can run the Calculation (verb) as many times during the period as you as you want but when the Period is Closed, there will only be the one (noun) Calculation.  On a Rebate Program with one Vendor and one Department, this means that you will have one row in the CALCUALTE_RESULT table for each period that the Rebate Program is Active. 
+The process that that generates the Earnings is called the Extract and Calculate (E&C for short).  Technically speaking, the Extract and the Calculate are two separate processes but they are almost always run [and they are thought of] as if they are a single process.   The thing to remember here is:
+The Extract works at the Rebate level. 
+The Calculation works at the Rebate / Vendor / Dept level. 
+So, for example, if you had a rebate Program with 3 Vendors (each with one Department) then the E&C would do a single Extract but 3 Calculations. And hence — 3 rows in the CALULATE_RESULT table.   
+The Extract is the piece that reaches out to the external sources and “extracts” the data and pulls it into VRS.  For each source, there is an Extract Procedure and a “detail” table(s) that goes with it.   
+Each of these CALCULATE_ Tables are children of the CALCUALTE_RESULT table. 
+Note that there are also Archived version of some of these tables.  They have the suffix _ARC on then. 
+The Calculate uses the Extracted data to derive the earnings.  For each source, there is a Calculate Function and it uses the companion “detail” table to generate the earnings.   There is a common routine that takes the output from the individual Calculate functions and derives all the data that you see in the CALCUALTE_RESULT table.   
+Sourced Rebate Programs generally use one of two methods to generate earnings.  (One exception to this is the Discount Amount/BOGO source – another is Tiers which applies to several sources).  
+Amount per Unit (# Units bought or sold * Amount)
+Percent of Cost (Cost of Item bought or Sold * Percent)
+These parameters can be defined at the Department Level, the Class Level (if the Rebate has Classes) or at the SKU Level (if the Rebate has SKUs).   
+Table: REBATE_VENDOR_DEPT
+Table: REBATE_CLASS
+Table: REBATE_SKU
+In this example, there are no Classes but there are SKU’s and Percent of Cost was used at the SKU level.    Generally speaking, when the AP Department puts SKUs on a Sourced Rebate Program (especially Sales), they set the Parameters on the SKU.   The E&C process looks like this in this example:
+No Source Rebate Programs use either fixed amounts or formulas.  No Source and No Source Period Rebate Programs use Lump Sum Amounts and can be entered at either the Dept or Class Level 
+No Source Rate and No Source Quantity use formulas.  The component pieces of the formula are provided.  These are only available at the SKU Level. 
+This is an example of a No Source Quantity.  If this were a No Source Rate, the Rate, Sides and Stores would have been used.
+In the “detail” CALCUALTE_ tables, not only will you find the extracted data (Units, Cost etc.) but you will also find the Parameter data that was used as well.  These tables all have similar but different definitions depending on the specific requirements of the source being used in the Calculation.  
+The detail tables for the “Sourced” sources can contain massive amounts of data since they are transaction level data.  These are the ones that are archived.  The archiving occurs once the Rebate Program is closed.  
+No Source Rebate Programs follow the same methodology as a Sourced Rebate Program which is to say, they go though both an Extract and a Calculate.   Even though there is not “external” data, there is an Extract routine that runs and creates rows in the appropriate “detail” Calculate Table.  Here is a No Source example process. 
+Re-calcuation 
+There is also a process called Re-calculation (RECALC for short).  Re-calculation occurs when, after a Rebate Program has been active for more than one period, something changes (like an Amount per Unit) that impacts previously calculated earnings.  Since past earnings are never adjusted, the difference caused by the change is reflected in the current period.   In some cases (especially on the Sourced Rebates), there are set of “RECALC” tables that aide in this process.    
+The No Source sources (and the BOGO) are able to handle the recalculation (sometimes also referred to a “True Up”) without having use the RECALC tables. 
+There is one additional table that aids in this process and it is:  PREV_PRICE_INFO
+The table contains the parameters (like AMT_PER_UNIT) that where used in the pervious periods in order to be able to determine if something has changed.  
+More on the CALCULATE_RESULT table
+The CALCUALTE_RESULT table contains a lot of fields and it was further complicated when SBT was implemented because all of the relevant fields had SBT and Non-SBT versions added. This almost tripled the number of fields in the table.  The SBT and Non-SBT version of a given field should add up to its namesake.  Ex:  CURR_PMU = SBT_CURR_PMU + NSBT_CURR_PMU.   So, unless the SBT breakdown is needed, the original fields should suffice. 
+One of the most important things to understand about the CALCULATE_RESULT table is how to interpret the YEAR and PERIOD. CALCULATE_RESULT data for the current period has a PERIOD and YEAR of 0.   Current Period CALCUALTE_RESULT data is subject to change up until the point where the Period is closed.  
+When the period is closed, only then does the YEAR and PERIOD get set with the actual year and period get set and the data no longer subject to change.  
+The best (or most accurate) way to get the Earnings from the CALCULATE_RESULT table is to use the SUM of the following fields. 
+CURR_PMU + CURR_MAR + CURR_ADV + CURR_OTH +
+CURR_PMU_EADJ + CURR_MAR_EADJ + CURR_ADV_EADJ + CURR_OTH _EADJ (earnings adjustments)
+This calculation will include all earnings, regardless of whether they are recorded as rebates, non-merchandise rebates, new store allowance or to SG&A on G/L.  
+The original fields all have a default of 0 so you do not have to worry about using an NVL.  Unfortunately, this is NOT true of the additional SBT and Non SBT fields.  
+Note that you will find a similar set of fields in the REBATE_VENDOR_DEPT table.  These represent the current state of the data from the CALCULATE_RESULT table and were put her to make it easier to display the data on the Rebate Program’s Vend / Dept tab.  
+Class and SKU Level More on the CALCULATE_RESULT table
+When the MDSE side of VRS was implemented (AP was implemented first), its Cycle Close process needed to have CLASS and SKU level earnings — known as “Actuals” on the MDSE side.  The reason for this is that Agreement level “detailed” forecasts are done at either the CLASS or SKU level depending on the Merch Type other setting on a particular Agreement.   
+The problem is, AP Earnings are calculated at the Department level because Department level is how the data is communicated to external systems; therefore, CLASS and SKU level earnings did not exist.  In order to address this issue, two tables were created:
+REBATE_ALLOCATION (Class Level)
+REBATE_ALLOCATION_SKU (SKU Level)
+And then for each source, Allocation functions to load these tables were written and hooked into the Calculate.  Depending on the Source (and the No Source sources are much more complex) there are a variety of methods used to come up with the CLASS and SKU data.  In some cases, SKU data is not even loaded unless there is a SKU Forecasted Agreement associated with the Rebate Vendor.  
+Very recently, the Allocation routines were taken out of the Calculate and moved to the Finalize process (Finalize closes the Period) and therefore, moving forward, Class and SKU allocations will not exist for a given period until after AP Closes that period.  
+Generally speaking, for sourced Rebate Programs, since they used SKU level Transaction data, the CLASS and SKU data is summed up from the “detail” Calculate tables and then compared against the Department earnings and any differences found are spread evenly across the existing rows.  This is necessary to deal with Caps and Rounding issues. 
+No Source Rebate Programs and in particular No Source and No Source Period present a challenge when it comes to CLASS and SKU Allocations.   This is because they may not have Class or SKU data on them.  If they are tied to an Agreement then Class and/or SKU can be derived from there but there are many Rebate Programs that only exist in AP.   This issue is: what principal is used to create a distribution percent (including which classes and SKUs are needed) in order to spread the Department level earnings down to the Class and SKU level.   
+Rebate Owner Schema
+VRS tables exist in a schema called REBATE_OWNER.  This schema was included in the RSL database so that VRS had more direct access to some of the External tables needed.  There is somewhat of a scheme using prefixes that helps indicate what the tables go with.  Here is a list of some of the more common prefixes. 
+Source | Description | Notes
+R | Receipts - Domestic | 
+S | Sales | 
+D | Drop Ships | 
+B | Receipt & Drop Ship | (Pseudo Source) Combines Receipts and Drops
+F | Receipts - Import (First Cost) | 
+C | Discount Amt/BOGO | 
+P | Purchases | Not really used
+Source | Description | Notes
+N | No Source | Direct Entry of Earnings
+E | NS - Period | Just like No Source by divides by # of Periods to get Period Earnings.
+Q | NS - Quantity | SKU Level Only  (Qty * Units or Qty * Units * % of Cost)
+T | NS - Rate | SKU Level Only  (Rate * Sides * Stores)
+Source | Table
+Receipts - Domestic | CALCULATE_SKU_DC_RECV
+Sales | CALCULATE_SKU_SALES
+Drop Ships | CALCULATE_SKU_DROP_SHIP
+Receipts - Import (First Cost) | CALCULATE_SKU_FIRST_COST
+Discount Amt/BOGO | CALCULATE_SKU_DISCOUNT
+CALCULATE_SKU_DISCOUNT_SKU
+Purchases | CALCULATE_SKU_PO
+No Source | CALCULATE_NO_SOURCE
+NS - Period | CALCULATE_NS_PERIOD
+NS - Quantity | CALCULATE_NS_QTY
+NS - Rate | CALCULATE_NS_RATE
+Table Name
+RECALCULATE_SKU_DC_RECV
+RECALCULATE_SKU_DROP_SHIP
+RECALCULATE_SKU_FIRST_COST
+RECALCULATE_SKU_PO
+RECALCULATE_SKU_SALES
+PREFIX | Notes
+REBATE_ | AP Side - Rebate Program tables
+REBATE_BATCH_ | AP Side – Batching Tables
+REBATE_DMG_ | AP Side – Damage Tables
+REBATE_INV_ | AP Side – Invoicing Table
+CALCULATE_
+RECALCULATE_ | AP Side – Calculate Tables
+FPA _ | MDSE Side – FPA forecasting Tables
+MDSE_ | MDSE Side Tables
+MDSE_AD_ | MDSE Side – Ad Event Tables
+MDSE_AGMT_ | MDSE Side – Agreement Tables
+MDSE_DASHBD_ | MDSE Side – Dashboard Tables
+MDSE_USER_ | MDSE Side – User Tables (buyers etc.)
+MDSE_VENDOR_ | MDSE Side – Agreement and Contact tables.
+NSA_ | AP Side – NSA tables
+S5S5_ | AP Side - S5S5 tables
+VRS_ | Ap Side – Intermediate Load Tables

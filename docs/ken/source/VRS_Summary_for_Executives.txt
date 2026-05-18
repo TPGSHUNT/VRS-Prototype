@@ -1,0 +1,238 @@
+
+
+VRS · Executive Review
+
+  
+  
+    
+      Dollar General · Vendor Rebate System
+
+      A Platform Worthy
+of What It Manages
+
+      An executive review of VRS — where it stands, where it can go, and why the moment is now
+
+    
+
+    
+      
+        Prepared by
+TPG Partners
+
+        Date
+April 2026
+
+        Classification
+Confidential
+      
+
+    
+
+  
+
+  
+  
+    
+      "VRS has faithfully tracked and calculated hundreds of millions of dollars in vendor rebate earnings for over two decades.
+      The question is not whether it has served Dollar General well — it has. The question is whether it can continue to do so,
+      and whether Dollar General is prepared to settle for tracking earnings when it could be growing them."
+    
+
+    TPG Partners · 2026
+
+  
+
+  
+  
+
+    
+    
+      
+        01
+
+        
+          Where We Are
+
+          An honest assessment
+
+        
+
+      
+
+      
+        A Strong Foundation
+
+        VRS was thoughtfully designed and has proven remarkably durable. The data model is sound, the calculation engine is reliable, and the financial integrity of the system has never been in question. That is no small thing for a platform touching hundreds of millions in annual vendor earnings.
+
+      
+
+      
+        A Platform at Its Limits
+
+        The system was built in an era when Oracle Forms was a modern choice and form-by-form navigation was the standard paradigm. That era has passed. What was state-of-the-art in the 1990s now creates measurable friction for every AP analyst and buyer who uses the system daily — not because the system was built poorly, but because expectations and available technology have fundamentally changed.
+
+      
+
+      
+        
+          The Oracle Forms Reality
+          Oracle Forms is effectively end-of-life. Oracle has not actively developed it in years. It runs on aging Java infrastructure that grows more brittle with each OS and browser update. The pool of developers who know Oracle Forms is a closed, shrinking population — developers who learned it are retiring, and no one entering the field learns it today.
+        
+
+      
+
+      
+
+      
+        The Talent Risk
+
+        Ken Banks — who designed and has maintained VRS for over two decades — retires in January 2027. His departure is not a staffing problem. It is the moment when the last person who deeply understands the system's design rationale, edge cases, and integration logic will no longer be available. This knowledge cannot be fully documented. It must be transferred into a new system while Ken is still present to do it.
+
+      
+
+      
+        The Operational Cost
+
+        A routine period close requires an AP analyst to navigate five separate forms in sequence with no guided workflow, no progress visibility, and no way to see blockers in advance. Every period. Every analyst. The current system asks its most experienced people to work harder than they should have to.
+
+      
+
+    
+
+    
+    
+      
+        02
+
+        
+          Where We're Going
+
+          The replacement platform
+
+        
+
+      
+
+      
+        One Canvas. Every Role.
+
+        The new VRS replaces the menu-driven, form-centric interface with a single vendor portfolio canvas — an interactive field of vendor bubbles where size reflects rebate earnings and color reflects health status. Every role — AP analyst, buyer, DMM, manager — works from the same canvas, with their role determining what they see and what they can do. The MDSE/AP divide disappears as a navigation concept.
+
+      
+
+      
+        
+          The Vendor Bubble Field
+          600–900 vendor bubbles. Size = annual rebate earnings. Color = health (green, amber, red). A pulsing ring = agreement pending in the Approval Queue. Filter by merch type, analyst, period, or status. The portfolio health of Dollar General's entire vendor rebate operation — visible in seconds, without a single report.
+        
+
+      
+
+      
+        Workflow, Not Forms
+
+        Period close becomes a six-step guided checklist — E&C status, review, approve, batch, distribute, finalize — with live completion percentages and blockers surfaced inline. The Approval Queue becomes a notification state on the vendor bubble, not a separate destination. Agreements show their status as a visual timeline, with the next available action always one click away.
+
+      
+
+      
+        The 1010 Intelligence Layer
+
+        Dollar General's 1010 transaction database holds billions of receipt, sales, and drop-ship records. Today, those records are used only to calculate period earnings. The new platform surfaces them as live vendor intelligence: pace-to-target tracking, tier threshold alerts, year-over-year performance variance, and proactive flags when vendor behavior deviates from expected patterns. A bubble turns amber before a problem becomes a missed earning.
+
+      
+
+      
+        Modern, Maintainable Stack
+
+        Next.js · TypeScript · PostgreSQL · Prisma · Azure AD SSO. Technologies with deep talent pools, active development communities, and long support horizons. The platform DG builds in 2026 will not face an end-of-life crisis in 2030.
+
+      
+
+    
+
+    
+    
+      
+        03
+
+        
+          Why Now
+
+          The timing argument
+
+        
+
+      
+
+      
+        The Window Is Defined
+
+        Three conditions converge in 2026 that will not converge again. Ken Banks is still available to validate the new system's design and transfer his institutional knowledge. TPG Partners has 20 years of VRS domain expertise ready to be applied to a greenfield build. And Oracle Forms has not yet created a hard failure — there is still time to replace it on a controlled schedule rather than an emergency one.
+
+      
+
+      
+        
+          The Cost of Waiting
+          Each year of delay narrows the window. Ken retires in January 2027 — the knowledge transfer opportunity closes with him. Oracle Forms becomes harder to maintain and harder to staff with each passing year. And every period that passes is a period where the 1010 intelligence layer doesn't exist and potential rebate earnings go unidentified.
+        
+
+      
+
+      
+
+      
+        TPG's Position Is Unique
+
+        No outside vendor can replicate what TPG brings to this project. Two decades of VRS maintenance means TPG understands the calculation engine, the source-driven AP logic, the integration architecture, and every edge case baked into 20 years of production use. An external team would need a year to learn what TPG already knows. The rewrite by TPG is not just faster — it is categorically lower risk.
+
+      
+
+      
+        A Phased, Bounded Commitment
+
+        The ask is not a multi-year transformation commitment. It is an eight-week prototype — built on the production stack, against the production schema, with realistic mock data. At the end of eight weeks, DG has a working, interactive system they can evaluate, challenge, and extend. The prototype is not a proof of concept. It is Month 1 of the production platform.
+
+      
+
+      
+        Competitive Positioning
+
+        Rebate management platforms are evolving rapidly. Vendors like Prometheus Group are moving toward AI-assisted analytics. The difference is that DG's 1010 database gives a home-grown platform a data advantage no outside vendor can match. The window to build a genuinely differentiated capability — one that turns transaction history into negotiating leverage — is open now.
+
+      
+
+    
+
+  
+
+  
+  
+    Ask Vera
+
+    
+      The platform's highest-value capability: a role-aware AI advisor — Vera, the Vendor Earnings & Rebate Advisor — that synthesizes the full rebate portfolio, agreement history, and 1010 transaction data to answer operational questions, identify uncaptured rebate opportunities, and draft vendor negotiation rationales on demand. Ask Frosti transformed GMCC from a monitoring application into an expert advisor. Vera does the same for VRS — in a domain where the financial stakes are an order of magnitude higher.
+    
+
+    
+      Operational Q&A by role
+
+      Tier pace & what-if analysis
+
+      Uncaptured agreement detection
+
+      Negotiation rationale drafting
+
+    
+
+  
+
+  
+  
+    
+      TPG PARTNERS  ·  Optimizers of Retail  ·  tpg-partners.com  ·  April 2026
+    
+
+  
+

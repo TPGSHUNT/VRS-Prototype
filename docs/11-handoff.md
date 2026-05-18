@@ -20,60 +20,90 @@ co-central goal.
 
 ## 2. Read order for a fresh thread
 
-1. `MEMORY.md` (auto-loaded) + the `project_*`/`feedback_*` memories — these
-   carry the durable decisions and working norms. **Read before acting.**
+1. `MEMORY.md` (auto-loaded) + the `project_*`/`feedback_*` memories — durable
+   decisions and working norms. **Read before acting.**
 2. This file.
-3. `docs/21-bubble-index-model.md` — the bubble-field design + business
-   rationale (triage-first, seat-driven, deterministic layout). Current.
-4. `docs/20-gap-closure-plan.md` — the living phased plan + build status.
-5. `docs/19-ken-asks.md` — the running data-ask accumulator (what's still
-   needed from Ken; round-5 sent).
-6. `docs/16-legacy-subsystems.md` + `docs/17-legacy-forms-image-catalog.md` —
-   background: the real 603-table scope vs the prototype; legacy Forms.
-7. `docs/ken/*` — Ken's verbatim answers + source data (the irreplaceable
-   source of truth). `docs/06-design-language.md` — binding UI rules.
-8. `git log --oneline -15`.
+3. **`docs/22-ken-commentary-emails-and-files.md`** — the consolidated,
+   source-attributed digest of Ken's emails + files. **The domain ground
+   truth; it now reshapes the design (see §3 direction change).**
+4. `docs/21-bubble-index-model.md` — bubble-field design + rationale
+   (triage-first, deterministic; §9 = the built encoding spec).
+5. `docs/20-gap-closure-plan.md` — living phased plan + build status.
+6. `docs/19-ken-asks.md` — data-ask accumulator (round-5; partly answered by
+   the corpus — see §4).
+7. `docs/16` + `docs/17` — background (603-table scope; legacy Forms).
+8. `docs/ken/*` (verbatim answers, `source/` = extracted files) +
+   `docs/06-design-language.md` (binding UI rules).
+9. `git log --oneline -15`.
 
 ## 3. Current state (2026-05-17)
 
-**Data.** Live local Postgres holds the **real Phase 3.1 ingest** (851,174
-CalculateResult · 2,573 vendors · multi-year FY2024–26) + the real ROUND_4
-AcctControlMaster (2,842 rows). **No synthetic data anywhere** — the
-synthetic seed is deleted by policy (memory `project_no_synthetic_data`);
-populate only via `prisma/ingest/real_ingest.py` + `npm run db:load-acm`.
-`npx prisma migrate reset` would wipe it irrecoverably except by re-running
-that pipeline (memory `project_db_holds_real_ingest_seed_is_destructive`).
+**Data.** Live local Postgres = **real Phase 3.1 ingest** (851,174
+CalculateResult · 2,573 vendors · FY2024–26) + real ROUND_4 AcctControlMaster
+(2,842). **No synthetic data anywhere** — synthetic seed deleted by policy;
+populate only via `prisma/ingest/real_ingest.py` + `npm run db:load-acm`;
+`prisma migrate reset` wipes it irrecoverably (memories
+`project_no_synthetic_data`, `project_db_holds_real_ingest_seed_is_destructive`).
 
-**Built (this work cycle).**
-- **Seat switcher** — in-header, persistent; `/login` is now a no-grid SSO
-  shim that auto-establishes a default AP-Manager estate seat. Live
-  seat-hopping re-scopes the field.
-- **Bubble-field substrate** — metric vocabulary swapped to the
-  triage-first feasible-now set; **deterministic layout, no force
-  simulation, no collision** (overlap is truthful; a future user-drawn
-  exploder is the only de-overlap); real non-collinear defaults
-  (X=active programs, Y=earnings FY, size=earnings LTD); attention-driven
-  health; forecast/volume metrics shown disabled+labeled (never faked).
-- **Pan & zoom** on the field (drag empty space, wheel-to-cursor, +/−/reset).
+**Built & committed (pushed through `5b3b6ed`):**
+- **Seat switcher** — in-header; `/login` is a no-grid SSO shim → default
+  AP-Manager seat; live seat-hopping re-scopes.
+- **Bubble field, `docs/21` §9 in full** — semantic axes (no X/Y/Size
+  pickers): Materiality (composite, equal-thirds, configurable,
+  rank-normalized, transparent) = vertical+size; Performance (same-period
+  YoY, not the partial-year trap) = horizontal; Attention (cliff/collapse/
+  operational, ~10% flagged truthfully) = colour. Top **settings bar**.
+  **Deterministic, no force-sim, no collision; pan & zoom.**
+- **Estate aggregation** — estate never raw atoms: opens as clusters,
+  drill → atoms, atom **CEILING 200**, breadcrumb.
+- Verified each step: `tsc` 0, `next build` clean (modified Next 16.2.4),
+  headless auth'd render OK. SSR ≈ **3.6 s** (modal-owner CTEs; perf
+  follow-up). Visual feel still wants a manual browser pass.
 
-**Verified.** `tsc` 0 errors; `next build` clean (modified Next 16.2.4);
-headless auth'd render of `/` as the estate seat over all 2,573 vendors,
-no server errors. Visual feel still wants a manual browser pass.
+> ### ⚠ Direction change — read before touching the bubble field
+> The estate aggregation as built clusters **by analyst**, derived from
+> created/updated-by. The Ken corpus (`docs/22` §7) **authoritatively**
+> establishes that is wrong: **AP has NO analyst→program/vendor
+> assignment**; created/updated-by are research-only audit fields that often
+> hold a *process* name (that is exactly why clusters showed "Batch Exec",
+> "Upload"). AP "ownership" is only a soft **Merch-Type**-derived label
+> (`GET_ANALYST` initials). Only the **MDSE Buyer** has a real assigned book
+> (Agreement↔Buyer FK + Delegate proxy).
+>
+> **Decided model (not yet built):** drop "analyst" as a cluster dimension;
+> **Merch Type is the estate organizer**; analyst → optional derived filter.
+> Three role archetypes drive the per-seat default: **operator triage**
+> (AP Analyst, MDSE Buyer/Delegate), **oversight estate by Merch Type**
+> (AP Mgr/Supervisor, Finance/Exec), **decision queue** (DMM/GMM/SVP). Full
+> per-role layout: `docs/VRS_Role_Driving_Estate.docx` (internal) and
+> `docs/22` §7. This **supersedes** the just-built analyst clustering.
 
 ## 4. Open / next
 
-- **Attention-detector model** (proposed, awaiting go) — make the field
-  surface real problem vendors *without* new data, via computable detectors
-  (YoY collapse, earnings cliff, lapsed-program-with-activity). The
-  all-green today is correct (closed periods 100% finalized), not a gap.
-  Detail + rationale: this is the next step in `docs/21` §8.
-- **Manager analyst-clustered aggregation + triage-encoding**; the
-  **user-drawn exploder**; **per-seat default wiring** — `docs/21` §8.
-- **Ken round-5 data ask sent** (`docs/ken/Ken_data_request_round5.txt`):
-  D1 agreements, D2 volume, K8 tiers sharpen Performance/Opportunity
-  metrics — non-blocking; tracked in `docs/19`.
+- **Re-base the estate aggregation on Merch Type** (drop the analyst
+  dimension) and implement the **three-archetype per-seat defaults** above.
+  This is the top engineering item; the just-built analyst clustering is on a
+  wrong basis.
+- **SSR perf** (~3.6 s; the analyst/program-type modal CTEs) — dropping the
+  analyst-modal aggregation should itself help; optimize when re-basing.
+- **User-drawn exploder** (atom-level de-overlap) — still pending.
+- **AP-analyst daily run-of-show** — the one load-bearing unknown not in any
+  doc/email. A validation doc is prepared: `docs/VRS_Roles_for_Ken_
+  Validation.docx` — **awaiting David to route to Ken** (engineering does
+  not contact Ken).
+- **Ken round-5 ask** (`docs/ken/Ken_data_request_round5.txt`) — partly
+  answered by the corpus (analyst-assignment now resolved); **K8 tiers / D1
+  agreements / D2 volume still pending** (`docs/19`).
 - Decisions still open: demo centerpiece, real-data governance home, build
   ownership/timeline (`docs/20`).
+- Minor: **"estate" is our coinage**, not a Ken/DG term — possible
+  terminology cleanup (→ "the whole book" / "full portfolio"); not blocking.
+
+> **Uncommitted as of 2026-05-17** (next thread: commit with David's go, or
+> know they're not in git): `docs/22-ken-commentary-emails-and-files.md`,
+> `docs/ken/source/*` (13 extracted files), `docs/VRS_Role_Driving_Estate.docx`,
+> `docs/VRS_Roles_for_Ken_Validation.docx`, and several memory updates
+> (`project_bubble_index_model` carries the cluster-dimension resolution).
 
 ## 5. Working norms
 
