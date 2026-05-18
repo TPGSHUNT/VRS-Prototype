@@ -88,9 +88,10 @@ populate only via `prisma/ingest/real_ingest.py` + `npm run db:load-acm`;
   analyst-modal aggregation should itself help; optimize when re-basing.
 - **User-drawn exploder** (atom-level de-overlap) — still pending.
 - **AP-analyst daily run-of-show** — the one load-bearing unknown not in any
-  doc/email. A validation doc is prepared: `docs/VRS_Roles_for_Ken_
-  Validation.docx` — **awaiting David to route to Ken** (engineering does
-  not contact Ken).
+  doc/email. `docs/VRS_Roles_for_Ken_Validation.docx` was **sent to Ken
+  2026-05-17; awaiting his reply** (role working-views + the analyst's
+  actual day). His answer feeds the Merch-Type re-base / operator-triage
+  composition.
 - **Ken round-5 ask** (`docs/ken/Ken_data_request_round5.txt`) — partly
   answered by the corpus (analyst-assignment now resolved); **K8 tiers / D1
   agreements / D2 volume still pending** (`docs/19`).
